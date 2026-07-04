@@ -1,0 +1,3 @@
+#ENVIRONMENT;LICENCE_TYPE;HOST:PORT
+PRD;COMMUNITY;postgresdb01.example.com:5432
+DEV;COMMUNITY;postgresdb02.example.com:5432

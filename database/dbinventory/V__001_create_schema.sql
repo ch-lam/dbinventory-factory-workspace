@@ -1144,6 +1144,164 @@ create table product_support (
 
 
 -- ============================================================
+-- postgres_hosts
+-- ============================================================
+create table postgres_hosts (
+   hostname           varchar2(100 char) not null,
+   environment        varchar2(20 char) not null,
+   license_type       varchar2(50 char) not null,
+   pg_version         varchar2(50 char) not null,
+   port               number(5) not null,
+   data_directory     varchar2(255 char),
+   start_time         varchar2(30 char),
+   max_connections    number(10),
+   shared_buffers_mb  number(10),
+   wal_level          varchar2(20 char),
+   archive_mode       varchar2(20 char),
+   db_role            varchar2(20 char) not null
+);
+
+-- ============================================================
+-- postgres_databases
+-- ============================================================
+create table postgres_databases (
+   hostname      varchar2(100 char) not null,
+   environment   varchar2(20 char) not null,
+   datname       varchar2(100 char) not null,
+   owner         varchar2(100 char),
+   encoding      varchar2(20 char),
+   collation     varchar2(50 char),
+   size_mb       number(15),
+   datconnlimit  number(10),
+   is_template   varchar2(3 char),
+   tablespace    varchar2(100 char),
+   date_value    timestamp default on null systimestamp not null
+);
+
+-- ============================================================
+-- postgres_replication
+-- Equivalent oracle_dataguard : etat de la replication streaming.
+-- ============================================================
+create table postgres_replication (
+   hostname     varchar2(100 char) not null,
+   db_role      varchar2(20 char) not null,
+   peer_addr    varchar2(100 char),
+   state        varchar2(30 char),
+   sync_state   varchar2(20 char),
+   lag_seconds  number(10)
+);
+
+-- ============================================================
+-- postgres_backup
+-- Suivi de l'archivage WAL (pg_stat_archiver) : pas de catalogue de
+-- sauvegarde applicative sans outil dedie (pgBackRest/Barman non utilise).
+-- ============================================================
+create table postgres_backup (
+   hostname            varchar2(100 char) not null,
+   archive_mode        varchar2(20 char),
+   archived_count      number(15),
+   last_archived_wal   varchar2(50 char),
+   last_archived_time  varchar2(30 char),
+   failed_count        number(15),
+   last_failed_wal     varchar2(50 char),
+   last_failed_time    varchar2(30 char)
+);
+
+-- ============================================================
+-- postgres_extensions
+-- ============================================================
+create table postgres_extensions (
+   hostname    varchar2(100 char) not null,
+   datname     varchar2(100 char) not null,
+   extname     varchar2(100 char) not null,
+   extversion  varchar2(20 char)
+);
+
+-- ============================================================
+-- postgres_security_parameter
+-- ============================================================
+create table postgres_security_parameter (
+   hostname          varchar2(100 char) not null,
+   parameter_name    varchar2(100 char) not null,
+   parameter_value   varchar2(500 char),
+   compliance_score  number(2) default 0 not null,
+   date_value        timestamp default on null systimestamp not null
+);
+
+-- ============================================================
+-- postgres_security_roles
+-- ============================================================
+create table postgres_security_roles (
+   hostname          varchar2(100 char) not null,
+   rolname           varchar2(100 char) not null,
+   rolsuper          varchar2(1 char) not null,
+   rolcreaterole     varchar2(1 char) not null,
+   rolcreatedb       varchar2(1 char) not null,
+   rolcanlogin       varchar2(1 char) not null,
+   rolreplication    varchar2(1 char) not null,
+   rolbypassrls      varchar2(1 char) not null,
+   rolconnlimit      number(10),
+   rolvaliduntil     varchar2(30 char),
+   compliance_score  number(2) default 0 not null,
+   date_value        timestamp default on null systimestamp not null
+);
+
+-- ============================================================
+-- postgres_security_role_memberships
+-- Appartenance aux roles predefinis sensibles (pg_read_all_data,
+-- pg_execute_server_program, pg_monitor, ...).
+-- ============================================================
+create table postgres_security_role_memberships (
+   hostname          varchar2(100 char) not null,
+   role_name         varchar2(100 char) not null,
+   member_of         varchar2(100 char) not null,
+   compliance_score  number(2) default 0 not null,
+   date_value        timestamp default on null systimestamp not null
+);
+
+-- ============================================================
+-- postgres_security_hba_rules
+-- ============================================================
+create table postgres_security_hba_rules (
+   hostname          varchar2(100 char) not null,
+   line_number       number(10) not null,
+   rule_type         varchar2(20 char),
+   database          varchar2(200 char),
+   user_name         varchar2(200 char),
+   address           varchar2(100 char),
+   auth_method       varchar2(30 char) not null,
+   compliance_score  number(2) default 0 not null,
+   date_value        timestamp default on null systimestamp not null
+);
+
+-- ============================================================
+-- postgres_security_database_privileges
+-- Droits accordes a PUBLIC sur les bases (CONNECT/CREATE).
+-- ============================================================
+create table postgres_security_database_privileges (
+   hostname          varchar2(100 char) not null,
+   datname           varchar2(100 char) not null,
+   grantee           varchar2(100 char) not null,
+   privilege_type    varchar2(30 char) not null,
+   compliance_score  number(2) default 0 not null,
+   date_value        timestamp default on null systimestamp not null
+);
+
+-- ============================================================
+-- postgres_collect_list
+-- ============================================================
+create table postgres_collect_list (
+   collect_name varchar2(30 char) not null,
+   hostname     varchar2(150 char) not null,
+   port         number(5) default 5432 not null,
+   environment  varchar2(10 char) not null,
+   license_type varchar2(50 char) not null,
+   active       number(1) default 1 not null,
+   constraint pk_postgres_collect_list primary key ( collect_name )
+);
+
+
+-- ============================================================
 -- mssql_collect_list
 -- ============================================================
 create table mssql_collect_list (

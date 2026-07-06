@@ -58,6 +58,12 @@ print_usage(){
     echo "-m check_autovacuum        -h HOST -u USER -p PWD [-d DB] [-P PORT] -w WARNING -c CRITICAL (number of dead tuples)"
     echo "-m check_db_alertlog       (only locally as postgres user - scans log for FATAL/PANIC errors)"
     echo "-m check_query_result      -h HOST -u USER -p PWD [-d DB] [-P PORT] -q QUERY (CRITICAL if result != 0)"
+    echo "-m check_ssl_enabled            -h HOST -u USER -p PWD [-d DB] [-P PORT]"
+    echo "-m check_password_encryption    -h HOST -u USER -p PWD [-d DB] [-P PORT] (expects scram-sha-256)"
+    echo "-m check_superuser_count        -h HOST -u USER -p PWD [-d DB] [-P PORT] -w WARNING -c CRITICAL (superuser roles beyond postgres)"
+    echo "-m check_role_memberships_sensitive -h HOST -u USER -p PWD [-d DB] [-P PORT] (membership in pg_read_all_data etc.)"
+    echo "-m check_hba_weak_auth          -h HOST -u USER -p PWD [-d DB] [-P PORT] (trust/password/md5 rules in pg_hba.conf)"
+    echo "-m check_database_public_privileges -h HOST -u USER -p PWD [-d DB] [-P PORT] (CREATE granted to PUBLIC)"
 }
 
 fct_psql(){
@@ -191,23 +197,57 @@ fct_check_replication_lag(){
     IS_STANDBY=$(fct_psql "SELECT pg_is_in_recovery()::text")
 
     if echo "${IS_STANDBY}" | grep -q '^f$'; then
-        echo "OK - PostgreSQL is PRIMARY - no replication lag to monitor"
-        exit $STATE_OK
+        # Primary side: replay_lag per connected standby (network+apply delay) - this is the
+        # same metric captured by the inventory (pg_stat_replication.replay_lag), unlike the
+        # standby-side apply_lag computed below which is a different, local-only metric.
+        RESULT=$(fct_psql "SELECT 'VALUE'||coalesce(client_addr::text,'local')||':'||coalesce(EXTRACT(EPOCH FROM replay_lag)::int,-1) FROM pg_stat_replication")
+
+        if [ -z "${RESULT}" ]; then
+            echo "OK - PostgreSQL PRIMARY with no standby connected"
+            exit $STATE_OK
+        fi
+
+        MAX_LAG=-1
+        DETAILS=""
+        while IFS= read -r line; do
+            [ -z "${line}" ] && continue
+            line=${line#VALUE}
+            ADDR=$(echo "${line}" | cut -d ":" -f1)
+            LAG=$(echo "${line}" | cut -d ":" -f2)
+            DETAILS="${DETAILS} ${ADDR}=${LAG}s"
+            [[ "${LAG}" -gt "${MAX_LAG}" ]] && MAX_LAG=${LAG}
+        done <<< "${RESULT}"
+
+        if [[ "${MAX_LAG}" -eq -1 ]]; then
+            echo "WARNING - PostgreSQL PRIMARY: replay_lag not available for connected standby(s):${DETAILS}"
+            exit $STATE_WARNING
+        elif [[ "${MAX_LAG}" -gt "${CRITICAL_THRESHOLD}" ]]; then
+            echo "CRITICAL - Replication replay_lag ${MAX_LAG}s (primary-side):${DETAILS} |'replication_lag'=${MAX_LAG}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
+            exit $STATE_CRITICAL
+        elif [[ "${MAX_LAG}" -gt "${WARNING_THRESHOLD}" ]]; then
+            echo "WARNING - Replication replay_lag ${MAX_LAG}s (primary-side):${DETAILS} |'replication_lag'=${MAX_LAG}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
+            exit $STATE_WARNING
+        else
+            echo "OK - Replication replay_lag ${MAX_LAG}s (primary-side):${DETAILS} |'replication_lag'=${MAX_LAG}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
+            exit $STATE_OK
+        fi
     fi
 
+    # Standby side: local apply_lag (time since last WAL replay) - does not include network
+    # transfer delay, so it is not directly comparable to the primary-side replay_lag above.
     LAG_SECONDS=$(fct_psql "SELECT CASE WHEN pg_last_xact_replay_timestamp() IS NULL THEN -1 ELSE round(extract(epoch FROM (now()-pg_last_xact_replay_timestamp())))::int END")
 
     if [[ "${LAG_SECONDS}" -eq -1 ]]; then
         echo "WARNING - PostgreSQL STANDBY: no replay timestamp available (no WAL replayed yet?)"
         exit $STATE_WARNING
     elif [[ "${LAG_SECONDS}" -gt "${CRITICAL_THRESHOLD}" ]]; then
-        echo "CRITICAL - Replication lag ${LAG_SECONDS}s |'replication_lag'=${LAG_SECONDS}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
+        echo "CRITICAL - Apply lag ${LAG_SECONDS}s (standby-side) |'apply_lag'=${LAG_SECONDS}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
         exit $STATE_CRITICAL
     elif [[ "${LAG_SECONDS}" -gt "${WARNING_THRESHOLD}" ]]; then
-        echo "WARNING - Replication lag ${LAG_SECONDS}s |'replication_lag'=${LAG_SECONDS}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
+        echo "WARNING - Apply lag ${LAG_SECONDS}s (standby-side) |'apply_lag'=${LAG_SECONDS}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
         exit $STATE_WARNING
     else
-        echo "OK - Replication lag ${LAG_SECONDS}s |'replication_lag'=${LAG_SECONDS}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
+        echo "OK - Apply lag ${LAG_SECONDS}s (standby-side) |'apply_lag'=${LAG_SECONDS}s;${WARNING_THRESHOLD};${CRITICAL_THRESHOLD};"
         exit $STATE_OK
     fi
 }
@@ -241,19 +281,29 @@ fct_check_wal_archiving(){
 fct_check_backup(){
     # Monitors backup freshness based on last successful WAL archive (pg_stat_archiver)
     # For physical backups (pg_basebackup/barman/pgbackrest), use check_query_result with a custom query
+    # Shares its failure-detection logic with check_wal_archiving so an active archiving
+    # failure cannot be masked by a recent-enough last_archived_time (see 2026-07-06 audit).
     ARCHIVING=$(fct_psql "SELECT setting FROM pg_settings WHERE name='archive_mode'")
     if ! echo "${ARCHIVING}" | grep -qE '^(on|always)$'; then
         echo "OK - WAL archiving disabled - backup via WAL archive cannot be monitored"
         exit $STATE_OK
     fi
 
-    HOURS_SINCE=$(fct_psql "SELECT CASE WHEN last_archived_time IS NULL THEN 9999 ELSE round(extract(epoch FROM (now()-last_archived_time))/3600)::int END FROM pg_stat_archiver")
+    RESULT=$(fct_psql "SELECT 'VALUE'||failed_count||':'||COALESCE(last_failed_wal,'none')||':'||CASE WHEN last_failed_time IS NOT NULL AND (last_archived_time IS NULL OR last_failed_time > last_archived_time) THEN 'RECENT_FAILURE' ELSE 'OK' END||':'||CASE WHEN last_archived_time IS NULL THEN 9999 ELSE round(extract(epoch FROM (now()-last_archived_time))/3600)::int END FROM pg_stat_archiver")
 
-    if [[ "${HOURS_SINCE}" -gt "${CRITICAL_THRESHOLD}" ]]; then
+    FAILED_COUNT=$(echo "${RESULT}" | sed 's/VALUE//g' | cut -d ":" -f1)
+    LAST_FAILED_WAL=$(echo "${RESULT}" | sed 's/VALUE//g' | cut -d ":" -f2)
+    ARCH_STATUS=$(echo "${RESULT}" | sed 's/VALUE//g' | cut -d ":" -f3)
+    HOURS_SINCE=$(echo "${RESULT}" | sed 's/VALUE//g' | cut -d ":" -f4)
+
+    if echo "${ARCH_STATUS}" | grep -q "RECENT_FAILURE"; then
+        echo "CRITICAL - WAL archiving has recent failure(s) (total: ${FAILED_COUNT}), last failed WAL: ${LAST_FAILED_WAL} - backup via WAL archive is not current"
+        exit $STATE_CRITICAL
+    elif [[ "${HOURS_SINCE}" -gt "${CRITICAL_THRESHOLD}" ]]; then
         echo "CRITICAL - No WAL archived since ${HOURS_SINCE} hours (threshold: ${CRITICAL_THRESHOLD}h)"
         exit $STATE_CRITICAL
     else
-        echo "OK - Last WAL archive was ${HOURS_SINCE} hours ago (threshold: ${CRITICAL_THRESHOLD}h)"
+        echo "OK - Last WAL archive was ${HOURS_SINCE} hours ago (threshold: ${CRITICAL_THRESHOLD}h), no recent archiving failure"
         exit $STATE_OK
     fi
 }
@@ -441,6 +491,90 @@ ${ERROR_MSGS}"
     fi
 }
 
+fct_check_ssl_enabled(){
+    VAL=$(fct_psql "SELECT setting FROM pg_settings WHERE name='ssl'")
+    if [ "${VAL}" = "on" ]; then
+        echo "OK - SSL is enabled on ${HOST_NAME_TO_CHECK}:${PORT}"
+        exit $STATE_OK
+    else
+        echo "WARNING - SSL is disabled on ${HOST_NAME_TO_CHECK}:${PORT}"
+        exit $STATE_WARNING
+    fi
+}
+
+fct_check_password_encryption(){
+    VAL=$(fct_psql "SELECT setting FROM pg_settings WHERE name='password_encryption'")
+    if [ "${VAL}" = "scram-sha-256" ]; then
+        echo "OK - password_encryption is scram-sha-256 on ${HOST_NAME_TO_CHECK}:${PORT}"
+        exit $STATE_OK
+    else
+        echo "WARNING - password_encryption is ${VAL} (expected scram-sha-256) on ${HOST_NAME_TO_CHECK}:${PORT}"
+        exit $STATE_WARNING
+    fi
+}
+
+fct_check_superuser_count(){
+    RESULT=$(fct_psql "SELECT rolname FROM pg_roles WHERE rolsuper=true AND rolname NOT IN ('postgres','${USR_DB}') ORDER BY 1")
+    RESULT=$(echo "${RESULT}" | grep -v '^\s*$')
+    NB=0
+    [ -n "${RESULT}" ] && NB=$(echo "${RESULT}" | grep -c .)
+
+    if [[ "${NB}" -gt "${CRITICAL_THRESHOLD}" ]]; then
+        echo "CRITICAL - ${NB} superuser role(s) beyond postgres: $(echo ${RESULT} | tr '\n' ' ')"
+        exit $STATE_CRITICAL
+    elif [[ "${NB}" -gt "${WARNING_THRESHOLD}" ]]; then
+        echo "WARNING - ${NB} superuser role(s) beyond postgres: $(echo ${RESULT} | tr '\n' ' ')"
+        exit $STATE_WARNING
+    else
+        echo "OK - ${NB} superuser role(s) beyond postgres: $(echo ${RESULT} | tr '\n' ' ')"
+        exit $STATE_OK
+    fi
+}
+
+fct_check_role_memberships_sensitive(){
+    RESULT=$(fct_psql "SELECT m.rolname||':'||r.rolname FROM pg_auth_members am JOIN pg_roles r ON r.oid=am.roleid JOIN pg_roles m ON m.oid=am.member WHERE r.rolname IN ('pg_read_all_data','pg_write_all_data','pg_execute_server_program','pg_read_server_files','pg_write_server_files','pg_signal_backend') AND m.rolname <> '${USR_DB}' ORDER BY 1")
+    RESULT=$(echo "${RESULT}" | grep -v '^\s*$')
+
+    if [ ! -z "${RESULT}" ]; then
+        echo "WARNING - Role(s) member of sensitive predefined role(s): $(echo ${RESULT} | tr '\n' ' ')"
+        exit $STATE_WARNING
+    else
+        echo "OK - No role member of sensitive predefined roles (beyond the monitoring account)"
+        exit $STATE_OK
+    fi
+}
+
+fct_check_hba_weak_auth(){
+    TRUST=$(fct_psql "SELECT line_number||':'||type||':'||auth_method FROM pg_hba_file_rules WHERE auth_method='trust' AND type<>'local'")
+    TRUST=$(echo "${TRUST}" | grep -v '^\s*$')
+    WEAK=$(fct_psql "SELECT line_number||':'||type||':'||auth_method FROM pg_hba_file_rules WHERE auth_method IN ('password','md5')")
+    WEAK=$(echo "${WEAK}" | grep -v '^\s*$')
+
+    if [ ! -z "${TRUST}" ]; then
+        echo "CRITICAL - pg_hba.conf allows 'trust' authentication on a non-local rule: $(echo ${TRUST} | tr '\n' ' ')"
+        exit $STATE_CRITICAL
+    elif [ ! -z "${WEAK}" ]; then
+        echo "WARNING - pg_hba.conf uses password/md5 authentication (scram-sha-256 recommended): $(echo ${WEAK} | tr '\n' ' ')"
+        exit $STATE_WARNING
+    else
+        echo "OK - No weak authentication method found in pg_hba.conf"
+        exit $STATE_OK
+    fi
+}
+
+fct_check_database_public_privileges(){
+    RESULT=$(fct_psql "SELECT d.datname||':'||a.privilege_type FROM pg_database d, aclexplode(COALESCE(d.datacl, acldefault('d', d.datdba))) a WHERE d.datname NOT IN ('template0','template1') AND a.grantee=0 AND a.privilege_type='CREATE'")
+    RESULT=$(echo "${RESULT}" | grep -v '^\s*$')
+
+    if [ ! -z "${RESULT}" ]; then
+        echo "WARNING - PUBLIC has CREATE privilege on database(s): $(echo ${RESULT} | tr '\n' ' ')"
+        exit $STATE_WARNING
+    else
+        echo "OK - No database grants CREATE to PUBLIC"
+        exit $STATE_OK
+    fi
+}
+
 fct_check_query_result(){
     QUERY_ESC=$(echo ${QUERY} | sed 's/_dollar_/$/g')
     IS_STANDBY=$(fct_psql "SELECT pg_is_in_recovery()::text")
@@ -508,6 +642,24 @@ case "${MODE}" in
         ;;
     check_query_result)
         fct_main fct_check_query_result
+        ;;
+    check_ssl_enabled)
+        fct_main fct_check_ssl_enabled
+        ;;
+    check_password_encryption)
+        fct_main fct_check_password_encryption
+        ;;
+    check_superuser_count)
+        fct_main fct_check_superuser_count
+        ;;
+    check_role_memberships_sensitive)
+        fct_main fct_check_role_memberships_sensitive
+        ;;
+    check_hba_weak_auth)
+        fct_main fct_check_hba_weak_auth
+        ;;
+    check_database_public_privileges)
+        fct_main fct_check_database_public_privileges
         ;;
     *)
         print_usage

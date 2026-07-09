@@ -1,0 +1,2366 @@
+-- LOADING: ../collect/oracle_hosts.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_HOSTS
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 23
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_users.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_USERS
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 513
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_services.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SERVICES
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 33
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_pdbs.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_PDBS
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_databases.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_DATABASES
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 32
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_dataguard.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_DATAGUARD
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_psu.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_PSU
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 26
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_lms.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_LMS
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#ERROR Insert failed in batch rows  1  through  50 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 1 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 2 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 3 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 4 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 5 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 6 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 7 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 8 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 9 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 10 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 11 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 12 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 13 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 14 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 15 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 16 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 17 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 18 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 19 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 20 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 21 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 22 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 23 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 24 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 25 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 26 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 27 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 28 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 29 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 30 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 31 data follows:
+0,-1,,Active Data Guard,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 32 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 33 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 34 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 35 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 36 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 37 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 38 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 39 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 40 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 41 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 42 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 43 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 44 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 45 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 46 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 47 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 48 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 49 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 50 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Insert failed in batch rows  51  through  100 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 51 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 52 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 53 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 54 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 55 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 56 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 57 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 58 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 59 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 60 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 61 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 62 data follows:
+0,-1,,Active Data Guard or Real Application Clusters,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 63 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 64 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 65 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 66 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 67 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 68 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 69 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 70 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 71 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 72 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 73 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 74 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 75 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 76 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 77 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 78 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 79 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 80 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 81 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 82 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 83 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 84 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 85 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 86 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 87 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 88 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 89 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 90 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 91 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 92 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 93 data follows:
+0,-1,,Advanced Analytics,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 94 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20220129,20220129,20220129,CHC,SAPCHCDB
+#ERROR Row 95 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20220129,20220129,20220129,CHL,SAPCHLDB
+#ERROR Row 96 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20260704,20231129,20260704,BW1,BWCHEMPROD
+#ERROR Row 97 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20260704,20240116,20260704,NJ3,SAPBWN01-TD
+#ERROR Row 98 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20260704,20241008,20260704,BJT,SAPBWL01-TI
+#ERROR Row 99 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20260704,20250123,20260704,BA1,SAPBWL01-PI
+#ERROR Row 100 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20260704,20250410,20260704,BA3,SAPBWN01-PD
+#ERROR Insert failed in batch rows  101  through  150 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 101 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20260704,20250410,20260704,BJ3,SAPBWN01-PD
+#ERROR Row 102 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20260705,20240110,20260705,NA3,SAPBWN01-TD
+#ERROR Row 103 data follows:
+0,-1,,Advanced Compression,CURRENT_USAGE,20260705,20240524,20260705,BJ1,BWCHEMPROD
+#ERROR Row 104 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 105 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 106 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 107 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 108 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 109 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 110 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 111 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 112 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 113 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 114 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 115 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 116 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 117 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 118 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 119 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 120 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 121 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 122 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 123 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 124 data follows:
+0,-1,,Advanced Compression,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 125 data follows:
+0,-1,,Advanced Security,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 126 data follows:
+0,-1,,Advanced Security,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 127 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 128 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 129 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 130 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 131 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 132 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 133 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 134 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 135 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 136 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 137 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 138 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 139 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 140 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 141 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 142 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 143 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 144 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 145 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 146 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 147 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 148 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 149 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 150 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Insert failed in batch rows  151  through  200 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 151 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 152 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 153 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 154 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 155 data follows:
+0,-1,,Advanced Security,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 156 data follows:
+0,1,CDB$ROOT,Active Data Guard,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 157 data follows:
+0,1,CDB$ROOT,Active Data Guard or Real Application Clusters,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 158 data follows:
+0,1,CDB$ROOT,Advanced Analytics,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 159 data follows:
+0,1,CDB$ROOT,Advanced Compression,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 160 data follows:
+0,1,CDB$ROOT,Advanced Security,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 161 data follows:
+0,1,CDB$ROOT,.Database Gateway,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 162 data follows:
+0,1,CDB$ROOT,Database In-Memory,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 163 data follows:
+0,1,CDB$ROOT,Database Vault,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 164 data follows:
+0,1,CDB$ROOT,Diagnostics Pack,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 165 data follows:
+0,1,CDB$ROOT,.Exadata,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 166 data follows:
+0,1,CDB$ROOT,.GoldenGate,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 167 data follows:
+0,1,CDB$ROOT,.HW,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 168 data follows:
+0,1,CDB$ROOT,Label Security,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 169 data follows:
+0,1,CDB$ROOT,Multitenant,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 170 data follows:
+0,1,CDB$ROOT,OLAP,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 171 data follows:
+0,1,CDB$ROOT,Partitioning,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 172 data follows:
+0,1,CDB$ROOT,.Pillar Storage,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 173 data follows:
+0,1,CDB$ROOT,RAC or RAC One Node,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 174 data follows:
+0,1,CDB$ROOT,Real Application Clusters,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 175 data follows:
+0,1,CDB$ROOT,Real Application Clusters One Node,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 176 data follows:
+0,1,CDB$ROOT,Real Application Testing,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 177 data follows:
+0,1,CDB$ROOT,Spatial and Graph,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 178 data follows:
+0,1,CDB$ROOT,Tuning Pack,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 179 data follows:
+0,-1,,.Database Gateway,CURRENT_USAGE,20260705,20230121,20260705,RETRODEV,ORARETRO-DEV
+#ERROR Row 180 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 181 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 182 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 183 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 184 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 185 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 186 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 187 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 188 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 189 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 190 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 191 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 192 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 193 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 194 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 195 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 196 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 197 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 198 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 199 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 200 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Insert failed in batch rows  201  through  250 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 201 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 202 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 203 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 204 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 205 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 206 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 207 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 208 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 209 data follows:
+0,-1,,.Database Gateway,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 210 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 211 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 212 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 213 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 214 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 215 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 216 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 217 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 218 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 219 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 220 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 221 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 222 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 223 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 224 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 225 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 226 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 227 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 228 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 229 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 230 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 231 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 232 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 233 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 234 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 235 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 236 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 237 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 238 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 239 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 240 data follows:
+0,-1,,Database In-Memory,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 241 data follows:
+0,-1,,Database Vault,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 242 data follows:
+0,-1,,Database Vault,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 243 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 244 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 245 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 246 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 247 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 248 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 249 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 250 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Insert failed in batch rows  251  through  300 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 251 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 252 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 253 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 254 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 255 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 256 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 257 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 258 data follows:
+0,-1,,Database Vault,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 259 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 260 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 261 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 262 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 263 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 264 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 265 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 266 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 267 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 268 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 269 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 270 data follows:
+0,-1,,Database Vault,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 271 data follows:
+0,-1,,Database Vault,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 272 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 273 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 274 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 275 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 276 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 277 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 278 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 279 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 280 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 281 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 282 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 283 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 284 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 285 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 286 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 287 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 288 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 289 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 290 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 291 data follows:
+0,-1,,Diagnostics Pack,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 292 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260704,20181120,20181120,ORAWEBT,Ora-DEV
+#ERROR Row 293 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260704,20190405,20250913,CYBERDEV,Ora-DEV
+#ERROR Row 294 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260704,20190405,20250913,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 295 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260704,20241106,20241127,MIRTH,OraMirth-Prod
+#ERROR Row 296 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260705,20181120,20260306,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 297 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260705,20211211,20211211,RETROUAT,ORARETRO-UAT
+#ERROR Row 298 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260705,20220226,20250913,LABODEV,OraLabo-Dev
+#ERROR Row 299 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260705,20220226,20250914,LABOTEST,OraLabo-Dev
+#ERROR Row 300 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260705,20220226,20260322,LABO,OraLabo-Prod
+#ERROR Insert failed in batch rows  301  through  350 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 301 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260705,20221006,20230611,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 302 data follows:
+0,-1,,Diagnostics Pack,PAST_USAGE,20260705,20240317,20240317,RETRODEV,ORARETRO-DEV
+#ERROR Row 303 data follows:
+0,-1,,.Exadata,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 304 data follows:
+0,-1,,.Exadata,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 305 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 306 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 307 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 308 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 309 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 310 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 311 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 312 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 313 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 314 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 315 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 316 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 317 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 318 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 319 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 320 data follows:
+0,-1,,.Exadata,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 321 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 322 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 323 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 324 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 325 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 326 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 327 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 328 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 329 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 330 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 331 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 332 data follows:
+0,-1,,.Exadata,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 333 data follows:
+0,-1,,.Exadata,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 334 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 335 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 336 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 337 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 338 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 339 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 340 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 341 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 342 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 343 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 344 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 345 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 346 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 347 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 348 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 349 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 350 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Insert failed in batch rows  351  through  400 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 351 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 352 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 353 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 354 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 355 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 356 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 357 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 358 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 359 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 360 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 361 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 362 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 363 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 364 data follows:
+0,-1,,.GoldenGate,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 365 data follows:
+0,-1,,.HW,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 366 data follows:
+0,-1,,.HW,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 367 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 368 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 369 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 370 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 371 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 372 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 373 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 374 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 375 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 376 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 377 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 378 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 379 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 380 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 381 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 382 data follows:
+0,-1,,.HW,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 383 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 384 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 385 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 386 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 387 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 388 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 389 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 390 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 391 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 392 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 393 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 394 data follows:
+0,-1,,.HW,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 395 data follows:
+0,-1,,.HW,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 396 data follows:
+0,-1,,Label Security,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 397 data follows:
+0,-1,,Label Security,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 398 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 399 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 400 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Insert failed in batch rows  401  through  450 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 401 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 402 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 403 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 404 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 405 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 406 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 407 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 408 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 409 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 410 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 411 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 412 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 413 data follows:
+0,-1,,Label Security,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 414 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 415 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 416 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 417 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 418 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 419 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 420 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 421 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 422 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 423 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 424 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 425 data follows:
+0,-1,,Label Security,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 426 data follows:
+0,-1,,Label Security,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 427 data follows:
+0,-1,,OLAP,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 428 data follows:
+0,-1,,OLAP,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 429 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 430 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 431 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 432 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 433 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 434 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 435 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 436 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 437 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 438 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 439 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 440 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 441 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 442 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 443 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 444 data follows:
+0,-1,,OLAP,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 445 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 446 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 447 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 448 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 449 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 450 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Insert failed in batch rows  451  through  500 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 451 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 452 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 453 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 454 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 455 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 456 data follows:
+0,-1,,OLAP,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 457 data follows:
+0,-1,,OLAP,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 458 data follows:
+0,-1,,Partitioning,CURRENT_USAGE,20260704,20231129,20260704,BW1,BWCHEMPROD
+#ERROR Row 459 data follows:
+0,-1,,Partitioning,CURRENT_USAGE,20260704,20250201,20260704,BA1,SAPBWL01-PI
+#ERROR Row 460 data follows:
+0,-1,,Partitioning,CURRENT_USAGE,20260704,20250410,20260704,BA3,SAPBWN01-PD
+#ERROR Row 461 data follows:
+0,-1,,Partitioning,CURRENT_USAGE,20260705,20240224,20260705,NA3,SAPBWN01-TD
+#ERROR Row 462 data follows:
+0,-1,,Partitioning,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 463 data follows:
+0,-1,,Partitioning,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 464 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 465 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 466 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 467 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 468 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 469 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 470 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 471 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 472 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 473 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 474 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 475 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 476 data follows:
+0,-1,,Partitioning,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 477 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 478 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 479 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 480 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 481 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 482 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 483 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 484 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 485 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 486 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 487 data follows:
+0,-1,,Partitioning,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 488 data follows:
+0,-1,,Partitioning,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 489 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 490 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 491 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 492 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 493 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 494 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 495 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 496 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 497 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 498 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 499 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 500 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Insert failed in batch rows  501  through  550 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 501 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 502 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 503 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 504 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 505 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 506 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 507 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 508 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 509 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 510 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 511 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 512 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 513 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 514 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 515 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 516 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 517 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 518 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 519 data follows:
+0,-1,,.Pillar Storage,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 520 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 521 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 522 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 523 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 524 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 525 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 526 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 527 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 528 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 529 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 530 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 531 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 532 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 533 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 534 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 535 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 536 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 537 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 538 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 539 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 540 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 541 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 542 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 543 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 544 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 545 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 546 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 547 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 548 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 549 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 550 data follows:
+0,-1,,RAC or RAC One Node,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Insert failed in batch rows  551  through  600 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 551 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 552 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 553 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 554 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 555 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 556 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 557 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 558 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 559 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 560 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 561 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 562 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 563 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 564 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 565 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 566 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 567 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 568 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 569 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 570 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 571 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 572 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 573 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 574 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 575 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 576 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 577 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 578 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 579 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 580 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 581 data follows:
+0,-1,,Real Application Clusters,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 582 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 583 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 584 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 585 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 586 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 587 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 588 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 589 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 590 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 591 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 592 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 593 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 594 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 595 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 596 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 597 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 598 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 599 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 600 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Insert failed in batch rows  601  through  650 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 601 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 602 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 603 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 604 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 605 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 606 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 607 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 608 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 609 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 610 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 611 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 612 data follows:
+0,-1,,Real Application Clusters One Node,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 613 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 614 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 615 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 616 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 617 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 618 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 619 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 620 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 621 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 622 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 623 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 624 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 625 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 626 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 627 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 628 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 629 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 630 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 631 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 632 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 633 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 634 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 635 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 636 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 637 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 638 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 639 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 640 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 641 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 642 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 643 data follows:
+0,-1,,Real Application Testing,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 644 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 645 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 646 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 647 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 648 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 649 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 650 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Insert failed in batch rows  651  through  700 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 651 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,CYBERDEV,Ora-DEV
+#ERROR Row 652 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 653 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 654 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 655 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,MIRTH,OraMirth-Prod
+#ERROR Row 656 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 657 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 658 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,ORAWEBT,Ora-DEV
+#ERROR Row 659 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,RETRO,ORARETRO-PROD
+#ERROR Row 660 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 661 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 662 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 663 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,ENNOV,OraEnnov-PROD
+#ERROR Row 664 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,ENNOVT,Ora-DEV
+#ERROR Row 665 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 666 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,LABODEV,OraLabo-Dev
+#ERROR Row 667 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,LABO,OraLabo-Prod
+#ERROR Row 668 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,LABOTEST,OraLabo-Dev
+#ERROR Row 669 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 670 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 671 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,RETRODEV,ORARETRO-DEV
+#ERROR Row 672 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,RETROUAT,ORARETRO-UAT
+#ERROR Row 673 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 674 data follows:
+0,-1,,Spatial and Graph,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 675 data follows:
+0,-1,,Tuning Pack,CURRENT_USAGE,20260705,20190413,20260705,LABO,OraLabo-Prod
+#ERROR Row 676 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20220129,,,CHC,SAPCHCDB
+#ERROR Row 677 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20220129,,,CHL,SAPCHLDB
+#ERROR Row 678 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,BA1,SAPBWL01-PI
+#ERROR Row 679 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,BA3,SAPBWN01-PD
+#ERROR Row 680 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,BJ3,SAPBWN01-PD
+#ERROR Row 681 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,BJT,SAPBWL01-TI
+#ERROR Row 682 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,BW1,BWCHEMPROD
+#ERROR Row 683 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,DIM,ORALEGACY
+#ERROR Row 684 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,HYDTEST,Ora-DEV
+#ERROR Row 685 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,MIRTHT,Ora-DEV
+#ERROR Row 686 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,NJ3,SAPBWN01-TD
+#ERROR Row 687 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,RISCHL,ORALEGACY
+#ERROR Row 688 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260704,,,SHERDEV,Ora-DEV
+#ERROR Row 689 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260705,,,BJ1,BWCHEMPROD
+#ERROR Row 690 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260705,,,NA3,SAPBWN01-TD
+#ERROR Row 691 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260705,,,SHERLOCK,OraSherlock-Prod
+#ERROR Row 692 data follows:
+0,-1,,Tuning Pack,NO_USAGE,20260708,,,LMS,SAPCHLLMS
+#ERROR Row 693 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260704,20181120,20200610,ORAWEBT,Ora-DEV
+#ERROR Row 694 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260704,20240218,20250906,CYBERDEV,Ora-DEV
+#ERROR Row 695 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260704,20240218,20250906,CYBERLAB,OraCyberlab-Prod
+#ERROR Row 696 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260704,20241127,20260606,MIRTH,OraMirth-Prod
+#ERROR Row 697 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260704,20260613,20260613,RETRO,ORARETRO-PROD
+#ERROR Row 698 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260705,20181120,20260621,ORAWEB,ORAAPPSDBS01-PI
+#ERROR Row 699 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260705,20190413,20250913,LABODEV,OraLabo-Dev
+#ERROR Row 700 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260705,20190413,20260614,LABOTEST,OraLabo-Dev
+#ERROR Insert failed in batch rows  701  through  728 
+#ERROR ORA-01400: cannot insert NULL into ("DBINVENTORY"."ORACLE_LMS"."DB_PDB_NAME")
+Help: https://docs.oracle.com/error-help/db/ora-01400/
+#ERROR Row 701 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260705,20211211,20211211,RETROUAT,ORARETRO-UAT
+#ERROR Row 702 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260705,20211211,20250913,RETRODEV,ORARETRO-DEV
+#ERROR Row 703 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260705,20230212,20230219,HYDPRDG5,OraHydMedia-Prod
+#ERROR Row 704 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260705,20251012,20260607,ENNOV,OraEnnov-PROD
+#ERROR Row 705 data follows:
+0,-1,,Tuning Pack,PAST_USAGE,20260705,20251012,20260607,ENNOVT,Ora-DEV
+#ERROR Row 706 data follows:
+1,,--ALL--,Active Data Guard,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 707 data follows:
+1,,--ALL--,Active Data Guard or Real Application Clusters,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 708 data follows:
+1,,--ALL--,Advanced Analytics,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 709 data follows:
+1,,--ALL--,Advanced Compression,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 710 data follows:
+1,,--ALL--,Advanced Security,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 711 data follows:
+1,,--ALL--,.Database Gateway,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 712 data follows:
+1,,--ALL--,Database In-Memory,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 713 data follows:
+1,,--ALL--,Database Vault,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 714 data follows:
+1,,--ALL--,Diagnostics Pack,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 715 data follows:
+1,,--ALL--,.Exadata,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 716 data follows:
+1,,--ALL--,.GoldenGate,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 717 data follows:
+1,,--ALL--,.HW,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 718 data follows:
+1,,--ALL--,Label Security,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 719 data follows:
+1,,--ALL--,Multitenant,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 720 data follows:
+1,,--ALL--,OLAP,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 721 data follows:
+1,,--ALL--,Partitioning,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 722 data follows:
+1,,--ALL--,.Pillar Storage,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 723 data follows:
+1,,--ALL--,RAC or RAC One Node,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 724 data follows:
+1,,--ALL--,Real Application Clusters,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 725 data follows:
+1,,--ALL--,Real Application Clusters One Node,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 726 data follows:
+1,,--ALL--,Real Application Testing,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 727 data follows:
+1,,--ALL--,Spatial and Graph,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#ERROR Row 728 data follows:
+1,,--ALL--,Tuning Pack,NO_USAGE,20260702,,,C19NPRD1,Ora-DEV
+#INFO Number of rows processed: 728
+#INFO Number of rows in error: 728
+#INFO No rows committed
+WARNING: Processed with errors
+-- LOADING: ../collect/oracle_client_version.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_CLIENT_VERSION
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 153
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_admin_high_privs.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SEC_ADMIN_HIGH_PRIVS
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 48
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_default_user_pwd.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SEC_DEFAULT_USER_PWD
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_high_role_privs.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SEC_HIGH_ROLE_PRIVS
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 566
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_high_sys_privs.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SECURITY_HIGH_SYS_PRIVS
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 1,418
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_high_tab_privs.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SECURITY_HIGH_TAB_PRIVS
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 820
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_profile.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SECURITY_PROFILE
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 1,855
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_default_profile.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SEC_DEFAULT_PROFILE
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 1,185
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_parameter.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SECURITY_PARAMETER
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 448
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_audit_enable.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SECURITY_AUDIT_ENABLE
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_tablespace.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SECURITY_TABLESPACE
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 274
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_usermig_table_exist.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SEC_USERMIG_TBL_EXIST
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_security_network_encryption.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SEC_NETWORK_ENCRYPTION
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_size_usage.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SIZE_USAGE
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 243
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_size_usage_seg.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_SIZE_USAGE_SEG
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 216
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_metrics_cpu_memory.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_METRICS_CPU_MEMORY
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/oracle_metrics_cpu_service.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.ORACLE_METRICS_CPU_SERVICE
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors

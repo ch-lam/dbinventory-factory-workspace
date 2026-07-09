@@ -1,0 +1,1182 @@
+-- LOADING: ../collect/mssql_hosts.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_databases.csv
+File  does not exist
+Unknown option ""
+
+-- LOADING: ../collect/mssql_files.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_logins.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_users.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_loginwoperm.csv
+File  does not exist
+Unknown option ""
+
+-- LOADING: ../collect/mssql_validatelogin.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.MSSQL_VALIDATELOGIN
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale
+scan_rows 0
+truncate off
+unknown_columns_fail on
+
+#INFO Scan skipped because scan rows is 0
+#INFO Number of rows processed: 0
+#INFO Number of rows in error: 0
+#INFO No rows committed
+SUCCESS: Processed without errors
+-- LOADING: ../collect/mssql_backup.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_security_auditlevel.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_security_configoptions.csv
+File  does not exist
+Unknown option ""
+
+-- LOADING: ../collect/mssql_security_dbproperties.csv
+File  does not exist
+Unknown option ""
+
+-- LOADING: ../collect/mssql_security_encryption.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_security_groups.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_security_guestconnect.csv
+File  does not exist
+Unknown option ""
+
+-- LOADING: ../collect/mssql_security_logins.csv
+Incomplete load command.
+LOAD
+-----
+Loads a comma separated value (csv) or excel file into a table.
+
+  Syntax:
+
+  LOAD [TABLE] [schema.]table_name { <file-specification> | <cloud-storage-specification> } [NEW | SHOW | SHOW_DDL | CREATE | CREATE_DDL] 
+
+  [schema.]table_name  -  Identifies table to load.
+  If schema is omitted, loads the table for the connected user schema
+
+  <file-specification>           :  { <fully-qualified-file-name> | <file-name> } 
+    <fully-qualified-file-name>  -  Identifies the full path to the file to load. 
+    <file-name>  -  Identifies the file to load. The file must be located in the default path.
+
+  <cloud-storage-specification>  :  { CLOUDSTORAGE | CS }  [ <uri> | <qualified-name> ] 
+    <uri>  -  complete URI for the cloud storage file if a default cloudstorage is not set 
+    <qualified-name>  -  name of the object, optionally qualified by the NAMESPACE and the BUCKET.
+    The qualified name concatenated to the URI specified by cloudstorage command must fully identify the object URI. 
+    If <uri> and <qualified-name> are omitted, the cloud storage default must be set to the object.
+
+    An oci profile or a dbms_cloud credential must be set to do a cloud storage load.  See help for OCI, DBC and CS commands.
+    If profile and credential are set, oci profile will be used unless a default transfer is set with CS command.
+
+  NEW 
+    Create table and Load data.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [SHOW | SHOW_DDL] 
+    Execute the ddl generation phase and show the ddl.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+  [CREATE | CREATE_DDL] 
+    Execute the ddl generation phase and create the table.
+    Use SET LOAD and SET LOADFORMAT to specify properties for the DDL analysis and generation.
+
+
+  Defaults for file format:
+   - The first row of the file is a header row. 
+     The columns in the header row must match the columns defined on the table.
+   - The columns are delimited by a comma and may optionally be enclosed in double quotes.
+   - Lines are terminated with standard line terminators for Windows, Unix or Mac.
+   - The file can be GZip or ZIP compressed.
+   - File is encoded UTF8.
+
+  The default load:
+  Processes with 50 rows per batch.
+  If AUTOCOMMIT is set in SQLCL, a commit is done every 10 batches.
+  The load is terminated if more than 50 errors are found.
+
+
+  Use SET LOADFORMAT options for reading the file (delimiter, enclosures, etc).
+  Use SET LOAD options for loading the data (rows per batch, date formats, etc).
+  Use SET TIMING ON to show elapsed time for the load.
+  Use CD command to set default directory for file access.
+  Use CLOUDSTORAGE (CS) command to set default cloud storage URI and transfer options.
+  Use OCI command to set profile 
+  Use DBC command to manage and set credentials. 
+
+
+  Create Table ddl generation pre-scans the data file to determine column properties.
+  Use SET LOAD SCAN <n> to specify number of rows to scan for ddl. 100 is the default.
+  Use SET LOAD COL_SIZE to change column sizes that are generated.
+  Use SET LOAD MAP_NAMES to map file column names to table column names.
+
+
+  Examples:
+
+  - Example "LOAD TABLE" local CSV file
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+      7369,"SMITH","CLERK",7902,17-DEC-80,800,,20,5555555555554444 
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" local Excel file (xls and xlsx formats support)
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the schema for current user
+    SQL> LOAD EMPLOYEES C:\TABLES\EMPLOYEES_DATA_TABLE.xls
+
+  - Example "LOAD TABLE" local file with customized load processing
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table of the HR schema using batch and commit options
+      7369,<SMITH>,<CLERK>,7902,17-DEC-80,800,,20,5555555555554444{eol} 
+    SQL> SET LOAD BATCH_ROWS 100 BATCHES_PER_COMMIT 100 
+    SQL> LOAD HR.EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with language sensitive dates
+   Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming localized dates
+      103,Alexander,Hunold,AHUNOLD,590.423.4567,3-janv.-90,IT_PROG,9000,,102,60 
+    SQL> SET LOAD LOCALE FRENCH FRANCE DATE_FORMAT dd-MON-yy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" file with date format mask
+      Loads the data from EMPLOYEES_DATA_TABLE into the EMPLOYEES table transforming dates
+      7369,"SMITH","CLERK",7902,121780,800,,20,5555555555554444 
+    SQL> SET LOAD DATE_FORMAT mmddyy 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with file specified on CLOUDSTORAGE 
+    SQL> CS  https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace/b/bucket/o/employees.csv 
+    SQL> OCI PROFILE DEFAULT 
+    SQL> LOAD EMPLOYEES CS 
+
+  - Example "LOAD TABLE" from CLOUD STORAGE with NAMESPACE specified on CLOUDSTORAGE 
+    SQL> CS https://objectstorage.us-ashburn-1.oraclecloud.com/n/namespace 
+    SQL> LOAD EMPLOYEES CS /b/bucket/o/employees.csv 
+
+  - Example "CREATE TABLE" and "LOAD TABLE"
+   For CSV: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv NEW
+   For Excel(xls, or xlsx): LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xlsx NEW
+   Creates EMPLOYEES table based on scanning file and SET LOADFORMAT and SET LOAD properties.
+   Loads the data from the file into the new EMPLOYEES table.
+
+  - Example "SHOW DDL" for TABLE but do not create the table and load data
+   Show ddl for EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv SHOW
+      Or 
+    SQL> LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) SHOW
+
+  - Example "CREATE TABLE"
+   For csv: LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.csv CREATE
+   For Excel(xls, or xlsx):  LOAD EMPLOYEES C:\TABLESEMPLOYEES_DATA_TABLE.xls(x) CREATE
+   Create EMPLOYEES table based on scanning file, the SET LOADFORMAT and the SET LOAD properties.
+-- LOADING: ../collect/mssql_security_orphanedusers.csv
+File  does not exist
+Unknown option ""
+
+-- LOADING: ../collect/mssql_security_publicpermission.csv
+
+csv
+column_names off
+delimiter ,
+enclosures ""
+double off
+encoding UTF8
+row_limit off
+row_terminator default
+skip_rows 0
+skip_after_names
+
+Load data into table DBINVENTORY.MSSQL_SECURITY_PUBLICPERMISSION
+2026-07-09 16:56:36.969 SEVERE oracle.dbtools.data.loadservice.LoadService start Table DBINVENTORY.MSSQL_SECURITY_PUBLICPERMISSIO does not exist or is not available from connection.
+2026-07-09 16:56:36.977 SEVERE oracle.dbtools.data.loadservice.LoadAPI <init> Unable to start load service;
+batch_rows 50
+batches_per_commit 0
+clean_names transform
+column_size rounded
+commit off
+date_format 
+errors unlimited
+map_column_names off
+method insert
+timestamp_format 
+timestamptz_format 
+locale English United States
+scan_rows 0
+truncate off
+unknown_columns_fail on
+Unable to load object Unable to start load service;
+
+#ERROR Table DBINVENTORY.MSSQL_SECURITY_PUBLICPERMISSIO does not exist or is not available from connection.
+SEVERE: Load terminated
+-- LOADING: ../collect/mssql_security_registryinfo.csv
+File  does not exist
+Unknown option ""
+
+-- LOADING: ../collect/mssql_security_sqlserveraudit.csv
+File  does not exist
+Unknown option ""
+

@@ -1,0 +1,215 @@
+#!/bin/bash
+# =============================================================================
+# get_info_oracle — collecte inventaire Oracle (infra + capacité + segments)
+# Remplace aussi get_info_oracle_segs_size (fusionné ici).
+# =============================================================================
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=get_info_oracle_common
+source "${SCRIPT_DIR}/get_info_oracle_common.sh"
+
+init_temps hosts oracle_databases pdbs services users backup psu \
+           size_usage size_usage_seg cpu_mem cpu_by_service dataguard
+rm -f "${LIST_DIR}/error_db.lst"
+
+# ── Collecte par base ─────────────────────────────────────────────────────────
+while IFS=';' read -r db_env lic db; do
+    [[ -z "${db:-}" ]] && continue
+    log "Connexion : ${db} [${db_env}/${lic}]"
+
+    status_raw=$(status_check "${db}") || { log_err "${db}"; continue; }
+    status=$(printf '%s\n' "${status_raw}" | grep -E '^(PRIMARY|PHYSICAL)' | head -1)
+    [[ -z "${status}" ]] && { log_err "${db}"; continue; }
+
+    IFS=',' read -r db_role is_cdb db_ver <<< "${status}"
+    IS_CONTAINER=$([[ "${is_cdb}" == "YES" ]] && echo "CONTAINER" || echo "NON_CONTAINER")
+    log "  rôle=${db_role} cdb=${IS_CONTAINER} ver=${db_ver}"
+
+    # -- Hosts + Databases (tous rôles) ---------------------------------------
+    sql_run "${db}" <<SQL >> /dev/null
+SPOOL ${LIST_DIR}/hosts_temp.csv APPEND
+SELECT '"${db_env}","${lic}","'||
+       (SELECT host_name FROM v\$instance)||'","'||
+       (SELECT value FROM v\$osstat WHERE stat_name='NUM_CPUS')||'","'||
+       (SELECT ROUND(value/1024/1024/1024) FROM v\$osstat WHERE stat_name='PHYSICAL_MEMORY_BYTES')||'","'||
+       (SELECT REPLACE(platform_name,'"','') FROM v\$database)||'"'
+FROM dual;
+SPOOL OFF
+SPOOL ${LIST_DIR}/oracle_databases_temp.csv APPEND
+SELECT '"${db_env}","${lic}","'||
+       (SELECT host_name FROM v\$instance)||'","'||
+       (SELECT instance_name FROM v\$instance)||'","'||
+       (SELECT version FROM v\$instance)||'","'||
+       (SELECT name FROM v\$database)||'","'||
+       (SELECT log_mode FROM v\$database)||'","'||
+       (SELECT database_role FROM v\$database)||'","'||
+       (SELECT db_unique_name FROM v\$database)||'","'||
+       (SELECT value FROM v\$nls_parameters WHERE parameter='NLS_CHARACTERSET')||'","'||
+       'Enterprise Edition","'||
+       (SELECT value FROM v\$parameter WHERE name='cluster_database')||'","'||
+       (SELECT ROUND(SUM(value)/1024/1024/1024) FROM v\$sga)||'","'||
+       (SELECT ROUND(value/1024/1024/1024) FROM v\$pgastat WHERE name='maximum PGA allocated')||'","'||
+       (SELECT ROUND(usable_file_mb/1024)
+          FROM v\$asm_diskgroup WHERE name LIKE '%DATA%' AND state='CONNECTED' AND ROWNUM=1)||'","'||
+       (SELECT CASE type WHEN 'HIGH' THEN ROUND(total_mb/3/1024) ELSE ROUND(total_mb/2/1024) END
+          FROM v\$asm_diskgroup WHERE name LIKE '%DATA%' AND state='CONNECTED' AND ROWNUM=1)||'","'||
+       '${db}","${IS_CONTAINER}"'
+FROM dual;
+SPOOL OFF
+SQL
+
+    # Les standby ne collectent que hosts/databases
+    [[ "${db_role}" == *STANDBY* ]] && continue
+
+    # -- Primaire CDB ---------------------------------------------------------
+    if [[ "${IS_CONTAINER}" == "CONTAINER" ]]; then
+        sql_run "${db}" <<SQL >> /dev/null
+SPOOL ${LIST_DIR}/pdbs_temp.csv APPEND
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","'||pdb.pdb_name||'","'||pdb.status||'"'
+FROM   cdb_pdbs pdb, v\$instance inst
+WHERE  pdb.pdb_name NOT LIKE '%SEED%' ORDER BY 1;
+SPOOL OFF
+SPOOL ${LIST_DIR}/services_temp.csv APPEND
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","'||pdb.pdb_name||'","'||svc.name||'"'
+FROM   v\$active_services svc, cdb_pdbs pdb, v\$instance inst
+WHERE  pdb.pdb_id = svc.con_id AND svc.name NOT LIKE 'SYS%' AND svc.name NOT LIKE '%pdb%'
+ORDER BY 1;
+SPOOL OFF
+SPOOL ${LIST_DIR}/users_temp.csv APPEND
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||dbs.name||'","'||inst.instance_name||'","'||
+       pdb.pdb_name||'","'||usr.username||'","'||usr.account_status||'"'
+FROM   cdb_users usr, v\$instance inst, v\$database dbs, dba_pdbs pdb
+WHERE  usr.con_id = pdb.pdb_id AND usr.account_status = 'OPEN' ORDER BY 1;
+SPOOL OFF
+SPOOL ${LIST_DIR}/size_usage_temp.csv APPEND
+SELECT '"'||dbs.name||'","'||pdb.pdb_name||'","'||cdf.tablespace_name||'","'||ROUND(SUM(cdf.bytes/1024/1024))||'"'
+FROM   cdb_pdbs pdb, v\$database dbs, cdb_data_files cdf
+WHERE  pdb.pdb_id = cdf.con_id AND pdb.pdb_name NOT LIKE '%SEED%'
+GROUP BY dbs.name, pdb.pdb_name, cdf.tablespace_name;
+SPOOL OFF
+SPOOL ${LIST_DIR}/size_usage_seg_temp.csv APPEND
+SELECT '"'||dbs.name||'","'||pdb.pdb_name||'","'||seg.tablespace_name||'","'||ROUND(SUM(seg.bytes/1024/1024))||'"'
+FROM   cdb_pdbs pdb, v\$database dbs, cdb_segments seg
+WHERE  pdb.pdb_id = seg.con_id AND pdb.pdb_name NOT LIKE '%SEED%'
+GROUP BY dbs.name, pdb.pdb_name, seg.tablespace_name;
+SPOOL OFF
+SPOOL ${LIST_DIR}/cpu_by_service_temp.csv APPEND
+SELECT '"'||pdb.pdb_name||'","'||REPLACE(hist.service_name,'"','')||'","'||ROUND(SUM(hist.value)/60000)||'"'
+FROM   dba_hist_service_stat hist, dba_pdbs pdb
+WHERE  hist.con_id = pdb.pdb_id AND hist.stat_name = 'DB CPU'
+  AND  hist.snap_id IN (SELECT snap_id FROM dba_hist_snapshot WHERE begin_interval_time > SYSDATE-1)
+GROUP BY pdb.pdb_name, hist.service_name;
+SPOOL OFF
+SQL
+        # cpu_mem : disponible seulement en 18c+
+        if [[ "${db_ver}" -ge 18 ]]; then
+            sql_run "${db}" <<SQL >> /dev/null
+SPOOL ${LIST_DIR}/cpu_mem_temp.csv APPEND
+SELECT '"'||p.pdb_name||'","'||ROUND(SUM(r.cpu_consumed_time)/60000)||'","'||
+       ROUND(AVG(r.sga_bytes)/1024/1024)||'","'||ROUND(AVG(r.pga_bytes)/1024/1024)||'","'||
+       ROUND(AVG(r.buffer_cache_bytes)/1024/1024)||'","'||ROUND(AVG(r.shared_pool_bytes)/1024/1024)||'"'
+FROM   dba_hist_rsrc_pdb_metric r, cdb_pdbs p
+WHERE  r.con_id = p.con_id AND r.end_time > SYSDATE-1 AND p.pdb_name NOT LIKE '%SEED%'
+GROUP BY p.pdb_name;
+SPOOL OFF
+SQL
+        fi
+
+    # -- Primaire non-CDB -----------------------------------------------------
+    else
+        sql_run "${db}" <<SQL >> /dev/null
+SPOOL ${LIST_DIR}/services_temp.csv APPEND
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","NA","'||svc.name||'"'
+FROM   v\$active_services svc, v\$instance inst
+WHERE  svc.name NOT LIKE 'SYS%' ORDER BY 1;
+SPOOL OFF
+SPOOL ${LIST_DIR}/users_temp.csv APPEND
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||dbs.name||'","'||inst.instance_name||'","NON_CONTAINER","'||
+       usr.username||'","'||usr.account_status||'"'
+FROM   dba_users usr, v\$instance inst, v\$database dbs
+WHERE  usr.account_status = 'OPEN' ORDER BY 1;
+SPOOL OFF
+SPOOL ${LIST_DIR}/size_usage_temp.csv APPEND
+SELECT '"'||dbs.name||'","NON_CONTAINER","'||dbf.tablespace_name||'","'||ROUND(SUM(dbf.bytes/1024/1024))||'"'
+FROM   v\$database dbs, dba_data_files dbf GROUP BY dbs.name, dbf.tablespace_name;
+SPOOL OFF
+SPOOL ${LIST_DIR}/size_usage_seg_temp.csv APPEND
+SELECT '"'||dbs.name||'","NON_CONTAINER","'||seg.tablespace_name||'","'||ROUND(SUM(seg.bytes/1024/1024))||'"'
+FROM   v\$database dbs, dba_segments seg GROUP BY dbs.name, seg.tablespace_name;
+SPOOL OFF
+SQL
+    fi
+
+    # -- Backup + PSU (tous primaires) ----------------------------------------
+    sql_run "${db}" <<SQL >> /dev/null
+SPOOL ${LIST_DIR}/backup_temp.csv APPEND
+SELECT '"'||dbs.name||'","'||rma.input_type||'","'||rma.status||'","'||
+       TO_CHAR(rma.start_time,'YYYY-MM-DD HH24:MI')||'","'||
+       TO_CHAR(rma.end_time,'YYYY-MM-DD HH24:MI')||'","'||ROUND(rma.elapsed_seconds/60)||'"'
+FROM   v\$rman_backup_job_details rma, v\$database dbs
+WHERE  rma.start_time > SYSDATE-31 ORDER BY rma.start_time;
+SPOOL OFF
+SPOOL ${LIST_DIR}/psu_temp.csv APPEND
+SELECT '"'||dbs.name||'","'||(SELECT version FROM v\$instance)||'","'||REPLACE(p.description,'"','')||'"'
+FROM   v\$database dbs, sys.dba_registry_sqlpatch p
+WHERE  p.action = 'APPLY'
+  AND  (p.description LIKE 'Database PSU%' OR p.description LIKE 'Database Rele%')
+  AND  p.action_time = (SELECT MAX(action_time) FROM sys.dba_registry_sqlpatch
+                         WHERE (description LIKE 'Database PSU%' OR description LIKE 'Database Rele%')
+                           AND action = 'APPLY');
+SPOOL OFF
+SQL
+
+    # -- DataGuard (primaire avec broker actif) --------------------------------
+    broker_on=$(sql_run "${db}" <<'SQL' | grep -c 'TRUE' || true
+SELECT 'TRUE' FROM v$parameter WHERE name='dg_broker_start' AND LOWER(value)='true';
+SQL
+    )
+    if [[ "${broker_on:-0}" -ge 1 ]]; then
+        dg_raw=$(printf 'show configuration;\nexit;\n' \
+            | dgmgrl -silent "${MONITORING_USER}/${MONITORING_PASS}@${db}" 2>/dev/null || true)
+        primary=$(printf '%s\n' "${dg_raw}"    | grep 'Primary database'  | sed 's/- Primary database//;s/ //g')
+        standby=$(printf '%s\n' "${dg_raw}"    | grep 'Physical standby'  | sed 's/- Physical standby database//;s/ //g')
+        protection=$(printf '%s\n' "${dg_raw}" | grep 'Protection Mode'   | sed 's/Protection Mode://;s/ //g')
+        if [[ -n "${primary}" ]]; then
+            pdb_list=$(sql_run "${db}" <<'SQL' | tr -d '\n' || true
+SELECT '/ '||pdb_name||' /' FROM cdb_pdbs WHERE pdb_name NOT LIKE '%SEED%' ORDER BY 1;
+SQL
+            ) || pdb_list="NA"
+            svc_list=$(sql_run "${db}" <<'SQL' | tr -d '\n' || true
+SELECT '/ '||name||' /' FROM gv$active_services WHERE name NOT LIKE 'SYS%' AND name NOT LIKE '%pdb%' ORDER BY 1;
+SQL
+            ) || svc_list="NA"
+            printf '%s,%s,%s,%s,%s\n' \
+                "${primary}" "${standby}" "${protection}" "${pdb_list:-NA}" "${svc_list:-NA}" \
+                >> "${LIST_DIR}/dataguard_temp.csv"
+        fi
+    fi
+
+done < <(grep -v '^\s*#' "${LIST_FILE}" | grep -v '^\s*$' | sort -u)
+
+# ── Finalisation ──────────────────────────────────────────────────────────────
+log "Finalisation..."
+finalize_lst "${LIST_DIR}/hosts_temp.csv"             "${LIST_DIR}/oracle_hosts.csv"
+finalize_lst "${LIST_DIR}/oracle_databases_temp.csv"  "${LIST_DIR}/oracle_databases.csv"
+finalize_lst "${LIST_DIR}/pdbs_temp.csv"              "${LIST_DIR}/oracle_pdbs.csv"
+finalize_lst "${LIST_DIR}/users_temp.csv"             "${LIST_DIR}/oracle_users.csv"
+finalize_lst "${LIST_DIR}/backup_temp.csv"            "${LIST_DIR}/oracle_backup.csv"
+finalize_lst "${LIST_DIR}/psu_temp.csv"               "${LIST_DIR}/oracle_psu.csv"
+finalize_lst "${LIST_DIR}/size_usage_temp.csv"        "${LIST_DIR}/oracle_size_usage.csv"
+finalize_lst "${LIST_DIR}/size_usage_seg_temp.csv"    "${LIST_DIR}/oracle_size_usage_seg.csv"
+finalize_lst "${LIST_DIR}/cpu_mem_temp.csv"           "${LIST_DIR}/oracle_metrics_cpu_memory.csv"
+finalize_lst "${LIST_DIR}/cpu_by_service_temp.csv"    "${LIST_DIR}/oracle_metrics_cpu_service.csv"
+finalize_lst "${LIST_DIR}/dataguard_temp.csv"         "${LIST_DIR}/oracle_dataguard.csv"
+
+# Services : pas de rafraîchissement le week-end
+if date '+%A' | grep -qE 'Saturday|Sunday'; then
+    log "Week-end : fichier services non rafraîchi."
+    rm -f "${LIST_DIR}/services_temp.csv"
+else
+    finalize_lst "${LIST_DIR}/services_temp.csv" "${LIST_DIR}/oracle_services.csv"
+fi
+
+report_errors "Oracle inventory (infra): erreurs de connexion"
+log "Terminé."

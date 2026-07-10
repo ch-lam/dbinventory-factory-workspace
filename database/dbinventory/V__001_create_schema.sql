@@ -320,20 +320,20 @@ comment on column mssql_security_auditlevel.compliance_score is 'Compliance scor
 comment on column mssql_security_auditlevel.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_auditlevel_exception
+-- mssql_sec_auditlvl_exc
 -- ============================================================
-create table mssql_security_auditlevel_exception (
+create table mssql_sec_auditlvl_exc (
    servername varchar2(50 char) not null,
    auditlevel varchar2(50 char) not null,
    comments   varchar2(200 char) default '0' not null,
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_auditlevel_exception is 'Documented exceptions accepted for the MSSQL server audit level compliance check.';
-comment on column mssql_security_auditlevel_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_auditlevel_exception.auditlevel is 'Audit level configured on the server.';
-comment on column mssql_security_auditlevel_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_auditlevel_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_auditlvl_exc is 'Documented exceptions accepted for the MSSQL server audit level compliance check.';
+comment on column mssql_sec_auditlvl_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_auditlvl_exc.auditlevel is 'Audit level configured on the server.';
+comment on column mssql_sec_auditlvl_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_auditlvl_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_configoptions
@@ -356,9 +356,9 @@ comment on column mssql_security_configoptions.compliance_score is 'Compliance s
 comment on column mssql_security_configoptions.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_configoptions_exception
+-- mssql_sec_cfgopt_exc
 -- ============================================================
-create table mssql_security_configoptions_exception (
+create table mssql_sec_cfgopt_exc (
    servername   varchar2(50 char) not null,
    name         varchar2(200 char) not null,
    config_value number(10) not null,
@@ -367,13 +367,13 @@ create table mssql_security_configoptions_exception (
    date_value   timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_configoptions_exception is 'Documented exceptions accepted for the MSSQL sp_configure options compliance check.';
-comment on column mssql_security_configoptions_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_configoptions_exception.name is 'Name of the sp_configure option.';
-comment on column mssql_security_configoptions_exception.config_value is 'Configured value of the option.';
-comment on column mssql_security_configoptions_exception.run_value is 'Currently running value of the option.';
-comment on column mssql_security_configoptions_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_configoptions_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_cfgopt_exc is 'Documented exceptions accepted for the MSSQL sp_configure options compliance check.';
+comment on column mssql_sec_cfgopt_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_cfgopt_exc.name is 'Name of the sp_configure option.';
+comment on column mssql_sec_cfgopt_exc.config_value is 'Configured value of the option.';
+comment on column mssql_sec_cfgopt_exc.run_value is 'Currently running value of the option.';
+comment on column mssql_sec_cfgopt_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_cfgopt_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_dbproperties
@@ -396,9 +396,9 @@ comment on column mssql_security_dbproperties.compliance_score is 'Compliance sc
 comment on column mssql_security_dbproperties.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_dbproperties_exception
+-- mssql_sec_dbprops_exc
 -- ============================================================
-create table mssql_security_dbproperties_exception (
+create table mssql_sec_dbprops_exc (
    servername        varchar2(50 char) not null,
    db_name           varchar2(50 char) not null,
    is_auto_close_on  number(10) not null,
@@ -407,13 +407,13 @@ create table mssql_security_dbproperties_exception (
    date_value        timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_dbproperties_exception is 'Documented exceptions accepted for the MSSQL database property compliance check.';
-comment on column mssql_security_dbproperties_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_dbproperties_exception.db_name is 'Name of the database.';
-comment on column mssql_security_dbproperties_exception.is_auto_close_on is 'Indicates whether the AUTO_CLOSE database option is enabled.';
-comment on column mssql_security_dbproperties_exception.is_trustworthy_on is 'Indicates whether the TRUSTWORTHY database option is enabled.';
-comment on column mssql_security_dbproperties_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_dbproperties_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_dbprops_exc is 'Documented exceptions accepted for the MSSQL database property compliance check.';
+comment on column mssql_sec_dbprops_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_dbprops_exc.db_name is 'Name of the database.';
+comment on column mssql_sec_dbprops_exc.is_auto_close_on is 'Indicates whether the AUTO_CLOSE database option is enabled.';
+comment on column mssql_sec_dbprops_exc.is_trustworthy_on is 'Indicates whether the TRUSTWORTHY database option is enabled.';
+comment on column mssql_sec_dbprops_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_dbprops_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_encryption
@@ -438,9 +438,9 @@ comment on column mssql_security_encryption.compliance_score is 'Compliance scor
 comment on column mssql_security_encryption.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_encryption_exception
+-- mssql_sec_encryption_exc
 -- ============================================================
-create table mssql_security_encryption_exception (
+create table mssql_sec_encryption_exc (
    servername     varchar2(50 char) not null,
    db_name        varchar2(50 char) not null,
    key_type       varchar2(50 char) not null,
@@ -450,14 +450,14 @@ create table mssql_security_encryption_exception (
    date_value     timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_encryption_exception is 'Documented exceptions accepted for the MSSQL encryption compliance check.';
-comment on column mssql_security_encryption_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_encryption_exception.db_name is 'Name of the database.';
-comment on column mssql_security_encryption_exception.key_type is 'Type of encryption key (e.g. certificate, asymmetric key).';
-comment on column mssql_security_encryption_exception.key_name is 'Name of the encryption key.';
-comment on column mssql_security_encryption_exception.algorithm_desc is 'Encryption algorithm used by the key.';
-comment on column mssql_security_encryption_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_encryption_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_encryption_exc is 'Documented exceptions accepted for the MSSQL encryption compliance check.';
+comment on column mssql_sec_encryption_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_encryption_exc.db_name is 'Name of the database.';
+comment on column mssql_sec_encryption_exc.key_type is 'Type of encryption key (e.g. certificate, asymmetric key).';
+comment on column mssql_sec_encryption_exc.key_name is 'Name of the encryption key.';
+comment on column mssql_sec_encryption_exc.algorithm_desc is 'Encryption algorithm used by the key.';
+comment on column mssql_sec_encryption_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_encryption_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_groups
@@ -480,9 +480,9 @@ comment on column mssql_security_groups.compliance_score is 'Compliance score as
 comment on column mssql_security_groups.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_groups_exception
+-- mssql_sec_groups_exc
 -- ============================================================
-create table mssql_security_groups_exception (
+create table mssql_sec_groups_exc (
    servername      varchar2(50 char) not null,
    localgroupname  varchar2(50 char) not null,
    permission_name varchar2(100 char) not null,
@@ -491,13 +491,13 @@ create table mssql_security_groups_exception (
    date_value      timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_groups_exception is 'Documented exceptions accepted for the MSSQL local Windows group permissions compliance check.';
-comment on column mssql_security_groups_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_groups_exception.localgroupname is 'Name of the local Windows group.';
-comment on column mssql_security_groups_exception.permission_name is 'Name of the permission being evaluated.';
-comment on column mssql_security_groups_exception.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
-comment on column mssql_security_groups_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_groups_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_groups_exc is 'Documented exceptions accepted for the MSSQL local Windows group permissions compliance check.';
+comment on column mssql_sec_groups_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_groups_exc.localgroupname is 'Name of the local Windows group.';
+comment on column mssql_sec_groups_exc.permission_name is 'Name of the permission being evaluated.';
+comment on column mssql_sec_groups_exc.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
+comment on column mssql_sec_groups_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_groups_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_guestconnect
@@ -520,9 +520,9 @@ comment on column mssql_security_guestconnect.compliance_score is 'Compliance sc
 comment on column mssql_security_guestconnect.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_guestconnect_exception
+-- mssql_sec_guestconn_exc
 -- ============================================================
-create table mssql_security_guestconnect_exception (
+create table mssql_sec_guestconn_exc (
    servername      varchar2(50 char) not null,
    db_name         varchar2(50 char) not null,
    permission_name varchar2(50 char) not null,
@@ -531,13 +531,13 @@ create table mssql_security_guestconnect_exception (
    date_value      timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_guestconnect_exception is 'Documented exceptions accepted for the MSSQL guest account CONNECT permission compliance check.';
-comment on column mssql_security_guestconnect_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_guestconnect_exception.db_name is 'Name of the database.';
-comment on column mssql_security_guestconnect_exception.permission_name is 'Name of the permission being evaluated.';
-comment on column mssql_security_guestconnect_exception.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
-comment on column mssql_security_guestconnect_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_guestconnect_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_guestconn_exc is 'Documented exceptions accepted for the MSSQL guest account CONNECT permission compliance check.';
+comment on column mssql_sec_guestconn_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_guestconn_exc.db_name is 'Name of the database.';
+comment on column mssql_sec_guestconn_exc.permission_name is 'Name of the permission being evaluated.';
+comment on column mssql_sec_guestconn_exc.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
+comment on column mssql_sec_guestconn_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_guestconn_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_history
@@ -587,21 +587,21 @@ comment on column mssql_security_logins.compliance_score is 'Compliance score as
 comment on column mssql_security_logins.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_logins_exception
+-- mssql_sec_logins_exc
 -- Note : ON UPDATE current_timestamp() non supporte en Oracle (supprime)
 -- ============================================================
-create table mssql_security_logins_exception (
+create table mssql_sec_logins_exc (
    servername varchar2(50 char) not null,
    login_name varchar2(100 char) not null,
    comments   varchar2(200 char) default '0' not null,
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_logins_exception is 'Documented exceptions accepted for the MSSQL sysadmin / high-privilege login compliance check.';
-comment on column mssql_security_logins_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_logins_exception.login_name is 'Name of the login being evaluated.';
-comment on column mssql_security_logins_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_logins_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_logins_exc is 'Documented exceptions accepted for the MSSQL sysadmin / high-privilege login compliance check.';
+comment on column mssql_sec_logins_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_logins_exc.login_name is 'Name of the login being evaluated.';
+comment on column mssql_sec_logins_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_logins_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_orphanedusers
@@ -622,9 +622,9 @@ comment on column mssql_security_orphanedusers.compliance_score is 'Compliance s
 comment on column mssql_security_orphanedusers.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_orphanedusers_exception
+-- mssql_sec_orphanusr_exc
 -- ============================================================
-create table mssql_security_orphanedusers_exception (
+create table mssql_sec_orphanusr_exc (
    servername varchar2(50 char) not null,
    db_name    varchar2(50 char) not null,
    user_name  varchar2(100 char) not null,
@@ -632,17 +632,17 @@ create table mssql_security_orphanedusers_exception (
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_orphanedusers_exception is 'Documented exceptions accepted for the MSSQL orphaned database users compliance check.';
-comment on column mssql_security_orphanedusers_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_orphanedusers_exception.db_name is 'Name of the database.';
-comment on column mssql_security_orphanedusers_exception.user_name is 'Name of the orphaned database user.';
-comment on column mssql_security_orphanedusers_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_orphanedusers_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_orphanusr_exc is 'Documented exceptions accepted for the MSSQL orphaned database users compliance check.';
+comment on column mssql_sec_orphanusr_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_orphanusr_exc.db_name is 'Name of the database.';
+comment on column mssql_sec_orphanusr_exc.user_name is 'Name of the orphaned database user.';
+comment on column mssql_sec_orphanusr_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_orphanusr_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_publicpermission
+-- mssql_sec_pubperm
 -- ============================================================
-create table mssql_security_publicpermission (
+create table mssql_sec_pubperm (
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
    username         varchar2(100 char) not null,
@@ -652,19 +652,19 @@ create table mssql_security_publicpermission (
    date_value       timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_publicpermission is 'MSSQL permissions granted to the public role compliance check results.';
-comment on column mssql_security_publicpermission.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_publicpermission.db_name is 'Name of the database.';
-comment on column mssql_security_publicpermission.username is 'Name of the database account being evaluated.';
-comment on column mssql_security_publicpermission.permission_name is 'Name of the permission being evaluated.';
-comment on column mssql_security_publicpermission.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
-comment on column mssql_security_publicpermission.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
-comment on column mssql_security_publicpermission.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_pubperm is 'MSSQL permissions granted to the public role compliance check results.';
+comment on column mssql_sec_pubperm.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_pubperm.db_name is 'Name of the database.';
+comment on column mssql_sec_pubperm.username is 'Name of the database account being evaluated.';
+comment on column mssql_sec_pubperm.permission_name is 'Name of the permission being evaluated.';
+comment on column mssql_sec_pubperm.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
+comment on column mssql_sec_pubperm.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
+comment on column mssql_sec_pubperm.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_publicpermission_exception
+-- mssql_sec_pubperm_exc
 -- ============================================================
-create table mssql_security_publicpermission_exception (
+create table mssql_sec_pubperm_exc (
    servername      varchar2(50 char) not null,
    db_name         varchar2(50 char) not null,
    username        varchar2(100 char) not null,
@@ -674,14 +674,14 @@ create table mssql_security_publicpermission_exception (
    date_value      timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_publicpermission_exception is 'Documented exceptions accepted for the MSSQL public role permissions compliance check.';
-comment on column mssql_security_publicpermission_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_publicpermission_exception.db_name is 'Name of the database.';
-comment on column mssql_security_publicpermission_exception.username is 'Name of the database account being evaluated.';
-comment on column mssql_security_publicpermission_exception.permission_name is 'Name of the permission being evaluated.';
-comment on column mssql_security_publicpermission_exception.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
-comment on column mssql_security_publicpermission_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_publicpermission_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_pubperm_exc is 'Documented exceptions accepted for the MSSQL public role permissions compliance check.';
+comment on column mssql_sec_pubperm_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_pubperm_exc.db_name is 'Name of the database.';
+comment on column mssql_sec_pubperm_exc.username is 'Name of the database account being evaluated.';
+comment on column mssql_sec_pubperm_exc.permission_name is 'Name of the permission being evaluated.';
+comment on column mssql_sec_pubperm_exc.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
+comment on column mssql_sec_pubperm_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_pubperm_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_registryinfo
@@ -702,20 +702,20 @@ comment on column mssql_security_registryinfo.compliance_score is 'Compliance sc
 comment on column mssql_security_registryinfo.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_registryinfo_exception
+-- mssql_sec_reginfo_exc
 -- ============================================================
-create table mssql_security_registryinfo_exception (
+create table mssql_sec_reginfo_exc (
    servername varchar2(50 char) not null,
    name       varchar2(100 char) not null,
    comments   varchar2(200 char) default '0' not null,
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_registryinfo_exception is 'Documented exceptions accepted for the MSSQL registry configuration compliance check.';
-comment on column mssql_security_registryinfo_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_registryinfo_exception.name is 'Name of the registry value being evaluated.';
-comment on column mssql_security_registryinfo_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_registryinfo_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_reginfo_exc is 'Documented exceptions accepted for the MSSQL registry configuration compliance check.';
+comment on column mssql_sec_reginfo_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_reginfo_exc.name is 'Name of the registry value being evaluated.';
+comment on column mssql_sec_reginfo_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_reginfo_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_scoring
@@ -788,20 +788,20 @@ comment on column mssql_security_sqlserveraudit.compliance_score is 'Compliance 
 comment on column mssql_security_sqlserveraudit.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_security_sqlserveraudit_exception
+-- mssql_sec_srvaudit_exc
 -- ============================================================
-create table mssql_security_sqlserveraudit_exception (
+create table mssql_sec_srvaudit_exc (
    servername      varchar2(50 char) not null,
    auditactionname varchar2(100 char) not null,
    comments        varchar2(200 char) default '0' not null,
    date_value      timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_sqlserveraudit_exception is 'Documented exceptions accepted for the MSSQL Server Audit compliance check.';
-comment on column mssql_security_sqlserveraudit_exception.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_sqlserveraudit_exception.auditactionname is 'Name of the audited action.';
-comment on column mssql_security_sqlserveraudit_exception.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_security_sqlserveraudit_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_sec_srvaudit_exc is 'Documented exceptions accepted for the MSSQL Server Audit compliance check.';
+comment on column mssql_sec_srvaudit_exc.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_sec_srvaudit_exc.auditactionname is 'Name of the audited action.';
+comment on column mssql_sec_srvaudit_exc.comments is 'Free-text justification for this documented exception.';
+comment on column mssql_sec_srvaudit_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_users
@@ -1036,9 +1036,9 @@ comment on column oracle_metrics_cpu_memory.environment is 'Environment the row 
 comment on column oracle_metrics_cpu_memory.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_metrics_cpu_memory_history
+-- oracle_metrics_cpu_mem_hist
 -- ============================================================
-create table oracle_metrics_cpu_memory_history (
+create table oracle_metrics_cpu_mem_hist (
    pdb_name            varchar2(50 char) not null,
    cpu_time_minutes    number(10) not null,
    avg_sga_mb          number(10) not null,
@@ -1049,15 +1049,15 @@ create table oracle_metrics_cpu_memory_history (
    date_value          timestamp default on null systimestamp not null
 );
 
-comment on table oracle_metrics_cpu_memory_history is 'Historized Oracle PDB CPU and memory usage metrics.';
-comment on column oracle_metrics_cpu_memory_history.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_metrics_cpu_memory_history.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
-comment on column oracle_metrics_cpu_memory_history.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
-comment on column oracle_metrics_cpu_memory_history.avg_pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
-comment on column oracle_metrics_cpu_memory_history.avg_buffer_cache_mb is 'Average buffer cache size, in megabytes.';
-comment on column oracle_metrics_cpu_memory_history.avg_shared_pool_mb is 'Average shared pool size, in megabytes.';
-comment on column oracle_metrics_cpu_memory_history.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_metrics_cpu_memory_history.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_metrics_cpu_mem_hist is 'Historized Oracle PDB CPU and memory usage metrics.';
+comment on column oracle_metrics_cpu_mem_hist.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_metrics_cpu_mem_hist.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
+comment on column oracle_metrics_cpu_mem_hist.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
+comment on column oracle_metrics_cpu_mem_hist.avg_pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
+comment on column oracle_metrics_cpu_mem_hist.avg_buffer_cache_mb is 'Average buffer cache size, in megabytes.';
+comment on column oracle_metrics_cpu_mem_hist.avg_shared_pool_mb is 'Average shared pool size, in megabytes.';
+comment on column oracle_metrics_cpu_mem_hist.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
+comment on column oracle_metrics_cpu_mem_hist.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_metrics_cpu_service
@@ -1076,10 +1076,10 @@ comment on column oracle_metrics_cpu_service.dbcpu_time_minutes is 'Database CPU
 comment on column oracle_metrics_cpu_service.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_metrics_cpu_service_history
+-- oracle_metrics_cpu_svc_hist
 -- Note : decimal(50,3) -> NUMBER(38,3) [precision max Oracle = 38]
 -- ============================================================
-create table oracle_metrics_cpu_service_history (
+create table oracle_metrics_cpu_svc_hist (
    pdb_name           varchar2(50 char) not null,
    service_name       varchar2(100 char) not null,
    dbcpu_time_minutes number(10) not null,
@@ -1087,12 +1087,12 @@ create table oracle_metrics_cpu_service_history (
    date_value         varchar2(8 char) not null
 );
 
-comment on table oracle_metrics_cpu_service_history is 'Historized Oracle CPU usage metrics broken down by service.';
-comment on column oracle_metrics_cpu_service_history.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_metrics_cpu_service_history.service_name is 'Name of the Oracle service.';
-comment on column oracle_metrics_cpu_service_history.dbcpu_time_minutes is 'Database CPU time consumed by the service, in minutes.';
-comment on column oracle_metrics_cpu_service_history.percentage_usage is 'Share of the database total CPU time consumed by this service, in percent.';
-comment on column oracle_metrics_cpu_service_history.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_metrics_cpu_svc_hist is 'Historized Oracle CPU usage metrics broken down by service.';
+comment on column oracle_metrics_cpu_svc_hist.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_metrics_cpu_svc_hist.service_name is 'Name of the Oracle service.';
+comment on column oracle_metrics_cpu_svc_hist.dbcpu_time_minutes is 'Database CPU time consumed by the service, in minutes.';
+comment on column oracle_metrics_cpu_svc_hist.percentage_usage is 'Share of the database total CPU time consumed by this service, in percent.';
+comment on column oracle_metrics_cpu_svc_hist.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_size_usage
@@ -1157,43 +1157,43 @@ comment on column oracle_size_usage_seg.sum_segment_mb is 'Sum of segment sizes 
 comment on column oracle_size_usage_seg.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_database_capacity_planning_exacc_usage
+-- oracle_capplan_exacc_usage
 -- ============================================================
-create table oracle_database_capacity_planning_exacc_usage (
+create table oracle_capplan_exacc_usage (
    price         number(10),
    cluster_name  varchar2(30 char) not null,
    date_of_month varchar2(8 char)
 );
 
-comment on table oracle_database_capacity_planning_exacc_usage is 'Exadata Cloud at Customer (ExaCC) cluster pricing reference used for capacity planning cost calculations.';
-comment on column oracle_database_capacity_planning_exacc_usage.price is 'Unit price used for the cost calculation.';
-comment on column oracle_database_capacity_planning_exacc_usage.cluster_name is 'Name of the Exadata Cloud at Customer (ExaCC) cluster.';
-comment on column oracle_database_capacity_planning_exacc_usage.date_of_month is 'Reference month for this capacity planning snapshot (YYYYMM/YYYYMMDD).';
+comment on table oracle_capplan_exacc_usage is 'Exadata Cloud at Customer (ExaCC) cluster pricing reference used for capacity planning cost calculations.';
+comment on column oracle_capplan_exacc_usage.price is 'Unit price used for the cost calculation.';
+comment on column oracle_capplan_exacc_usage.cluster_name is 'Name of the Exadata Cloud at Customer (ExaCC) cluster.';
+comment on column oracle_capplan_exacc_usage.date_of_month is 'Reference month for this capacity planning snapshot (YYYYMM/YYYYMMDD).';
 
 -- ============================================================
--- oracle_database_capacity_planning_history_app_link
+-- oracle_capplan_hist_applink
 -- Note : DEFAULT '' retire (chaine vide = NULL en Oracle)
 -- ============================================================
-create table oracle_database_capacity_planning_history_app_link (
+create table oracle_capplan_hist_applink (
    pdb_name         varchar2(50 char) not null,
    env              varchar2(8 char) not null,
    application_name varchar2(30 char) not null,
    app_code         varchar2(30 char) not null
 );
 
-comment on table oracle_database_capacity_planning_history_app_link is 'Mapping of Oracle PDBs to business application names/codes, used for capacity planning cost allocation.';
-comment on column oracle_database_capacity_planning_history_app_link.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_database_capacity_planning_history_app_link.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_database_capacity_planning_history_app_link.application_name is 'Name of the business application associated with this PDB.';
-comment on column oracle_database_capacity_planning_history_app_link.app_code is 'Application code associated with this PDB, used for cost allocation.';
+comment on table oracle_capplan_hist_applink is 'Mapping of Oracle PDBs to business application names/codes, used for capacity planning cost allocation.';
+comment on column oracle_capplan_hist_applink.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_capplan_hist_applink.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
+comment on column oracle_capplan_hist_applink.application_name is 'Name of the business application associated with this PDB.';
+comment on column oracle_capplan_hist_applink.app_code is 'Application code associated with this PDB, used for cost allocation.';
 
 -- ============================================================
--- oracle_database_capacity_planning_history_prebuilt
+-- oracle_capplan_hist_prebuilt
 -- Notes : decimal(50,3) -> NUMBER(38,3) [precision max Oracle = 38]
 --         float -> BINARY_FLOAT
 --         DEFAULT '' retire (chaine vide = NULL en Oracle)
 -- ============================================================
-create table oracle_database_capacity_planning_history_prebuilt (
+create table oracle_capplan_hist_prebuilt (
    pdb_name                      varchar2(50 char) not null,
    env                           varchar2(8 char) not null,
    application_name              varchar2(30 char) not null,
@@ -1210,26 +1210,26 @@ create table oracle_database_capacity_planning_history_prebuilt (
    zdlra_cost_usage              binary_float not null
 );
 
-comment on table oracle_database_capacity_planning_history_prebuilt is 'Historized capacity planning data per PDB: size, CPU consumption and cost breakdown.';
-comment on column oracle_database_capacity_planning_history_prebuilt.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_database_capacity_planning_history_prebuilt.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_database_capacity_planning_history_prebuilt.application_name is 'Name of the business application associated with this PDB.';
-comment on column oracle_database_capacity_planning_history_prebuilt.cluster_name is 'Name of the Exadata Cloud at Customer (ExaCC) cluster.';
-comment on column oracle_database_capacity_planning_history_prebuilt.size_gb is 'Size, in gigabytes.';
-comment on column oracle_database_capacity_planning_history_prebuilt.cpu_consume_per_month_per_pdb is 'CPU time consumed per month by this PDB, in minutes.';
-comment on column oracle_database_capacity_planning_history_prebuilt.cpu_minutes_price is 'Unit price applied per CPU minute consumed.';
-comment on column oracle_database_capacity_planning_history_prebuilt.global_percentage_consumption is 'Share of the total cluster CPU consumption attributed to this PDB, in percent.';
-comment on column oracle_database_capacity_planning_history_prebuilt.env_percentage_consumption is 'Share of the environment CPU consumption attributed to this PDB, in percent.';
-comment on column oracle_database_capacity_planning_history_prebuilt.date_of_month is 'Reference month for this capacity planning snapshot (YYYYMM/YYYYMMDD).';
-comment on column oracle_database_capacity_planning_history_prebuilt.cost_total is 'Total cost attributed to this PDB for the period.';
-comment on column oracle_database_capacity_planning_history_prebuilt.exacc_cost_usage is 'Cost share attributed to Exadata Cloud at Customer (ExaCC) usage.';
-comment on column oracle_database_capacity_planning_history_prebuilt.exacc_ocpu_usage is 'OCPU usage attributed to Exadata Cloud at Customer (ExaCC).';
-comment on column oracle_database_capacity_planning_history_prebuilt.zdlra_cost_usage is 'Cost share attributed to Zero Data Loss Recovery Appliance (ZDLRA) usage.';
+comment on table oracle_capplan_hist_prebuilt is 'Historized capacity planning data per PDB: size, CPU consumption and cost breakdown.';
+comment on column oracle_capplan_hist_prebuilt.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_capplan_hist_prebuilt.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
+comment on column oracle_capplan_hist_prebuilt.application_name is 'Name of the business application associated with this PDB.';
+comment on column oracle_capplan_hist_prebuilt.cluster_name is 'Name of the Exadata Cloud at Customer (ExaCC) cluster.';
+comment on column oracle_capplan_hist_prebuilt.size_gb is 'Size, in gigabytes.';
+comment on column oracle_capplan_hist_prebuilt.cpu_consume_per_month_per_pdb is 'CPU time consumed per month by this PDB, in minutes.';
+comment on column oracle_capplan_hist_prebuilt.cpu_minutes_price is 'Unit price applied per CPU minute consumed.';
+comment on column oracle_capplan_hist_prebuilt.global_percentage_consumption is 'Share of the total cluster CPU consumption attributed to this PDB, in percent.';
+comment on column oracle_capplan_hist_prebuilt.env_percentage_consumption is 'Share of the environment CPU consumption attributed to this PDB, in percent.';
+comment on column oracle_capplan_hist_prebuilt.date_of_month is 'Reference month for this capacity planning snapshot (YYYYMM/YYYYMMDD).';
+comment on column oracle_capplan_hist_prebuilt.cost_total is 'Total cost attributed to this PDB for the period.';
+comment on column oracle_capplan_hist_prebuilt.exacc_cost_usage is 'Cost share attributed to Exadata Cloud at Customer (ExaCC) usage.';
+comment on column oracle_capplan_hist_prebuilt.exacc_ocpu_usage is 'OCPU usage attributed to Exadata Cloud at Customer (ExaCC).';
+comment on column oracle_capplan_hist_prebuilt.zdlra_cost_usage is 'Cost share attributed to Zero Data Loss Recovery Appliance (ZDLRA) usage.';
 
 -- ============================================================
--- oracle_database_capacity_planning_summary
+-- oracle_capplan_summary
 -- ============================================================
-create table oracle_database_capacity_planning_summary (
+create table oracle_capplan_summary (
    db_name             varchar2(50 char) not null,
    pdb_name            varchar2(50 char) not null,
    environment         varchar2(20 char) not null,
@@ -1246,21 +1246,21 @@ create table oracle_database_capacity_planning_summary (
    date_value          timestamp default on null systimestamp not null
 );
 
-comment on table oracle_database_capacity_planning_summary is 'Current capacity planning summary per PDB: size, CPU/memory usage and cost breakdown.';
-comment on column oracle_database_capacity_planning_summary.db_name is 'Name of the database.';
-comment on column oracle_database_capacity_planning_summary.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_database_capacity_planning_summary.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_database_capacity_planning_summary.size_mb is 'Size, in megabytes.';
-comment on column oracle_database_capacity_planning_summary.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
-comment on column oracle_database_capacity_planning_summary.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
-comment on column oracle_database_capacity_planning_summary.avg_pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
-comment on column oracle_database_capacity_planning_summary.avg_buffer_cache_mb is 'Average buffer cache size, in megabytes.';
-comment on column oracle_database_capacity_planning_summary.avg_shared_pool_mb is 'Average shared pool size, in megabytes.';
-comment on column oracle_database_capacity_planning_summary.zdlra_cost_usage is 'Cost share attributed to Zero Data Loss Recovery Appliance (ZDLRA) usage.';
-comment on column oracle_database_capacity_planning_summary.exacc_ocpu_usage is 'OCPU usage attributed to Exadata Cloud at Customer (ExaCC).';
-comment on column oracle_database_capacity_planning_summary.exacc_cost_usage is 'Cost share attributed to Exadata Cloud at Customer (ExaCC) usage.';
-comment on column oracle_database_capacity_planning_summary.cost_total is 'Total cost attributed to this PDB for the period.';
-comment on column oracle_database_capacity_planning_summary.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_capplan_summary is 'Current capacity planning summary per PDB: size, CPU/memory usage and cost breakdown.';
+comment on column oracle_capplan_summary.db_name is 'Name of the database.';
+comment on column oracle_capplan_summary.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_capplan_summary.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
+comment on column oracle_capplan_summary.size_mb is 'Size, in megabytes.';
+comment on column oracle_capplan_summary.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
+comment on column oracle_capplan_summary.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
+comment on column oracle_capplan_summary.avg_pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
+comment on column oracle_capplan_summary.avg_buffer_cache_mb is 'Average buffer cache size, in megabytes.';
+comment on column oracle_capplan_summary.avg_shared_pool_mb is 'Average shared pool size, in megabytes.';
+comment on column oracle_capplan_summary.zdlra_cost_usage is 'Cost share attributed to Zero Data Loss Recovery Appliance (ZDLRA) usage.';
+comment on column oracle_capplan_summary.exacc_ocpu_usage is 'OCPU usage attributed to Exadata Cloud at Customer (ExaCC).';
+comment on column oracle_capplan_summary.exacc_cost_usage is 'Cost share attributed to Exadata Cloud at Customer (ExaCC) usage.';
+comment on column oracle_capplan_summary.cost_total is 'Total cost attributed to this PDB for the period.';
+comment on column oracle_capplan_summary.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_databases
@@ -1456,20 +1456,20 @@ comment on column oracle_sec_admin_high_privs.compliance_score is 'Compliance sc
 comment on column oracle_sec_admin_high_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_admin_high_privs_exception
+-- oracle_sec_adm_high_privs_exc
 -- ============================================================
-create table oracle_security_admin_high_privs_exception (
+create table oracle_sec_adm_high_privs_exc (
    db_name    varchar2(50 char) not null,
    username   varchar2(50 char) not null,
    comments   varchar2(100 char) not null,
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_admin_high_privs_exception is 'Documented exceptions accepted for the Oracle high administrative privileges compliance check.';
-comment on column oracle_security_admin_high_privs_exception.db_name is 'Name of the database.';
-comment on column oracle_security_admin_high_privs_exception.username is 'Name of the database account being evaluated.';
-comment on column oracle_security_admin_high_privs_exception.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_security_admin_high_privs_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_adm_high_privs_exc is 'Documented exceptions accepted for the Oracle high administrative privileges compliance check.';
+comment on column oracle_sec_adm_high_privs_exc.db_name is 'Name of the database.';
+comment on column oracle_sec_adm_high_privs_exc.username is 'Name of the database account being evaluated.';
+comment on column oracle_sec_adm_high_privs_exc.comments is 'Free-text justification for this documented exception.';
+comment on column oracle_sec_adm_high_privs_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_audit_enable
@@ -1514,9 +1514,9 @@ comment on column oracle_sec_default_profile.compliance_score is 'Compliance sco
 comment on column oracle_sec_default_profile.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_default_profile_exception
+-- oracle_sec_def_profile_exc
 -- ============================================================
-create table oracle_security_default_profile_exception (
+create table oracle_sec_def_profile_exc (
    db_name    varchar2(50 char) not null,
    pdb_name   varchar2(50 char) not null,
    username   varchar2(50 char) not null,
@@ -1525,13 +1525,13 @@ create table oracle_security_default_profile_exception (
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_default_profile_exception is 'Documented exceptions accepted for the Oracle default profile compliance check.';
-comment on column oracle_security_default_profile_exception.db_name is 'Name of the database.';
-comment on column oracle_security_default_profile_exception.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_security_default_profile_exception.username is 'Name of the database account being evaluated.';
-comment on column oracle_security_default_profile_exception.profile is 'Name of the profile assigned to the account.';
-comment on column oracle_security_default_profile_exception.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_security_default_profile_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_def_profile_exc is 'Documented exceptions accepted for the Oracle default profile compliance check.';
+comment on column oracle_sec_def_profile_exc.db_name is 'Name of the database.';
+comment on column oracle_sec_def_profile_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_sec_def_profile_exc.username is 'Name of the database account being evaluated.';
+comment on column oracle_sec_def_profile_exc.profile is 'Name of the profile assigned to the account.';
+comment on column oracle_sec_def_profile_exc.comments is 'Free-text justification for this documented exception.';
+comment on column oracle_sec_def_profile_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_sec_default_user_pwd
@@ -1572,9 +1572,9 @@ comment on column oracle_sec_high_role_privs.compliance_score is 'Compliance sco
 comment on column oracle_sec_high_role_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_high_role_privs_exception
+-- oracle_sec_high_role_priv_exc
 -- ============================================================
-create table oracle_security_high_role_privs_exception (
+create table oracle_sec_high_role_priv_exc (
    db_name    varchar2(50 char) not null,
    pdb_name   varchar2(50 char) not null,
    username   varchar2(50 char) not null,
@@ -1583,18 +1583,18 @@ create table oracle_security_high_role_privs_exception (
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_high_role_privs_exception is 'Documented exceptions accepted for the Oracle high-privilege role compliance check.';
-comment on column oracle_security_high_role_privs_exception.db_name is 'Name of the database.';
-comment on column oracle_security_high_role_privs_exception.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_security_high_role_privs_exception.username is 'Name of the database account being evaluated.';
-comment on column oracle_security_high_role_privs_exception.privilege is 'Name of the privilege being evaluated.';
-comment on column oracle_security_high_role_privs_exception.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_security_high_role_privs_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_high_role_priv_exc is 'Documented exceptions accepted for the Oracle high-privilege role compliance check.';
+comment on column oracle_sec_high_role_priv_exc.db_name is 'Name of the database.';
+comment on column oracle_sec_high_role_priv_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_sec_high_role_priv_exc.username is 'Name of the database account being evaluated.';
+comment on column oracle_sec_high_role_priv_exc.privilege is 'Name of the privilege being evaluated.';
+comment on column oracle_sec_high_role_priv_exc.comments is 'Free-text justification for this documented exception.';
+comment on column oracle_sec_high_role_priv_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_high_sys_privs
+-- oracle_sec_high_sys_privs
 -- ============================================================
-create table oracle_security_high_sys_privs (
+create table oracle_sec_high_sys_privs (
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1603,18 +1603,18 @@ create table oracle_security_high_sys_privs (
    date_value       timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_high_sys_privs is 'Oracle users granted high-privilege system privileges, compliance check results.';
-comment on column oracle_security_high_sys_privs.db_name is 'Name of the database.';
-comment on column oracle_security_high_sys_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_security_high_sys_privs.username is 'Name of the database account being evaluated.';
-comment on column oracle_security_high_sys_privs.privilege is 'Name of the privilege being evaluated.';
-comment on column oracle_security_high_sys_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
-comment on column oracle_security_high_sys_privs.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_high_sys_privs is 'Oracle users granted high-privilege system privileges, compliance check results.';
+comment on column oracle_sec_high_sys_privs.db_name is 'Name of the database.';
+comment on column oracle_sec_high_sys_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_sec_high_sys_privs.username is 'Name of the database account being evaluated.';
+comment on column oracle_sec_high_sys_privs.privilege is 'Name of the privilege being evaluated.';
+comment on column oracle_sec_high_sys_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
+comment on column oracle_sec_high_sys_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_high_sys_privs_exception
+-- oracle_sec_high_sys_privs_exc
 -- ============================================================
-create table oracle_security_high_sys_privs_exception (
+create table oracle_sec_high_sys_privs_exc (
    db_name    varchar2(50 char) not null,
    pdb_name   varchar2(50 char) not null,
    username   varchar2(50 char) not null,
@@ -1623,18 +1623,18 @@ create table oracle_security_high_sys_privs_exception (
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_high_sys_privs_exception is 'Documented exceptions accepted for the Oracle high-privilege system privileges compliance check.';
-comment on column oracle_security_high_sys_privs_exception.db_name is 'Name of the database.';
-comment on column oracle_security_high_sys_privs_exception.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_security_high_sys_privs_exception.username is 'Name of the database account being evaluated.';
-comment on column oracle_security_high_sys_privs_exception.privilege is 'Name of the privilege being evaluated.';
-comment on column oracle_security_high_sys_privs_exception.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_security_high_sys_privs_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_high_sys_privs_exc is 'Documented exceptions accepted for the Oracle high-privilege system privileges compliance check.';
+comment on column oracle_sec_high_sys_privs_exc.db_name is 'Name of the database.';
+comment on column oracle_sec_high_sys_privs_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_sec_high_sys_privs_exc.username is 'Name of the database account being evaluated.';
+comment on column oracle_sec_high_sys_privs_exc.privilege is 'Name of the privilege being evaluated.';
+comment on column oracle_sec_high_sys_privs_exc.comments is 'Free-text justification for this documented exception.';
+comment on column oracle_sec_high_sys_privs_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_high_tab_privs
+-- oracle_sec_high_tab_privs
 -- ============================================================
-create table oracle_security_high_tab_privs (
+create table oracle_sec_high_tab_privs (
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1643,18 +1643,18 @@ create table oracle_security_high_tab_privs (
    date_value       timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_high_tab_privs is 'Oracle users granted high-privilege table privileges, compliance check results.';
-comment on column oracle_security_high_tab_privs.db_name is 'Name of the database.';
-comment on column oracle_security_high_tab_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_security_high_tab_privs.username is 'Name of the database account being evaluated.';
-comment on column oracle_security_high_tab_privs.privilege is 'Name of the privilege being evaluated.';
-comment on column oracle_security_high_tab_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
-comment on column oracle_security_high_tab_privs.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_high_tab_privs is 'Oracle users granted high-privilege table privileges, compliance check results.';
+comment on column oracle_sec_high_tab_privs.db_name is 'Name of the database.';
+comment on column oracle_sec_high_tab_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_sec_high_tab_privs.username is 'Name of the database account being evaluated.';
+comment on column oracle_sec_high_tab_privs.privilege is 'Name of the privilege being evaluated.';
+comment on column oracle_sec_high_tab_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
+comment on column oracle_sec_high_tab_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_high_tab_privs_exception
+-- oracle_sec_high_tab_privs_exc
 -- ============================================================
-create table oracle_security_high_tab_privs_exception (
+create table oracle_sec_high_tab_privs_exc (
    db_name    varchar2(50 char) not null,
    pdb_name   varchar2(50 char) not null,
    username   varchar2(50 char) not null,
@@ -1663,13 +1663,13 @@ create table oracle_security_high_tab_privs_exception (
    date_value timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_high_tab_privs_exception is 'Documented exceptions accepted for the Oracle high-privilege table privileges compliance check.';
-comment on column oracle_security_high_tab_privs_exception.db_name is 'Name of the database.';
-comment on column oracle_security_high_tab_privs_exception.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_security_high_tab_privs_exception.username is 'Name of the database account being evaluated.';
-comment on column oracle_security_high_tab_privs_exception.privilege is 'Name of the privilege being evaluated.';
-comment on column oracle_security_high_tab_privs_exception.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_security_high_tab_privs_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_high_tab_privs_exc is 'Documented exceptions accepted for the Oracle high-privilege table privileges compliance check.';
+comment on column oracle_sec_high_tab_privs_exc.db_name is 'Name of the database.';
+comment on column oracle_sec_high_tab_privs_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_sec_high_tab_privs_exc.username is 'Name of the database account being evaluated.';
+comment on column oracle_sec_high_tab_privs_exc.privilege is 'Name of the privilege being evaluated.';
+comment on column oracle_sec_high_tab_privs_exc.comments is 'Free-text justification for this documented exception.';
+comment on column oracle_sec_high_tab_privs_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_history
@@ -1722,9 +1722,9 @@ comment on column oracle_security_parameter.compliance_score is 'Compliance scor
 comment on column oracle_security_parameter.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_parameter_exception
+-- oracle_sec_parameter_exc
 -- ============================================================
-create table oracle_security_parameter_exception (
+create table oracle_sec_parameter_exc (
    db_name         varchar2(50 char) not null,
    parameter_value varchar2(50 char),
    parameter_name  varchar2(50 char) not null,
@@ -1732,12 +1732,12 @@ create table oracle_security_parameter_exception (
    date_value      timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_parameter_exception is 'Documented exceptions accepted for the Oracle security parameter compliance check.';
-comment on column oracle_security_parameter_exception.db_name is 'Name of the database.';
-comment on column oracle_security_parameter_exception.parameter_value is 'Value of the configuration parameter.';
-comment on column oracle_security_parameter_exception.parameter_name is 'Name of the configuration parameter being evaluated.';
-comment on column oracle_security_parameter_exception.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_security_parameter_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_parameter_exc is 'Documented exceptions accepted for the Oracle security parameter compliance check.';
+comment on column oracle_sec_parameter_exc.db_name is 'Name of the database.';
+comment on column oracle_sec_parameter_exc.parameter_value is 'Value of the configuration parameter.';
+comment on column oracle_sec_parameter_exc.parameter_name is 'Name of the configuration parameter being evaluated.';
+comment on column oracle_sec_parameter_exc.comments is 'Free-text justification for this documented exception.';
+comment on column oracle_sec_parameter_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_profile
@@ -1762,9 +1762,9 @@ comment on column oracle_security_profile.compliance_score is 'Compliance score 
 comment on column oracle_security_profile.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- oracle_security_profile_exception
+-- oracle_sec_profile_exc
 -- ============================================================
-create table oracle_security_profile_exception (
+create table oracle_sec_profile_exc (
    db_name       varchar2(50 char) not null,
    pdb_name      varchar2(50 char) not null,
    profile       varchar2(50 char) not null,
@@ -1774,14 +1774,14 @@ create table oracle_security_profile_exception (
    date_value    timestamp default on null systimestamp not null
 );
 
-comment on table oracle_security_profile_exception is 'Documented exceptions accepted for the Oracle profile resource limit compliance check.';
-comment on column oracle_security_profile_exception.db_name is 'Name of the database.';
-comment on column oracle_security_profile_exception.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_security_profile_exception.profile is 'Name of the profile assigned to the account.';
-comment on column oracle_security_profile_exception.resource_name is 'Name of the profile resource limit parameter.';
-comment on column oracle_security_profile_exception.limit_value is 'Value configured for the profile resource limit.';
-comment on column oracle_security_profile_exception.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_security_profile_exception.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table oracle_sec_profile_exc is 'Documented exceptions accepted for the Oracle profile resource limit compliance check.';
+comment on column oracle_sec_profile_exc.db_name is 'Name of the database.';
+comment on column oracle_sec_profile_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
+comment on column oracle_sec_profile_exc.profile is 'Name of the profile assigned to the account.';
+comment on column oracle_sec_profile_exc.resource_name is 'Name of the profile resource limit parameter.';
+comment on column oracle_sec_profile_exc.limit_value is 'Value configured for the profile resource limit.';
+comment on column oracle_sec_profile_exc.comments is 'Free-text justification for this documented exception.';
+comment on column oracle_sec_profile_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_scoring
@@ -2094,11 +2094,11 @@ comment on column postgres_security_roles.compliance_score is 'Compliance score 
 comment on column postgres_security_roles.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- postgres_security_role_memberships
+-- postgres_sec_role_members
 -- Appartenance aux roles predefinis sensibles (pg_read_all_data,
 -- pg_execute_server_program, pg_monitor, ...).
 -- ============================================================
-create table postgres_security_role_memberships (
+create table postgres_sec_role_members (
    hostname         varchar2(100 char) not null,
    role_name        varchar2(100 char) not null,
    member_of        varchar2(100 char) not null,
@@ -2106,12 +2106,12 @@ create table postgres_security_role_memberships (
    date_value       timestamp default on null systimestamp not null
 );
 
-comment on table postgres_security_role_memberships is 'PostgreSQL role membership compliance check results, focused on sensitive predefined roles (pg_read_all_data, pg_execute_server_program, pg_monitor, ...).';
-comment on column postgres_security_role_memberships.hostname is 'Host name of the database server or instance.';
-comment on column postgres_security_role_memberships.role_name is 'Name of the role whose membership is being evaluated.';
-comment on column postgres_security_role_memberships.member_of is 'Name of the (typically sensitive predefined) role this role is a member of.';
-comment on column postgres_security_role_memberships.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
-comment on column postgres_security_role_memberships.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table postgres_sec_role_members is 'PostgreSQL role membership compliance check results, focused on sensitive predefined roles (pg_read_all_data, pg_execute_server_program, pg_monitor, ...).';
+comment on column postgres_sec_role_members.hostname is 'Host name of the database server or instance.';
+comment on column postgres_sec_role_members.role_name is 'Name of the role whose membership is being evaluated.';
+comment on column postgres_sec_role_members.member_of is 'Name of the (typically sensitive predefined) role this role is a member of.';
+comment on column postgres_sec_role_members.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
+comment on column postgres_sec_role_members.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- postgres_security_hba_rules
@@ -2140,10 +2140,10 @@ comment on column postgres_security_hba_rules.compliance_score is 'Compliance sc
 comment on column postgres_security_hba_rules.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- postgres_security_database_privileges
+-- postgres_sec_db_privs
 -- Droits accordes a PUBLIC sur les bases (CONNECT/CREATE).
 -- ============================================================
-create table postgres_security_database_privileges (
+create table postgres_sec_db_privs (
    hostname         varchar2(100 char) not null,
    datname          varchar2(100 char) not null,
    grantee          varchar2(100 char) not null,
@@ -2152,13 +2152,13 @@ create table postgres_security_database_privileges (
    date_value       timestamp default on null systimestamp not null
 );
 
-comment on table postgres_security_database_privileges is 'PostgreSQL PUBLIC role database privilege (CONNECT/CREATE) compliance check results.';
-comment on column postgres_security_database_privileges.hostname is 'Host name of the database server or instance.';
-comment on column postgres_security_database_privileges.datname is 'Name of the PostgreSQL database.';
-comment on column postgres_security_database_privileges.grantee is 'Name of the role or user the privilege is granted to.';
-comment on column postgres_security_database_privileges.privilege_type is 'Type of privilege granted (e.g. CONNECT, CREATE).';
-comment on column postgres_security_database_privileges.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
-comment on column postgres_security_database_privileges.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table postgres_sec_db_privs is 'PostgreSQL PUBLIC role database privilege (CONNECT/CREATE) compliance check results.';
+comment on column postgres_sec_db_privs.hostname is 'Host name of the database server or instance.';
+comment on column postgres_sec_db_privs.datname is 'Name of the PostgreSQL database.';
+comment on column postgres_sec_db_privs.grantee is 'Name of the role or user the privilege is granted to.';
+comment on column postgres_sec_db_privs.privilege_type is 'Type of privilege granted (e.g. CONNECT, CREATE).';
+comment on column postgres_sec_db_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
+comment on column postgres_sec_db_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- postgres_collect_list

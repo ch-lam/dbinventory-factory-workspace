@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=get_info_oracle_common
-source "${SCRIPT_DIR}/get_info_oracle_common"
+source "${SCRIPT_DIR}/get_info_oracle_common.sh"
 
 init_temps client_info
 rm -f "${LIST_DIR}/error_db.lst"

@@ -14,9 +14,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Connexion Oracle ──────────────────────────────────────────────────────────
 DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="Tofu4567"
-DBINVENTORY_DSN="oracledb01:1521/DBINVENTORY_PRD_ALL"
-MAIL_TO="clam@clam.lu"
+DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
+DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
+MAIL_TO="lambert.christophe@chl.lu"
 
 # ── Log ───────────────────────────────────────────────────────────────────────
 LOG_DIR="${SCRIPT_DIR}/logs"
@@ -95,7 +95,7 @@ TRUNCATE TABLE mssql_security_groups;
 TRUNCATE TABLE mssql_security_guestconnect;
 TRUNCATE TABLE mssql_security_logins;
 TRUNCATE TABLE mssql_security_orphanedusers;
-TRUNCATE TABLE mssql_security_publicpermission;
+TRUNCATE TABLE mssql_sec_pubperm;
 TRUNCATE TABLE mssql_security_registryinfo;
 TRUNCATE TABLE mssql_security_sqlserveraudit;
 
@@ -152,8 +152,8 @@ PROMPT -- LOADING: ../collect/mssql_security_logins.csv
 LOAD mssql_security_logins           ../collect/mssql_security_logins.csv
 PROMPT -- LOADING: ../collect/mssql_security_orphanedusers.csv
 LOAD mssql_security_orphanedusers    ../collect/mssql_security_orphanedusers.csv
-PROMPT -- LOADING: ../collect/mssql_security_publicpermission.csv
-LOAD mssql_security_publicpermission ../collect/mssql_security_publicpermission.csv
+PROMPT -- LOADING: ../collect/mssql_sec_pubperm.csv
+LOAD mssql_sec_pubperm ../collect/mssql_sec_pubperm.csv
 PROMPT -- LOADING: ../collect/mssql_security_registryinfo.csv
 LOAD mssql_security_registryinfo     ../collect/mssql_security_registryinfo.csv
 PROMPT -- LOADING: ../collect/mssql_security_sqlserveraudit.csv

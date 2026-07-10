@@ -6,7 +6,7 @@
 
 MONITORING_USER="monitoring"
 MONITORING_PASS="HY9Xine38wnkC2gLadd2YafJiz5gRw"
-MAIL_TO="sysadmin-mssql@chl.lu"   # à adapter : équipe en charge des serveurs Windows/MSSQL
+MAIL_TO="lambert.christophe@chl.lu"   # à adapter : équipe en charge des serveurs Windows/MSSQL
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIST_DIR="${SCRIPT_DIR}/../collect"

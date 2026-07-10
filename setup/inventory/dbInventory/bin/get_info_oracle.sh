@@ -7,7 +7,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=get_info_oracle_common
-source "${SCRIPT_DIR}/get_info_oracle_common"
+source "${SCRIPT_DIR}/get_info_oracle_common.sh"
 
 init_temps hosts oracle_databases pdbs services users backup psu \
            size_usage size_usage_seg cpu_mem cpu_by_service dataguard

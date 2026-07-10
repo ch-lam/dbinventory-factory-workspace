@@ -5,8 +5,8 @@
 # =============================================================================
 
 MONITORING_USER="monitoring"
-MONITORING_PASS="PwdToChange:000:001"
-MAIL_TO="clam@clam.lu"
+MONITORING_PASS="F5t9TAcbjLTzhBNE69YeYBTx1BLgOZ"
+MAIL_TO="lambert.christophe@chl.lu"
 
 # Base de connexion par defaut pour les requetes cluster-wide (pg_database,
 # pg_settings, pg_stat_replication, pg_hba_file_rules, ...).
@@ -26,7 +26,7 @@ log_err() { log "ERROR: $*" >&2; printf '%s\n' "$*" >> "${LIST_DIR}/error_db.lst
 psql_run() {
     local host="$1" port="$2" dbname="$3" sql="$4"
     PGPASSWORD="${MONITORING_PASS}" psql -h "${host}" -p "${port}" -U "${MONITORING_USER}" -d "${dbname}" \
-        --csv -t -A -c "${sql}" 2>/dev/null
+        --csv -t -A -c "${sql}" # 2>/dev/null
 }
 
 # Execute une requete SQL et retourne une simple liste de valeurs (une par ligne).
@@ -34,7 +34,7 @@ psql_run() {
 psql_list() {
     local host="$1" port="$2" dbname="$3" sql="$4"
     PGPASSWORD="${MONITORING_PASS}" psql -h "${host}" -p "${port}" -U "${MONITORING_USER}" -d "${dbname}" \
-        -t -A -c "${sql}" 2>/dev/null
+        -t -A -c "${sql}" # 2>/dev/null
 }
 
 # Verifie la disponibilite d'une instance et retourne "PRIMARY,<version_num>"
@@ -43,7 +43,7 @@ status_check() {
     local host="$1" port="$2"
     PGPASSWORD="${MONITORING_PASS}" psql -h "${host}" -p "${port}" -U "${MONITORING_USER}" -d "${DEFAULT_DB}" \
         -t -A -c "SELECT CASE WHEN pg_is_in_recovery() THEN 'STANDBY' ELSE 'PRIMARY' END || ',' || current_setting('server_version_num')" \
-        2>/dev/null
+        # 2>/dev/null
 }
 
 # Trie, deduplique, filtre les lignes vides.

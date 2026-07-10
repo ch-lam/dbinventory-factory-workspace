@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=get_info_mssql_common
-source "${SCRIPT_DIR}/get_info_mssql_common"
+source "${SCRIPT_DIR}/get_info_mssql_common.sh"
 
 init_temps mssql_security_auditlevel   mssql_security_configoptions \
            mssql_security_dbproperties mssql_security_encryption    \
@@ -75,7 +75,7 @@ finalize_lst "${LIST_DIR}/mssql_security_groups_temp.csv"           "${LIST_DIR}
 finalize_lst "${LIST_DIR}/mssql_security_guestconnect_temp.csv"     "${LIST_DIR}/mssql_security_guestconnect.csv"
 finalize_lst "${LIST_DIR}/mssql_security_logins_temp.csv"           "${LIST_DIR}/mssql_security_logins.csv"
 finalize_lst "${LIST_DIR}/mssql_security_orphanedusers_temp.csv"    "${LIST_DIR}/mssql_security_orphanedusers.csv"
-finalize_lst "${LIST_DIR}/mssql_security_publicpermission_temp.csv" "${LIST_DIR}/mssql_security_publicpermission.csv"
+finalize_lst "${LIST_DIR}/mssql_security_publicpermission_temp.csv" "${LIST_DIR}/mssql_sec_pubperm.csv"
 finalize_lst "${LIST_DIR}/mssql_security_registryinfo_temp.csv"     "${LIST_DIR}/mssql_security_registryinfo.csv"
 finalize_lst "${LIST_DIR}/mssql_security_sqlserveraudit_temp.csv"   "${LIST_DIR}/mssql_security_sqlserveraudit.csv"
 

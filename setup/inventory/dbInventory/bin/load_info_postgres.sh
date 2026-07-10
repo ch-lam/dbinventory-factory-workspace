@@ -14,9 +14,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Connexion Oracle ──────────────────────────────────────────────────────────
 DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="Tofu4567"
-DBINVENTORY_DSN="oracledb01:1521/DBINVENTORY_PRD_ALL"
-MAIL_TO="clam@clam.lu"
+DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
+DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
+MAIL_TO="lambert.christophe@chl.lu"
 
 # ── Log ───────────────────────────────────────────────────────────────────────
 LOG_DIR="${SCRIPT_DIR}/logs"
@@ -86,9 +86,9 @@ TRUNCATE TABLE postgres_backup;
 TRUNCATE TABLE postgres_extensions;
 TRUNCATE TABLE postgres_security_parameter;
 TRUNCATE TABLE postgres_security_roles;
-TRUNCATE TABLE postgres_security_role_memberships;
+TRUNCATE TABLE postgres_sec_role_members;
 TRUNCATE TABLE postgres_security_hba_rules;
-TRUNCATE TABLE postgres_security_database_privileges;
+TRUNCATE TABLE postgres_sec_db_privs;
 
 -- ===========================================================================
 -- SQLcl : configuration du format de chargement
@@ -125,12 +125,12 @@ PROMPT -- LOADING: ../collect/postgres_security_parameter.csv
 LOAD postgres_security_parameter           ../collect/postgres_security_parameter.csv
 PROMPT -- LOADING: ../collect/postgres_security_roles.csv
 LOAD postgres_security_roles               ../collect/postgres_security_roles.csv
-PROMPT -- LOADING: ../collect/postgres_security_role_memberships.csv
-LOAD postgres_security_role_memberships    ../collect/postgres_security_role_memberships.csv
+PROMPT -- LOADING: ../collect/postgres_sec_role_members.csv
+LOAD postgres_sec_role_members             ../collect/postgres_sec_role_members.csv
 PROMPT -- LOADING: ../collect/postgres_security_hba_rules.csv
 LOAD postgres_security_hba_rules           ../collect/postgres_security_hba_rules.csv
-PROMPT -- LOADING: ../collect/postgres_security_database_privileges.csv
-LOAD postgres_security_database_privileges ../collect/postgres_security_database_privileges.csv
+PROMPT -- LOADING: ../collect/postgres_sec_db_privs.csv
+LOAD postgres_sec_db_privs                 ../collect/postgres_sec_db_privs.csv
 
 -- Commit final pour valider tous les chargements
 COMMIT;

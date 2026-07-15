@@ -1,9 +1,17 @@
-SELECT @@Servername as Servername,name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use
+SELECT
+ '"'+REPLACE(ISNULL(CONVERT(varchar(128),@@Servername),''),'"','""')+'"'+','+
+ '"'+REPLACE(ISNULL(CONVERT(varchar(128),name),''),'"','""')+'"'+','+
+ '"'+REPLACE(ISNULL(CONVERT(varchar(20),CAST(value as int)),''),'"','""')+'"'+','+
+ '"'+REPLACE(ISNULL(CONVERT(varchar(20),CAST(value_in_use as int)),''),'"','""')+'"'
 FROM sys.configurations
 WHERE name in  ('Ad Hoc Distributed Queries','clr enabled','cross db ownership chaining','Database Mail XPs','Ole Automation Procedures',
 'remote access','scan for startup procs','xp_cmdshell','default trace enabled','clr strict security');
 GO
-SELECT @@Servername as Servername,name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use
+SELECT
+ '"'+REPLACE(ISNULL(CONVERT(varchar(128),@@Servername),''),'"','""')+'"'+','+
+ '"'+REPLACE(ISNULL(CONVERT(varchar(128),name),''),'"','""')+'"'+','+
+ '"'+REPLACE(ISNULL(CONVERT(varchar(20),CAST(value as int)),''),'"','""')+'"'+','+
+ '"'+REPLACE(ISNULL(CONVERT(varchar(20),CAST(value_in_use as int)),''),'"','""')+'"'
 FROM sys.configurations
 WHERE name = 'remote admin connections' AND SERVERPROPERTY('IsClustered') = 0;
 GO

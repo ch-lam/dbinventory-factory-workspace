@@ -20,3 +20,4 @@ grant select on vw_x$dbgalertext to MONITORING;
 create profile MONITORING limit PASSWORD_LIFE_TIME UNLIMITED;
 alter user MONITORING profile MONITORING;
 alter user MONITORING identified by "*******************************" account unlock;
+

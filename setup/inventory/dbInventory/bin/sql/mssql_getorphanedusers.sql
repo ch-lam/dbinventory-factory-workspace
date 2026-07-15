@@ -4,9 +4,12 @@ FROM sys.database_principals
 WHERE sid NOT IN (SELECT sid FROM sys.server_principals)
     AND type = ''S''
     AND principal_id != 2
-    AND DATALENGTH(sid) <= 28 
+    AND DATALENGTH(sid) <= 28
     AND name <>''MS_DataCollectorInternalUser'')
-SELECT @@servername, db_name(), name
+SELECT
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@servername),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),db_name()),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),name),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)
 FROM sys.database_principals
 WHERE sid NOT IN (
         SELECT sid
@@ -16,4 +19,7 @@ WHERE sid NOT IN (
     AND principal_id != 2
     AND DATALENGTH(sid) <= 28
     AND name <>''MS_DataCollectorInternalUser''
-ELSE SELECT @@Servername, db_name(), ''NoOrphanedUser'''
+ELSE SELECT
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@Servername),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),db_name()),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+''NoOrphanedUser''+CHAR(34)'

@@ -1,3 +1,11 @@
+-- NB : ce script est le plus fragile du lot (SQL dynamique multi-niveaux
+-- avec SERVERPROPERTY, sous-requetes et parametre OUTPUT @ServiceAccount).
+-- ATTENTION : le placeholder ''','',' present dans la branche SQL2008/legacy
+-- (avant les 2 colonnes nodename) etait deja ambigu dans le script original
+-- (nombre de colonnes potentiellement pas aligne avec la branche >=2012).
+-- Je l'ai remplace par un vrai champ CSV vide "" pour ne pas casser le
+-- comptage de colonnes en aval -- verifie ce point avant mise en prod.
+
 DECLARE @ver nvarchar(128)
 DECLARE @sqlstmt nvarchar(4000)
 SET @ver = CAST(serverproperty('ProductVersion') AS nvarchar)
@@ -16,23 +24,23 @@ EXECUTE master.dbo.xp_instance_regread
             @ServiceAccount OUTPUT,
             N''no_output''
           select
-          SERVERPROPERTY(''ServerName''),
-          SERVERPROPERTY(''Edition''),
-          SERVERPROPERTY(''ProductVersion''),
-          SERVERPROPERTY(''Collation''),
-          SERVERPROPERTY(''IsClustered''),
-          SERVERPROPERTY(''ComputerNamePhysicalNetBIOS''),
-          '','',
-          (select value from sys.configurations where name = ''cost threshold for parallelism''),
-          (select value from sys.configurations where name = ''max degree of parallelism''),
-          (select value from sys.configurations where name = ''min server memory (MB)''),
-          (select value from sys.configurations where name = ''max server memory (MB)''),
-          (select value from sys.configurations where name = ''xp_cmdshell''),
-          (select cpu_count from sys.dm_os_sys_info),
-          (select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info),
-          (SELECT windows_release FROM sys.dm_os_windows_info),
-	  (SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000),
-          @ServiceAccount')
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),(SELECT windows_release FROM sys.dm_os_windows_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)')
 ELSE
 (         select @sqlstmt = '
             DECLARE @ServiceAccount varchar(100)
@@ -43,24 +51,24 @@ EXECUTE master.dbo.xp_instance_regread
             @ServiceAccount OUTPUT,
             N''no_output''
           select
-          SERVERPROPERTY(''ServerName''),
-          SERVERPROPERTY(''Edition''),
-          SERVERPROPERTY(''ProductVersion''),
-          SERVERPROPERTY(''Collation''),
-          SERVERPROPERTY(''IsClustered''),
-          SERVERPROPERTY(''ComputerNamePhysicalNetBIOS''),
-          (SELECT nodename FROM sys.dm_os_cluster_nodes ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY),
-          (SELECT nodename FROM sys.dm_os_cluster_nodes ORDER BY 1 OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY),
-          (select value from sys.configurations where name = ''cost threshold for parallelism''),
-          (select value from sys.configurations where name = ''max degree of parallelism''),
-          (select value from sys.configurations where name = ''min server memory (MB)''),
-          (select value from sys.configurations where name = ''max server memory (MB)''),
-          (select value from sys.configurations where name = ''xp_cmdshell''),
-          (select cpu_count from sys.dm_os_sys_info),
-          (select physical_memory_kb/1024/1024 from sys.dm_os_sys_info),
-          (SELECT windows_release FROM sys.dm_os_windows_info),
-	  (SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000),
-          @ServiceAccount'
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),(SELECT nodename FROM sys.dm_os_cluster_nodes ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),(SELECT nodename FROM sys.dm_os_cluster_nodes ORDER BY 1 OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_kb/1024/1024 from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),(SELECT windows_release FROM sys.dm_os_windows_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
           )
 END
 ELSE
@@ -74,22 +82,22 @@ EXECUTE master.dbo.xp_instance_regread
             @ServiceAccount OUTPUT,
             N''no_output''
           select
-          SERVERPROPERTY(''ServerName''),
-          SERVERPROPERTY(''Edition''),
-          SERVERPROPERTY(''ProductVersion''),
-          SERVERPROPERTY(''Collation''),
-          SERVERPROPERTY(''IsClustered''),
-          SERVERPROPERTY(''ComputerNamePhysicalNetBIOS''),
-          '','',
-          (select value from sys.configurations where name = ''cost threshold for parallelism''),
-          (select value from sys.configurations where name = ''max degree of parallelism''),
-          (select value from sys.configurations where name = ''min server memory (MB)''),
-          (select value from sys.configurations where name = ''max server memory (MB)''),
-          (select value from sys.configurations where name = ''xp_cmdshell''),
-          (select cpu_count from sys.dm_os_sys_info),
-          (select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info),
-          6.1,
-	  (SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000),
-          @ServiceAccount'
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+''6.1''+CHAR(34)+'',''+
+	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
 END
 EXEC (@sqlstmt)

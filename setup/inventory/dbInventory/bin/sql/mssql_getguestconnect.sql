@@ -1,15 +1,23 @@
-DECLARE @command varchar(1000)
+DECLARE @command varchar(2000)
 SELECT @command = 'USE [?] if exists (SELECT DB_NAME() AS DatabaseName, ''guest'' AS Database_User,[permission_name], [state_desc]
 FROM sys.database_permissions WHERE [grantee_principal_id] = DATABASE_PRINCIPAL_ID(''guest'')
 AND [state_desc] LIKE ''GRANT%''
 AND [permission_name] = ''CONNECT''
 AND DB_NAME() NOT IN (''master'',''tempdb'',''msdb''))
-SELECT @@Servername, DB_NAME() AS DatabaseName,[permission_name], [state_desc]
+SELECT
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@Servername),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),DB_NAME()),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),[permission_name]),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),[state_desc]),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)
 FROM sys.database_permissions
 WHERE [grantee_principal_id] = DATABASE_PRINCIPAL_ID(''guest'')
 AND [state_desc] LIKE ''GRANT%''
 AND [permission_name] = ''CONNECT''
 AND DB_NAME() NOT IN (''master'',''tempdb'',''msdb'')
 ELSE
-SELECT @@Servername, DB_NAME(), ''no_permission'', ''no_permission'' '
+SELECT
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@Servername),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),DB_NAME()),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+''no_permission''+CHAR(34)+'',''+
+ CHAR(34)+''no_permission''+CHAR(34)'
 EXEC sp_MSforeachdb @command

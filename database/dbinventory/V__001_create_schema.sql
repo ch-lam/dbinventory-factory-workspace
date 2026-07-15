@@ -1,4 +1,5 @@
 -- Oracle Database Schema for DBInventory
+alter session set current_schema=dbinventory;
 
 -- ============================================================
 -- mssql_backup
@@ -309,7 +310,7 @@ comment on column mssql_loginwoperm.scandate is 'Timestamp at which this row was
 create table mssql_security_auditlevel (
    servername       varchar2(50 char) not null,
    auditlevel       varchar2(50 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(2) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -343,7 +344,7 @@ create table mssql_security_configoptions (
    name             varchar2(200 char) not null,
    config_value     number(10) not null,
    run_value        number(10) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -424,7 +425,7 @@ create table mssql_security_encryption (
    key_type         varchar2(50 char) not null,
    key_name         varchar2(100 char) not null,
    algorithm_desc   varchar2(50 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -467,7 +468,7 @@ create table mssql_security_groups (
    localgroupname   varchar2(50 char) not null,
    permission_name  varchar2(100 char) not null,
    state_desc       varchar2(50 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -507,7 +508,7 @@ create table mssql_security_guestconnect (
    db_name          varchar2(50 char) not null,
    permission_name  varchar2(50 char) not null,
    state_desc       varchar2(50 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -610,7 +611,7 @@ create table mssql_security_orphanedusers (
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
    user_name        varchar2(100 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -648,7 +649,7 @@ create table mssql_sec_pubperm (
    username         varchar2(100 char) not null,
    permission_name  varchar2(100 char) not null,
    state_desc       varchar2(50 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -690,7 +691,7 @@ create table mssql_security_registryinfo (
    servername       varchar2(50 char) not null,
    name             varchar2(100 char) not null,
    value            number(10) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -1372,7 +1373,7 @@ comment on column oracle_jdbc_tns.standby_hst is 'Host name of the standby datab
 create table oracle_lms (
    grouping_id      number(1),                     -- 0=détail par PDB, 1=agrégé toutes PDBs
    con_id           number(5),                     -- PDB container ID (DBA_FEATURE_USAGE_STATISTICS)
-   db_pdb_name      varchar2(50 char) not null,
+   db_pdb_name      varchar2(50 char),             -- Nullable in non-CDBs, populated in CDBs with PDB name
    product_name     varchar2(150 char) not null,
    usage_detected   varchar2(100 char) not null,
    last_sample_date varchar2(20 char),             -- format YYYYMMDD produit par oracle_lms.sql
@@ -1900,22 +1901,27 @@ comment on column oracle_users.db_name is 'Name of the database.';
 -- product_support
 -- ============================================================
 create table product_support (
-   type                varchar2(15 char) not null,
-   version             varchar2(100 char) not null,
+   product_type                varchar2(15 char) not null,
+   product_version             varchar2(100 char) not null,
+   current_patch_level varchar2(100 char),
+   current_patch_date  date,
    commercial_name     varchar2(100 char) not null,
    display_name        varchar2(30 char) not null,
    end_of_support_date date not null,
-   constraint pk_product_support primary key ( type,
-                                               version )
+   end_of_ext_support_date date,
+   constraint pk_product_support primary key ( product_type,
+                                               product_version )
 );
 
 comment on table product_support is 'Reference table of vendor product end-of-support (EOL/EOSL) dates, used for lifecycle compliance checks.';
-comment on column product_support.type is 'Product family (e.g. ORACLE, MSSQL, POSTGRES, OS).';
-comment on column product_support.version is 'Product version this end-of-support date applies to.';
+comment on column product_support.product_type is 'Product family (e.g. ORACLE, MSSQL, POSTGRES, OS).';
+comment on column product_support.product_version is 'Product version this end-of-support date applies to.';
 comment on column product_support.commercial_name is 'Commercial name of the product version.';
 comment on column product_support.display_name is 'Short display name used in reports/dashboards.';
 comment on column product_support.end_of_support_date is 'Date on which the vendor ends support for this product version.';
-comment on column product_support.version is 'Product version this end-of-support date applies to.';
+comment on column product_support.end_of_ext_support_date is 'Date on which the vendor ends extended support for this product version.';
+comment on column product_support.current_patch_level is 'Current patch level for the product version.';
+comment on column product_support.current_patch_date is 'Date of the current patch level.';
 
 
 -- ============================================================
@@ -2050,7 +2056,7 @@ create table postgres_security_parameter (
    hostname         varchar2(100 char) not null,
    parameter_name   varchar2(100 char) not null,
    parameter_value  varchar2(500 char),
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -2075,7 +2081,7 @@ create table postgres_security_roles (
    rolbypassrls     varchar2(1 char) not null,
    rolconnlimit     number(10),
    rolvaliduntil    varchar2(30 char),
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -2102,7 +2108,7 @@ create table postgres_sec_role_members (
    hostname         varchar2(100 char) not null,
    role_name        varchar2(100 char) not null,
    member_of        varchar2(100 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -2124,7 +2130,7 @@ create table postgres_security_hba_rules (
    user_name        varchar2(200 char),
    address          varchar2(100 char),
    auth_method      varchar2(30 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -2148,7 +2154,7 @@ create table postgres_sec_db_privs (
    datname          varchar2(100 char) not null,
    grantee          varchar2(100 char) not null,
    privilege_type   varchar2(30 char) not null,
-   compliance_score number(2) default 0 not null,
+   compliance_score number(3) default 0,
    date_value       timestamp default on null systimestamp not null
 );
 
@@ -2249,3 +2255,131 @@ comment on column scoring_activity_list.status_color is 'Color used to represent
 comment on column scoring_activity_list.scoring_label is 'Display label of the scoring activity on the dashboard.';
 comment on column scoring_activity_list.details_apex_page_number is 'APEX page number linked from the dashboard for the detail view.';
 comment on column scoring_activity_list.scoring_order is 'Display order of the scoring activity on the dashboard.';
+
+-- ============================================================
+-- environments
+-- ============================================================
+create table environments (
+   envt_short_code   varchar2(3 char) not null,
+   environment       varchar2(12 char) not null,
+   constraint pk_environments primary key ( envt_short_code )
+);
+
+comment on table environments is 'List of environments used in the system.';
+comment on column environments.envt_short_code is 'Short code representing the environment (PK)';
+comment on column environments.environment is 'Full name of the environment.';
+
+-- ============================================================
+-- oracle_discovery_list
+-- ============================================================
+create table oracle_discovery_list (
+   server_name       varchar2(100 char) not null,
+   instance_name     varchar2(100 char) not null,
+   port              number(5),
+   envt_short_code   varchar2(3 char) not null,
+   license_type      varchar2(30 char) not null,
+   collect_active    number(1) default 0 not null,
+   discovery_date    timestamp default systimestamp,
+   last_update       timestamp default on null systimestamp not null,
+   constraint pk_oracle_discovery_list primary key ( instance_name )
+);
+
+comment on table oracle_discovery_list is 'List of Oracle instances discovered by the discovery script.';
+comment on column oracle_discovery_list.server_name is 'Name of the server hosting the Oracle instance.';
+comment on column oracle_discovery_list.instance_name is 'Name of the Oracle instance';
+comment on column oracle_discovery_list.port is 'TCP port the instance listens on.';
+comment on column oracle_discovery_list.envt_short_code is 'Environment the row applies to (e.g. PRD, DEV, TST).';
+comment on column oracle_discovery_list.license_type is 'Licensing type applied to this host/instance.';
+comment on column oracle_discovery_list.collect_active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
+comment on column oracle_discovery_list.discovery_date is 'Timestamp at which this row was discovered.';
+comment on column oracle_discovery_list.last_update is 'Timestamp at which this row was last updated.';
+
+-- ============================================================
+-- mssql_discovery_list
+-- ============================================================
+create table mssql_discovery_list (
+   server_name       varchar2(100 char) not null,
+   instance_name     varchar2(100 char) not null,
+   port              number(5),
+   envt_short_code   varchar2(3 char) not null,
+   license_type      varchar2(30 char) not null,
+   collect_active    number(1) default 0 not null,
+   discovery_date    timestamp default systimestamp,
+   last_update       timestamp default on null systimestamp not null,
+   constraint pk_mssql_discovery_list primary key ( instance_name )
+);
+
+comment on table mssql_discovery_list is 'List of MSSQL instances discovered by the discovery script.';
+comment on column mssql_discovery_list.server_name is 'Name of the server hosting the MSSQL instance.';
+comment on column mssql_discovery_list.instance_name is 'Name of the MSSQL instance';
+comment on column mssql_discovery_list.port is 'TCP port the instance listens on.';
+comment on column mssql_discovery_list.envt_short_code is 'Environment the row applies to (e.g. PRD, DEV, TST).';
+comment on column mssql_discovery_list.license_type is 'Licensing type applied to this host/instance.';
+comment on column mssql_discovery_list.collect_active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
+comment on column mssql_discovery_list.discovery_date is 'Timestamp at which this row was discovered.';
+comment on column mssql_discovery_list.last_update is 'Timestamp at which this row was last updated.';
+
+-- ============================================================
+-- postgres_discovery_list
+-- ============================================================
+create table postgres_discovery_list (
+   server_name       varchar2(100 char) not null,
+   instance_name     varchar2(100 char) not null,
+   port              number(5),
+   envt_short_code   varchar2(3 char) not null,
+   license_type      varchar2(30 char) not null,
+   collect_active    number(1) default 0 not null,
+   discovery_date    timestamp default systimestamp,
+   last_update       timestamp default on null systimestamp not null,
+   constraint pk_postgres_discovery_list primary key ( instance_name )
+);
+
+comment on table postgres_discovery_list is 'List of PostgreSQL instances discovered by the discovery script.';
+comment on column postgres_discovery_list.server_name is 'Name of the server hosting the PostgreSQL instance.';
+comment on column postgres_discovery_list.instance_name is 'Name of the PostgreSQL instance';
+comment on column postgres_discovery_list.port is 'TCP port the instance listens on.';
+comment on column postgres_discovery_list.envt_short_code is 'Environment the row applies to (e.g. PRD, DEV, TST).';
+comment on column postgres_discovery_list.license_type is 'Licensing type applied to this host/instance.';
+comment on column postgres_discovery_list.collect_active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
+comment on column postgres_discovery_list.discovery_date is 'Timestamp at which this row was discovered.';
+comment on column postgres_discovery_list.last_update is 'Timestamp at which this row was last updated.';
+
+-- ============================================================
+-- mysql_discovery_list
+-- ============================================================
+create table mysql_discovery_list (
+   server_name       varchar2(100 char) not null,
+   instance_name     varchar2(100 char) not null,
+   port              number(5),
+   envt_short_code   varchar2(3 char) not null,
+   license_type      varchar2(30 char) not null,
+   collect_active    number(1) default 0 not null,
+   discovery_date    timestamp default systimestamp,
+   last_update       timestamp default on null systimestamp not null,
+   constraint pk_mysql_discovery_list primary key ( instance_name )
+);
+
+comment on table mysql_discovery_list is 'List of MySQL instances discovered by the discovery script.';
+comment on column mysql_discovery_list.server_name is 'Name of the server hosting the MySQL instance.';
+comment on column mysql_discovery_list.instance_name is 'Name of the MySQL instance';
+comment on column mysql_discovery_list.port is 'TCP port the instance listens on.';
+comment on column mysql_discovery_list.envt_short_code is 'Environment the row applies to (e.g. PRD, DEV, TST).';
+comment on column mysql_discovery_list.license_type is 'Licensing type applied to this host/instance.';
+comment on column mysql_discovery_list.collect_active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
+comment on column mysql_discovery_list.discovery_date is 'Timestamp at which this row was discovered.';
+comment on column mysql_discovery_list.last_update is 'Timestamp at which this row was last updated.';
+
+-- ============================================================
+-- licence_types
+-- ============================================================
+create table licence_types (
+   license_type varchar2(30 char) not null,
+   description  varchar2(256 char),
+   scoring_impact number(3) default 0 not null,
+   constraint pk_licence_types primary key ( license_type )
+);
+
+comment on table licence_types is 'Reference list of license types and their impact on scoring/compliance.';
+comment on column licence_types.license_type is 'Unique identifier of the license type.';
+comment on column licence_types.description is 'Description of the license type.';
+comment on column licence_types.scoring_impact is 'Impact of the license type on scoring/compliance (0 = no impact, higher = more impact).';

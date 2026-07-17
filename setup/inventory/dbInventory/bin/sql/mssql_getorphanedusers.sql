@@ -7,9 +7,9 @@ WHERE sid NOT IN (SELECT sid FROM sys.server_principals)
     AND DATALENGTH(sid) <= 28
     AND name <>''MS_DataCollectorInternalUser'')
 SELECT
- CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@servername),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
- CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),db_name()),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
- CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),name),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@servername),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),db_name()),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),name),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)
 FROM sys.database_principals
 WHERE sid NOT IN (
         SELECT sid
@@ -20,6 +20,6 @@ WHERE sid NOT IN (
     AND DATALENGTH(sid) <= 28
     AND name <>''MS_DataCollectorInternalUser''
 ELSE SELECT
- CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@Servername),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
- CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),db_name()),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@Servername),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),db_name()),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
  CHAR(34)+''NoOrphanedUser''+CHAR(34)'

@@ -24,14 +24,14 @@ IF EXISTS
  )
 BEGIN
  SELECT DISTINCT
-  '"'+REPLACE(ISNULL(CONVERT(varchar(128),@@SERVERNAME),''),'"','""')+'"'+','+
-  '"'+REPLACE(ISNULL(CONVERT(varchar(128),l.name),''),'"','""')+'"'+','+
-  '"'+REPLACE(ISNULL(CONVERT(varchar(60),l.type_desc),''),'"','""')+'"'+','+
-  '"'+REPLACE(ISNULL(CONVERT(varchar(10),l.is_disabled),''),'"','""')+'"'+','+
+  '"'+REPLACE(ISNULL(CONVERT(varchar(128),@@SERVERNAME),'') COLLATE DATABASE_DEFAULT,'"','""')+'"'+','+
+  '"'+REPLACE(ISNULL(CONVERT(varchar(128),l.name),'') COLLATE DATABASE_DEFAULT,'"','""')+'"'+','+
+  '"'+REPLACE(ISNULL(CONVERT(varchar(60),l.type_desc),'') COLLATE DATABASE_DEFAULT,'"','""')+'"'+','+
+  '"'+REPLACE(ISNULL(CONVERT(varchar(10),l.is_disabled),'') COLLATE DATABASE_DEFAULT,'"','""')+'"'+','+
   '"'+REPLACE(ISNULL(u.stat + ' but is user in ' + u.db  +' DB', 'no_db_users'),'"','""')+'"'+','+
   '"'+REPLACE(CASE WHEN p.major_id IS NULL AND r.role_principal_id IS NULL
   THEN 'no_srv_permissions' ELSE 'na' END,'"','""')+'"'+','+
-  '"'+REPLACE(ISNULL(CONVERT(varchar(19),l.modify_date,120),''),'"','""')+'"'+','+
+  '"'+REPLACE(ISNULL(CONVERT(varchar(19),l.modify_date,120),'') COLLATE DATABASE_DEFAULT,'"','""')+'"'+','+
   '"'+REPLACE(CONVERT(varchar(19),getdate(),120),'"','""')+'"'
  FROM sys.server_principals l LEFT JOIN sys.server_permissions p
    ON l.principal_id = p.grantee_principal_id

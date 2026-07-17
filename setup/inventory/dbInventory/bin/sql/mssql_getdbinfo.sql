@@ -5,9 +5,9 @@ SET @ver = SUBSTRING(@ver, 1, CHARINDEX('.', @ver) - 1)
 IF ( @ver < '12' )
 (         select  @sqlstmt = '
       select
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@SERVERNAME),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),d.database_id),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),d.name),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@SERVERNAME),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),d.database_id),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),d.name),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(30),CASE d.state
 When 0 then ''Online''
 When 1 then ''Restoring''
@@ -17,11 +17,11 @@ When 4 then ''Suspect''
 When 5 then ''Emergency''
 When 6 then ''Offline''
 When 7 then ''Copying''
-When 10 then ''Offline_secondary'' END),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+When 10 then ''Offline_secondary'' END),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),CASE d.recovery_model
 When 1 Then ''Full''
 When 2 Then ''Bulk Logged''
-When 3 Then ''Simple'' END),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+When 3 Then ''Simple'' END),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(30),CASE d.compatibility_level
 When 100 then ''SQL 2008''
 When 110 then ''SQL 2012''
@@ -29,14 +29,14 @@ When 120 then ''SQL 2014''
 When 130 then ''SQL 2016''
 When 140 then ''SQL 2017''
 When 150 then ''SQL 2019''
-ELSE ''new unknown-''+CONVERT(varchar(10),compatibility_level) END),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),d.collation_name),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.bkup_dt,120),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.diff_dt,120),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.log_dt,120),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),d.create_date,120),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),isnull(dm.mirroring_role, 0)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),p.name),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ELSE ''new unknown-''+CONVERT(varchar(10),compatibility_level) END),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),d.collation_name),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.bkup_dt,120),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.diff_dt,120),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.log_dt,120),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),d.create_date,120),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),isnull(dm.mirroring_role, 0)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),p.name),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 CHAR(34)+''NOT REPLICATED''+CHAR(34)+'',''+
 CHAR(34)+''N/A''+CHAR(34)
 from master.sys.databases d
@@ -51,9 +51,9 @@ order by 1, 2')
 ELSE
 (         select @sqlstmt = '
            select distinct
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@SERVERNAME),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),d.database_id),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),d.name),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),@@SERVERNAME),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),d.database_id),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),d.name),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(30),CASE d.state
 When 0 then ''Online''
 When 1 then ''Restoring''
@@ -63,11 +63,11 @@ When 4 then ''Suspect''
 When 5 then ''Emergency''
 When 6 then ''Offline''
 When 7 then ''Copying''
-When 10 then ''Offline_secondary'' END),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+When 10 then ''Offline_secondary'' END),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),CASE d.recovery_model
 When 1 Then ''Full''
 When 2 Then ''Bulk Logged''
-When 3 Then ''Simple'' END),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+When 3 Then ''Simple'' END),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(30),CASE d.compatibility_level
 When 100 then ''SQL 2008''
 When 110 then ''SQL 2012''
@@ -75,14 +75,14 @@ When 120 then ''SQL 2014''
 When 130 then ''SQL 2016''
 When 140 then ''SQL 2017''
 When 150 then ''SQL 2019''
-ELSE ''new unknown-''+CONVERT(varchar(10),compatibility_level) END),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),d.collation_name),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.bkup_dt,120),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.diff_dt,120),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.log_dt,120),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),d.create_date,120),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),isnull(dm.mirroring_role, 0)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),p.name),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+ELSE ''new unknown-''+CONVERT(varchar(10),compatibility_level) END),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),d.collation_name),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.bkup_dt,120),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.diff_dt,120),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),b.log_dt,120),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(19),d.create_date,120),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),isnull(dm.mirroring_role, 0)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),p.name),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),
 (
 case
@@ -93,8 +93,8 @@ case
  else
     ''SECONDARY''
  end
-)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),COALESCE(grp.ag_name,''N/A'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)
+)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),COALESCE(grp.ag_name,''N/A'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)
 from master.sys.databases d
  left outer join sys.dm_hadr_database_replica_states  as hdrs on hdrs.database_id = d.database_id
  left outer join sys.dm_hadr_name_id_map as grp on grp.ag_id = hdrs.group_id

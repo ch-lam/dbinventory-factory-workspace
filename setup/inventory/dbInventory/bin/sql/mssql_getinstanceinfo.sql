@@ -24,23 +24,23 @@ EXECUTE master.dbo.xp_instance_regread
             @ServiceAccount OUTPUT,
             N''no_output''
           select
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
           CHAR(34)+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),(SELECT windows_release FROM sys.dm_os_windows_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)')
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),(SELECT windows_release FROM sys.dm_os_windows_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)')
 ELSE
 (         select @sqlstmt = '
             DECLARE @ServiceAccount varchar(100)
@@ -51,24 +51,24 @@ EXECUTE master.dbo.xp_instance_regread
             @ServiceAccount OUTPUT,
             N''no_output''
           select
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),(SELECT nodename FROM sys.dm_os_cluster_nodes ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),(SELECT nodename FROM sys.dm_os_cluster_nodes ORDER BY 1 OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_kb/1024/1024 from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),(SELECT windows_release FROM sys.dm_os_windows_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),(SELECT nodename FROM sys.dm_os_cluster_nodes ORDER BY 1 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),(SELECT nodename FROM sys.dm_os_cluster_nodes ORDER BY 1 OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_kb/1024/1024 from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),(SELECT windows_release FROM sys.dm_os_windows_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
           )
 END
 ELSE
@@ -82,22 +82,22 @@ EXECUTE master.dbo.xp_instance_regread
             @ServiceAccount OUTPUT,
             N''no_output''
           select
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ServerName'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''Edition'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),SERVERPROPERTY(''ProductVersion'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''Collation'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsClustered'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(128),SERVERPROPERTY(''ComputerNamePhysicalNetBIOS'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
           CHAR(34)+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''cost threshold for parallelism'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max degree of parallelism'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''min server memory (MB)'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''max server memory (MB)'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select value from sys.configurations where name = ''xp_cmdshell'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select cpu_count from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
           CHAR(34)+''6.1''+CHAR(34)+'',''+
-	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),''''),CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
+	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
 END
 EXEC (@sqlstmt)

@@ -14,6 +14,26 @@ page 4 (
         formAutoComplete: false
     }
 
+    region breadcrumb-nav (
+        name: DB Inv. - Postgres
+        type: breadcrumb
+        source {
+            breadcrumb: @breadcrumb
+        }
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            breadcrumbTemplate: @/breadcrumb
+            templateOptions: #DEFAULT#
+        }
+    )
+
     region postgres-hosts (
         name: PostgreSQL Hosts
         type: classicReport

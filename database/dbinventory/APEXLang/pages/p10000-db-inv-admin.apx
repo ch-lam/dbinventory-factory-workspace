@@ -25,6 +25,26 @@ page 10000 (
             ```
     }
 
+    region breadcrumb-nav (
+        name: DB Inv. - Administration
+        type: breadcrumb
+        source {
+            breadcrumb: @breadcrumb
+        }
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            breadcrumbTemplate: @/breadcrumb
+            templateOptions: #DEFAULT#
+        }
+    )
+
     region parameters (
         name: Parameters
         type: staticContent

@@ -46,11 +46,11 @@ page 10015 (
                 ```sql
                 select l.id,
                        l.start_timestamp,
-                       a.name automation_name,
+                       a.name as automation_name,
                        l.status,
                        l.successful_row_count,
                        l.error_row_count,
-                       (select count(1) from apex_automation_msg_log m where m.automation_log_id = l.id) msg_count,
+                       (select count(1) from apex_automation_msg_log m where m.automation_log_id = l.id) as msg_count,
                        l.is_job,
                        l.end_timestamp
                   from apex_appl_automations a, apex_automation_log l
@@ -68,6 +68,16 @@ page 10015 (
                 #DEFAULT#
                 t-IRR-region--noBorders
             ]
+        }
+        link {
+            linkColumn: customTarget
+            target: {
+                page: 10016
+                items: {
+                    P10016_LOG_ID: #ID#
+                }
+                clearCache: 10016
+            }
         }
         pagination {
             type: rowRangesXToY
@@ -170,7 +180,7 @@ page 10015 (
         )
 
         column MSG_COUNT (
-            type: link
+            type: plainText
             heading {
                 heading: Message
                 alignment: end
@@ -178,17 +188,6 @@ page 10015 (
             layout {
                 sequence: 7
                 columnAlignment: end
-            }
-            link {
-                target: {
-                    page: 10016
-                    items: {
-                        P10016_LOG_ID: #ID#
-                    }
-                    clearCache: 10016
-                    action: resetPagination
-                }
-                linkText: #MSG_COUNT#
             }
             source {
                 dataType: NUMBER
@@ -320,6 +319,30 @@ page 10015 (
             }
             warnOnUnsavedChanges: doNotCheck
         }
+    )
+
+    dynamicAction refresh-after-messages-dialog (
+        name: Refresh After Messages Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @automations-log
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @automations-log
+            }
+            execution {
+                sequence: 10
+            }
+        )
+
     )
 
 )

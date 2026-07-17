@@ -1,0 +1,224 @@
+page 8 (
+    name: DB Inv. - MSSQL Server
+    alias: DB-INV-MSSQL-SERVER
+    title: DB Inv. - MSSQL Server
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region breadcrumb-nav (
+        name: DB Inv. - MSSQL Server
+        type: breadcrumb
+        source {
+            breadcrumb: @breadcrumb
+        }
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            breadcrumbTemplate: @/breadcrumb
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region server-filter (
+        name: Server Selection
+        type: staticContent
+        layout {
+            sequence: 5
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region mssql-server-identity (
+        name: Server Identity Card
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select 10 as seq, 'Hostname' as attribute, h.hostname as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 20 as seq, 'Environment' as attribute, h.env as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 30 as seq, 'License Type' as attribute, h.license_type as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 40 as seq, 'Install Date' as attribute,
+                       case when h.install_date = 0 then null
+                            else to_char(to_date(to_char(h.install_date), 'YYYYMMDD'), 'DD/MM/YYYY')
+                       end as attr_value
+                  from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 50 as seq, 'Edition' as attribute, h.mssql_edition as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 60 as seq, 'Product Version' as attribute, h.mssql_product_version as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 70 as seq, 'Collation' as attribute, h.collation as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 80 as seq, 'Clustered' as attribute,
+                       case h.is_clustered when 1 then 'Yes' when 0 then 'No' else to_char(h.is_clustered) end as attr_value
+                  from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 90 as seq, 'Active Node' as attribute, h.activenodename as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 100 as seq, 'Cluster Node 1' as attribute, h.clusternode1 as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 110 as seq, 'Cluster Node 2' as attribute, h.clusternode2 as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 120 as seq, 'Cost Threshold for Parallelism' as attribute, to_char(h.parallel_threshold) as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 130 as seq, 'Max Degree of Parallelism' as attribute, to_char(h.max_dop) as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 140 as seq, 'Min Server Memory (MB)' as attribute, to_char(h.min_memory) as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 150 as seq, 'Max Server Memory (MB)' as attribute, to_char(h.max_memory) as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 160 as seq, 'xp_cmdshell Enabled' as attribute,
+                       case h.xp_cmdshell_enabled when 1 then 'Yes' when 0 then 'No' else to_char(h.xp_cmdshell_enabled) end as attr_value
+                  from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 170 as seq, 'OS Type' as attribute, h.os_type as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 180 as seq, 'CPUs' as attribute, to_char(h.num_cpus) as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 190 as seq, 'Memory (GB)' as attribute, to_char(h.memory_gb) as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                union all
+                select 200 as seq, 'Service Account' as attribute, h.service_account as attr_value from mssql_hosts h where h.hostname = :P8_HOSTNAME
+                 order by 1
+                ```
+            pageItemsToSubmit: P8_HOSTNAME
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select a server above to view its identity card.
+        }
+
+        column SEQ (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+        )
+
+        column ATTRIBUTE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Attribute
+            }
+            layout {
+                sequence: 10
+            }
+            comments {
+                comments: Display Label: Attribute. Display in Report: true. Display in Form: false. Format Mask: none. Value Required: false. Read Only: true. Primary Display Column: true. Authorization Scheme: none.
+            }
+        )
+
+        column ATTR_VALUE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Value
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+    )
+
+    pageItem P8_HOSTNAME (
+        type: selectList
+        label {
+            label: Server
+            alignment: left
+        }
+        layout {
+            sequence: 10
+            region: @server-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        lov {
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select hostname,
+                       hostname
+                  from mssql_hosts
+                 order by hostname
+                ```
+            displayNullValue: false
+        }
+        help {
+            helpText: Select the MSSQL host whose identity card is displayed below.
+        }
+    )
+
+    dynamicAction refresh-server-identity (
+        name: Refresh Server Identity
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P8_HOSTNAME
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @mssql-server-identity
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+)

@@ -27,8 +27,8 @@ page 10011 (
             span.hour-label { opacity: 0.5; }
             span.hour-value { display: block; }
             span.hour { background-color: var(--ut-palette-success); color:  var(--ut-palette-success-contrast); }
-            span.hour.is-null { background-color: var(--ut-component-highlight-background-color); color: var(--ut-component-text-default-color); }
-            span.hour.is-over1k { background-color: var(--ut-palette-primary); color:  var(--ut-palette-primary-contrast); }
+            span.hour.n { background-color: var(--ut-component-highlight-background-color); color: var(--ut-component-text-default-color); }
+            span.hour.o { background-color: var(--ut-palette-primary); color:  var(--ut-palette-primary-contrast); }
             ```
     }
     security {
@@ -75,98 +75,50 @@ page 10011 (
             sqlQuery:
                 ```sql
                 select the_user,
-                    '<div class="hour-graph">'||
-                        '<span class="hour'|| case when h00 = 0 then ' is-null' when h00 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 0</span> <span class="hour-value">'|| 
-                        case when h00 > 999 then to_char((h00/1000),'99999999D0') ||'k' else to_char(h00) end ||'</span></span>'||
-                        '<span class="hour'|| case when h01 = 0 then ' is-null' when h01 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 1</span> <span class="hour-value">'|| 
-                        case when h01 > 999 then to_char((h01/1000),'99999999D0') ||'k' else to_char(h01) end ||'</span></span>'||
-                        '<span class="hour'|| case when h02 = 0 then ' is-null' when h02 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 2</span> <span class="hour-value">'|| 
-                        case when h02 > 999 then to_char((h02/1000),'99999999D0') ||'k' else to_char(h02) end ||'</span></span>'||
-                        '<span class="hour'|| case when h03 = 0 then ' is-null' when h03 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 3</span> <span class="hour-value">'|| 
-                        case when h03 > 999 then to_char((h03/1000),'99999999D0') ||'k' else to_char(h03) end ||'</span></span>'||
-                        '<span class="hour'|| case when h04 = 0 then ' is-null' when h04 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 4</span> <span class="hour-value">'|| 
-                        case when h04 > 999 then to_char((h04/1000),'99999999D0') ||'k' else to_char(h04) end ||'</span></span>'||
-                        '<span class="hour'|| case when h05 = 0 then ' is-null' when h05 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 5</span> <span class="hour-value">'|| 
-                        case when h05 > 999 then to_char((h05/1000),'99999999D0') ||'k' else to_char(h05) end ||'</span></span>'||
-                        '<span class="hour'|| case when h06 = 0 then ' is-null' when h06 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 6</span> <span class="hour-value">'|| 
-                        case when h06 > 999 then to_char((h06/1000),'99999999D0') ||'k' else to_char(h06) end ||'</span></span>'||
-                        '<span class="hour'|| case when h07 = 0 then ' is-null' when h07 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 7</span> <span class="hour-value">'|| 
-                        case when h07 > 999 then to_char((h07/1000),'99999999D0') ||'k' else to_char(h07) end ||'</span></span>'||
-                        '<span class="hour'|| case when h08 = 0 then ' is-null' when h08 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 8</span> <span class="hour-value">'|| 
-                        case when h08 > 999 then to_char((h08/1000),'99999999D0') ||'k' else to_char(h08) end ||'</span></span>'||
-                        '<span class="hour'|| case when h09 = 0 then ' is-null' when h09 > 999 then ' is-over1k' end ||'"><span class="hour-label"> 9</span> <span class="hour-value">'|| 
-                        case when h09 > 999 then to_char((h09/1000),'99999999D0') ||'k' else to_char(h09) end ||'</span></span>'||
-                        '<span class="hour'|| case when h10 = 0 then ' is-null' when h10 > 999 then ' is-over1k' end ||'"><span class="hour-label">10</span> <span class="hour-value">'|| 
-                        case when h10 > 999 then to_char((h10/1000),'99999999D0') ||'k' else to_char(h10) end ||'</span></span>'||
-                        '<span class="hour'|| case when h11 = 0 then ' is-null' when h11 > 999 then ' is-over1k' end ||'"><span class="hour-label">11</span> <span class="hour-value">'|| 
-                        case when h11 > 999 then to_char((h11/1000),'99999999D0') ||'k' else to_char(h11) end ||'</span></span>'||
-                        '<span class="hour'|| case when h12 = 0 then ' is-null' when h12 > 999 then ' is-over1k' end ||'"><span class="hour-label">12</span> <span class="hour-value">'|| 
-                        case when h12 > 999 then to_char((h12/1000),'99999999D0') ||'k' else to_char(h12) end ||'</span></span>'||
-                        '<span class="hour'|| case when h13 = 0 then ' is-null' when h13 > 999 then ' is-over1k' end ||'"><span class="hour-label">13</span> <span class="hour-value">'|| 
-                        case when h13 > 999 then to_char((h13/1000),'99999999D0') ||'k' else to_char(h13) end ||'</span></span>'||
-                        '<span class="hour'|| case when h14 = 0 then ' is-null' when h14 > 999 then ' is-over1k' end ||'"><span class="hour-label">14</span> <span class="hour-value">'|| 
-                        case when h14 > 999 then to_char((h14/1000),'99999999D0') ||'k' else to_char(h14) end ||'</span></span>'||
-                        '<span class="hour'|| case when h15 = 0 then ' is-null' when h15 > 999 then ' is-over1k' end ||'"><span class="hour-label">15</span> <span class="hour-value">'|| 
-                        case when h15 > 999 then to_char((h15/1000),'99999999D0') ||'k' else to_char(h15) end ||'</span></span>'||
-                        '<span class="hour'|| case when h16 = 0 then ' is-null' when h16 > 999 then ' is-over1k' end ||'"><span class="hour-label">16</span> <span class="hour-value">'|| 
-                        case when h16 > 999 then to_char((h16/1000),'99999999D0') ||'k' else to_char(h16) end ||'</span></span>'||
-                        '<span class="hour'|| case when h17 = 0 then ' is-null' when h17 > 999 then ' is-over1k' end ||'"><span class="hour-label">17</span> <span class="hour-value">'|| 
-                        case when h17 > 999 then to_char((h17/1000),'99999999D0') ||'k' else to_char(h17) end ||'</span></span>'||
-                        '<span class="hour'|| case when h18 = 0 then ' is-null' when h18 > 999 then ' is-over1k' end ||'"><span class="hour-label">18</span> <span class="hour-value">'|| 
-                        case when h18 > 999 then to_char((h18/1000),'99999999D0') ||'k' else to_char(h18) end ||'</span></span>'||
-                        '<span class="hour'|| case when h19 = 0 then ' is-null' when h19 > 999 then ' is-over1k' end ||'"><span class="hour-label">19</span> <span class="hour-value">'|| 
-                        case when h19 > 999 then to_char((h19/1000),'99999999D0') ||'k' else to_char(h19) end ||'</span></span>'||
-                        '<span class="hour'|| case when h20 = 0 then ' is-null' when h20 > 999 then ' is-over1k' end ||'"><span class="hour-label">20</span> <span class="hour-value">'|| 
-                        case when h20 > 999 then to_char((h20/1000),'99999999D0') ||'k' else to_char(h20) end ||'</span></span>'||
-                        '<span class="hour'|| case when h21 = 0 then ' is-null' when h21 > 999 then ' is-over1k' end ||'"><span class="hour-label">21</span> <span class="hour-value">'|| 
-                        case when h21 > 999 then to_char((h21/1000),'99999999D0') ||'k' else to_char(h21) end ||'</span></span>'||
-                        '<span class="hour'|| case when h22 = 0 then ' is-null' when h22 > 999 then ' is-over1k' end ||'"><span class="hour-label">22</span> <span class="hour-value">'|| 
-                        case when h22 > 999 then to_char((h22/1000),'99999999D0') ||'k' else to_char(h22) end ||'</span></span>'||
-                        '<span class="hour'|| case when h23 = 0 then ' is-null' when h23 > 999 then ' is-over1k' end ||'"><span class="hour-label">23</span> <span class="hour-value">'|| 
-                        case when h23 > 999 then to_char((h23/1000),'99999999D0') ||'k' else to_char(h23) end ||'</span></span>'||
-                        '</div>' hours,
+                        case when h00=0 then 'n' when h00>999 then 'o' end as c00,h00 as v00,
+                        case when h01=0 then 'n' when h01>999 then 'o' end as c01,h01 as v01,
+                        case when h02=0 then 'n' when h02>999 then 'o' end as c02,h02 as v02,
+                        case when h03=0 then 'n' when h03>999 then 'o' end as c03,h03 as v03,
+                        case when h04=0 then 'n' when h04>999 then 'o' end as c04,h04 as v04,
+                        case when h05=0 then 'n' when h05>999 then 'o' end as c05,h05 as v05,
+                        case when h06=0 then 'n' when h06>999 then 'o' end as c06,h06 as v06,
+                        case when h07=0 then 'n' when h07>999 then 'o' end as c07,h07 as v07,
+                        case when h08=0 then 'n' when h08>999 then 'o' end as c08,h08 as v08,
+                        case when h09=0 then 'n' when h09>999 then 'o' end as c09,h09 as v09,
+                        case when h10=0 then 'n' when h10>999 then 'o' end as c10,h10 as v10,
+                        case when h11=0 then 'n' when h11>999 then 'o' end as c11,h11 as v11,
+                        case when h12=0 then 'n' when h12>999 then 'o' end as c12,h12 as v12,
+                        case when h13=0 then 'n' when h13>999 then 'o' end as c13,h13 as v13,
+                        case when h14=0 then 'n' when h14>999 then 'o' end as c14,h14 as v14,
+                        case when h15=0 then 'n' when h15>999 then 'o' end as c15,h15 as v15,
+                        case when h16=0 then 'n' when h16>999 then 'o' end as c16,h16 as v16,
+                        case when h17=0 then 'n' when h17>999 then 'o' end as c17,h17 as v17,
+                        case when h18=0 then 'n' when h18>999 then 'o' end as c18,h18 as v18,
+                        case when h19=0 then 'n' when h19>999 then 'o' end as c19,h19 as v19,
+                        case when h20=0 then 'n' when h20>999 then 'o' end as c20,h20 as v20,
+                        case when h21=0 then 'n' when h21>999 then 'o' end as c21,h21 as v21,
+                        case when h22=0 then 'n' when h22>999 then 'o' end as c22,h22 as v22,
+                        case when h23=0 then 'n' when h23>999 then 'o' end as c23,h23 as v23,
+                        null as hours,
                         page_events,
                     median_elapsed,
                     rows_fetched,
                     ir_searches,
                     errors,
                     most_recent
-                    from (  
-                    select userid_lc                    as the_user,
-                        count(*)                        as page_events,
-                        median(elap)                    as median_elapsed,
-                        sum(num_rows)                   as rows_fetched,
-                        sum(decode(ir_search,null,0,1)) as ir_searches,
-                        sum(decode(sqlerrm,null,0,1))   as errors,
-                        max(time_stamp)                 as most_recent,
-                        sum(decode(to_char(time_stamp,'HH24'),0,1,0)) h00,
-                        sum(decode(to_char(time_stamp,'HH24'),1,1,0)) h01,
-                        sum(decode(to_char(time_stamp,'HH24'),2,1,0)) h02,
-                        sum(decode(to_char(time_stamp,'HH24'),3,1,0)) h03,
-                        sum(decode(to_char(time_stamp,'HH24'),4,1,0)) h04,
-                        sum(decode(to_char(time_stamp,'HH24'),5,1,0)) h05,
-                        sum(decode(to_char(time_stamp,'HH24'),6,1,0)) h06,
-                        sum(decode(to_char(time_stamp,'HH24'),7,1,0)) h07,
-                        sum(decode(to_char(time_stamp,'HH24'),8,1,0)) h08,
-                        sum(decode(to_char(time_stamp,'HH24'),9,1,0)) h09,
-                        sum(decode(to_char(time_stamp,'HH24'),10,1,0)) h10,
-                        sum(decode(to_char(time_stamp,'HH24'),11,1,0)) h11,
-                        sum(decode(to_char(time_stamp,'HH24'),12,1,0)) h12,
-                        sum(decode(to_char(time_stamp,'HH24'),13,1,0)) h13,
-                        sum(decode(to_char(time_stamp,'HH24'),14,1,0)) h14,
-                        sum(decode(to_char(time_stamp,'HH24'),15,1,0)) h15,
-                        sum(decode(to_char(time_stamp,'HH24'),16,1,0)) h16,
-                        sum(decode(to_char(time_stamp,'HH24'),17,1,0)) h17,
-                        sum(decode(to_char(time_stamp,'HH24'),18,1,0)) h18,
-                        sum(decode(to_char(time_stamp,'HH24'),19,1,0)) h19,
-                        sum(decode(to_char(time_stamp,'HH24'),20,1,0)) h20,
-                        sum(decode(to_char(time_stamp,'HH24'),21,1,0)) h21,
-                        sum(decode(to_char(time_stamp,'HH24'),22,1,0)) h22,
-                        sum(decode(to_char(time_stamp,'HH24'),23,1,0)) h23
-                    from apex_activity_log l
-                    where flow_id = :APP_ID
-                        and time_stamp >= sysdate - ( 1/24/60/60 * :P10011_TIMEFRAME )
-                        and userid is not null
+                    from (
+                    select userid_lc as the_user, count(*) as page_events, median(elap) as median_elapsed,
+                        sum(num_rows) as rows_fetched, sum(decode(ir_search,null,0,1)) as ir_searches,
+                        sum(decode(sqlerrm,null,0,1)) as errors, max(time_stamp) as most_recent,
+                        sum(decode(hh,0,1,0)) h00,sum(decode(hh,1,1,0)) h01,sum(decode(hh,2,1,0)) h02,sum(decode(hh,3,1,0)) h03,sum(decode(hh,4,1,0)) h04,sum(decode(hh,5,1,0)) h05,sum(decode(hh,6,1,0)) h06,sum(decode(hh,7,1,0)) h07,sum(decode(hh,8,1,0)) h08,sum(decode(hh,9,1,0)) h09,sum(decode(hh,10,1,0)) h10,sum(decode(hh,11,1,0)) h11,sum(decode(hh,12,1,0)) h12,sum(decode(hh,13,1,0)) h13,sum(decode(hh,14,1,0)) h14,sum(decode(hh,15,1,0)) h15,sum(decode(hh,16,1,0)) h16,sum(decode(hh,17,1,0)) h17,sum(decode(hh,18,1,0)) h18,sum(decode(hh,19,1,0)) h19,sum(decode(hh,20,1,0)) h20,sum(decode(hh,21,1,0)) h21,sum(decode(hh,22,1,0)) h22,sum(decode(hh,23,1,0)) h23
+                    from (
+                        select userid_lc, time_stamp, ir_search, sqlerrm, num_rows, elap,
+                               to_char(time_stamp,'HH24') hh
+                          from apex_activity_log
+                         where flow_id = :APP_ID
+                           and time_stamp >= sysdate - ( 1/24/60/60 * :P10011_TIMEFRAME )
+                           and userid is not null
+                    )
                     group by userid_lc) x
                 ```
             pageItemsToSubmit: P10011_TIMEFRAME
@@ -227,7 +179,6 @@ page 10011 (
         )
 
         column HOURS (
-            type: plainText
             heading {
                 heading: Activity by Hour
             }
@@ -240,8 +191,36 @@ page 10011 (
             advanced {
                 endUserAlias: B
             }
-            security {
-                escapeSpecialChars: false
+            columnFormatting {
+                htmlExpression:
+                    ```html
+                    <div class="hour-graph">
+                    <span class="hour #C00#"><span class="hour-label"> 0</span> <span class="hour-value">#V00#</span></span>
+                    <span class="hour #C01#"><span class="hour-label"> 1</span> <span class="hour-value">#V01#</span></span>
+                    <span class="hour #C02#"><span class="hour-label"> 2</span> <span class="hour-value">#V02#</span></span>
+                    <span class="hour #C03#"><span class="hour-label"> 3</span> <span class="hour-value">#V03#</span></span>
+                    <span class="hour #C04#"><span class="hour-label"> 4</span> <span class="hour-value">#V04#</span></span>
+                    <span class="hour #C05#"><span class="hour-label"> 5</span> <span class="hour-value">#V05#</span></span>
+                    <span class="hour #C06#"><span class="hour-label"> 6</span> <span class="hour-value">#V06#</span></span>
+                    <span class="hour #C07#"><span class="hour-label"> 7</span> <span class="hour-value">#V07#</span></span>
+                    <span class="hour #C08#"><span class="hour-label"> 8</span> <span class="hour-value">#V08#</span></span>
+                    <span class="hour #C09#"><span class="hour-label"> 9</span> <span class="hour-value">#V09#</span></span>
+                    <span class="hour #C10#"><span class="hour-label">10</span> <span class="hour-value">#V10#</span></span>
+                    <span class="hour #C11#"><span class="hour-label">11</span> <span class="hour-value">#V11#</span></span>
+                    <span class="hour #C12#"><span class="hour-label">12</span> <span class="hour-value">#V12#</span></span>
+                    <span class="hour #C13#"><span class="hour-label">13</span> <span class="hour-value">#V13#</span></span>
+                    <span class="hour #C14#"><span class="hour-label">14</span> <span class="hour-value">#V14#</span></span>
+                    <span class="hour #C15#"><span class="hour-label">15</span> <span class="hour-value">#V15#</span></span>
+                    <span class="hour #C16#"><span class="hour-label">16</span> <span class="hour-value">#V16#</span></span>
+                    <span class="hour #C17#"><span class="hour-label">17</span> <span class="hour-value">#V17#</span></span>
+                    <span class="hour #C18#"><span class="hour-label">18</span> <span class="hour-value">#V18#</span></span>
+                    <span class="hour #C19#"><span class="hour-label">19</span> <span class="hour-value">#V19#</span></span>
+                    <span class="hour #C20#"><span class="hour-label">20</span> <span class="hour-value">#V20#</span></span>
+                    <span class="hour #C21#"><span class="hour-label">21</span> <span class="hour-value">#V21#</span></span>
+                    <span class="hour #C22#"><span class="hour-label">22</span> <span class="hour-value">#V22#</span></span>
+                    <span class="hour #C23#"><span class="hour-label">23</span> <span class="hour-value">#V23#</span></span>
+                    </div>
+                    ```
             }
         )
 
@@ -364,6 +343,630 @@ page 10011 (
             }
         )
 
+        column C00 (
+            type: hidden
+            heading {
+                heading: Hour 00 Class
+            }
+            layout {
+                sequence: 100
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V00 (
+            type: hidden
+            heading {
+                heading: Hour 00 Value
+            }
+            layout {
+                sequence: 110
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C01 (
+            type: hidden
+            heading {
+                heading: Hour 01 Class
+            }
+            layout {
+                sequence: 120
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V01 (
+            type: hidden
+            heading {
+                heading: Hour 01 Value
+            }
+            layout {
+                sequence: 130
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C02 (
+            type: hidden
+            heading {
+                heading: Hour 02 Class
+            }
+            layout {
+                sequence: 140
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V02 (
+            type: hidden
+            heading {
+                heading: Hour 02 Value
+            }
+            layout {
+                sequence: 150
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C03 (
+            type: hidden
+            heading {
+                heading: Hour 03 Class
+            }
+            layout {
+                sequence: 160
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V03 (
+            type: hidden
+            heading {
+                heading: Hour 03 Value
+            }
+            layout {
+                sequence: 170
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C04 (
+            type: hidden
+            heading {
+                heading: Hour 04 Class
+            }
+            layout {
+                sequence: 180
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V04 (
+            type: hidden
+            heading {
+                heading: Hour 04 Value
+            }
+            layout {
+                sequence: 190
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C05 (
+            type: hidden
+            heading {
+                heading: Hour 05 Class
+            }
+            layout {
+                sequence: 200
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V05 (
+            type: hidden
+            heading {
+                heading: Hour 05 Value
+            }
+            layout {
+                sequence: 210
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C06 (
+            type: hidden
+            heading {
+                heading: Hour 06 Class
+            }
+            layout {
+                sequence: 220
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V06 (
+            type: hidden
+            heading {
+                heading: Hour 06 Value
+            }
+            layout {
+                sequence: 230
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C07 (
+            type: hidden
+            heading {
+                heading: Hour 07 Class
+            }
+            layout {
+                sequence: 240
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V07 (
+            type: hidden
+            heading {
+                heading: Hour 07 Value
+            }
+            layout {
+                sequence: 250
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C08 (
+            type: hidden
+            heading {
+                heading: Hour 08 Class
+            }
+            layout {
+                sequence: 260
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V08 (
+            type: hidden
+            heading {
+                heading: Hour 08 Value
+            }
+            layout {
+                sequence: 270
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C09 (
+            type: hidden
+            heading {
+                heading: Hour 09 Class
+            }
+            layout {
+                sequence: 280
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V09 (
+            type: hidden
+            heading {
+                heading: Hour 09 Value
+            }
+            layout {
+                sequence: 290
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C10 (
+            type: hidden
+            heading {
+                heading: Hour 10 Class
+            }
+            layout {
+                sequence: 300
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V10 (
+            type: hidden
+            heading {
+                heading: Hour 10 Value
+            }
+            layout {
+                sequence: 310
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C11 (
+            type: hidden
+            heading {
+                heading: Hour 11 Class
+            }
+            layout {
+                sequence: 320
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V11 (
+            type: hidden
+            heading {
+                heading: Hour 11 Value
+            }
+            layout {
+                sequence: 330
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C12 (
+            type: hidden
+            heading {
+                heading: Hour 12 Class
+            }
+            layout {
+                sequence: 340
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V12 (
+            type: hidden
+            heading {
+                heading: Hour 12 Value
+            }
+            layout {
+                sequence: 350
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C13 (
+            type: hidden
+            heading {
+                heading: Hour 13 Class
+            }
+            layout {
+                sequence: 360
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V13 (
+            type: hidden
+            heading {
+                heading: Hour 13 Value
+            }
+            layout {
+                sequence: 370
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C14 (
+            type: hidden
+            heading {
+                heading: Hour 14 Class
+            }
+            layout {
+                sequence: 380
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V14 (
+            type: hidden
+            heading {
+                heading: Hour 14 Value
+            }
+            layout {
+                sequence: 390
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C15 (
+            type: hidden
+            heading {
+                heading: Hour 15 Class
+            }
+            layout {
+                sequence: 400
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V15 (
+            type: hidden
+            heading {
+                heading: Hour 15 Value
+            }
+            layout {
+                sequence: 410
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C16 (
+            type: hidden
+            heading {
+                heading: Hour 16 Class
+            }
+            layout {
+                sequence: 420
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V16 (
+            type: hidden
+            heading {
+                heading: Hour 16 Value
+            }
+            layout {
+                sequence: 430
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C17 (
+            type: hidden
+            heading {
+                heading: Hour 17 Class
+            }
+            layout {
+                sequence: 440
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V17 (
+            type: hidden
+            heading {
+                heading: Hour 17 Value
+            }
+            layout {
+                sequence: 450
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C18 (
+            type: hidden
+            heading {
+                heading: Hour 18 Class
+            }
+            layout {
+                sequence: 460
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V18 (
+            type: hidden
+            heading {
+                heading: Hour 18 Value
+            }
+            layout {
+                sequence: 470
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C19 (
+            type: hidden
+            heading {
+                heading: Hour 19 Class
+            }
+            layout {
+                sequence: 480
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V19 (
+            type: hidden
+            heading {
+                heading: Hour 19 Value
+            }
+            layout {
+                sequence: 490
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C20 (
+            type: hidden
+            heading {
+                heading: Hour 20 Class
+            }
+            layout {
+                sequence: 500
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V20 (
+            type: hidden
+            heading {
+                heading: Hour 20 Value
+            }
+            layout {
+                sequence: 510
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C21 (
+            type: hidden
+            heading {
+                heading: Hour 21 Class
+            }
+            layout {
+                sequence: 520
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V21 (
+            type: hidden
+            heading {
+                heading: Hour 21 Value
+            }
+            layout {
+                sequence: 530
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C22 (
+            type: hidden
+            heading {
+                heading: Hour 22 Class
+            }
+            layout {
+                sequence: 540
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V22 (
+            type: hidden
+            heading {
+                heading: Hour 22 Value
+            }
+            layout {
+                sequence: 550
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column C23 (
+            type: hidden
+            heading {
+                heading: Hour 23 Class
+            }
+            layout {
+                sequence: 560
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
+        column V23 (
+            type: hidden
+            heading {
+                heading: Hour 23 Value
+            }
+            layout {
+                sequence: 570
+            }
+            source {
+                dataType: STRING
+            }
+        )
+
         page {
             borderWidth: 0.5
             borderColor: #666666
@@ -425,50 +1028,17 @@ page 10011 (
                 t-Region--hiddenOverflow
             ]
         }
-        serverSideCondition {
-            type: item=value
-            item: P10011_VIEW_AS
-            value: CHART
-        }
         chart {
             type: donut
         }
         chartLayout {
             height: 600
         }
-        value {
-            pieChartOtherThreshold: 0.02
-            format: decimal
-            decimalPlaces: 0
-        }
         animation {
             onDisplay: none
         }
         legend {
             show: false
-        }
-        componentAdvanced {
-            initJavaScriptFunction:
-                ```javascript-browser
-                function( options ){ 
-                
-                    this.pieSliceLabel = function(dataContext) {
-                        var series_name,
-                            percent = Math.round(dataContext.value/dataContext.totalValue*100);
-                        
-                        if ( dataContext.seriesData ) {
-                            series_name = dataContext.seriesData.name;
-                        } else {
-                            series_name = 'Other';
-                        }
-                        return series_name + " " + percent + "% ( " + dataContext.value + " )";
-                    }
-                    
-                    // Set chart initialization options 
-                    options.dataLabel = pieSliceLabel; 
-                    return options; 
-                }
-                ```
         }
 
         series series (
@@ -534,6 +1104,9 @@ page 10011 (
             type: static
             staticValue: 900
         }
+        help {
+            helpText: Limits the report and chart to activity within the selected timeframe.
+        }
     )
 
     pageItem P10011_VIEW_AS (
@@ -544,7 +1117,6 @@ page 10011 (
         }
         settings {
             noOfCols: 2
-            pageActionOnSelection: submitPage
         }
         lov {
             type: sharedComponent
@@ -572,9 +1144,6 @@ page 10011 (
         default {
             type: static
             staticValue: REPORT
-        }
-        security {
-            escapeSpecialChars: false
         }
     )
 
@@ -633,6 +1202,69 @@ page 10011 (
             execution {
                 sequence: 30
                 fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction submit-view-as (
+        name: Submit View As
+        execution {
+            sequence: 20
+        }
+        when {
+            selectionType: items
+            items: P10011_VIEW_AS
+        }
+
+        action native-submit-page (
+            action: submitPage
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction toggle-chart-visibility (
+        name: Toggle Chart Visibility
+        execution {
+            sequence: 10
+        }
+        when {
+            event: ready
+            selectionType: region
+            region: @top-users-chart
+        }
+        clientSideCondition {
+            type: item=value
+            item: P10011_VIEW_AS
+            value: CHART
+        }
+
+        action native-show-chart (
+            action: show
+            affectedElements {
+                selectionType: region
+                region: @top-users-chart
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action native-hide-chart (
+            action: hide
+            affectedElements {
+                selectionType: region
+                region: @top-users-chart
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+                fireWhenEventResultIs: false
             }
         )
 

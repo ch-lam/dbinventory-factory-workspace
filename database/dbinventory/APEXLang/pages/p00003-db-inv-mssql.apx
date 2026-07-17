@@ -14,6 +14,26 @@ page 3 (
         formAutoComplete: false
     }
 
+    region breadcrumb-nav (
+        name: DB Inv. - MSSQL
+        type: breadcrumb
+        source {
+            breadcrumb: @breadcrumb
+        }
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            breadcrumbTemplate: @/breadcrumb
+            templateOptions: #DEFAULT#
+        }
+    )
+
     region mssql-hosts (
         name: MSSQL Hosts
         type: classicReport

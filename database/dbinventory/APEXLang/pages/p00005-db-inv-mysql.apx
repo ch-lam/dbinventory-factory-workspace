@@ -13,5 +13,25 @@ page 5 (
         pageAccessProtection: argumentsMustHaveChecksum
         formAutoComplete: false
     }
+
+    region breadcrumb-nav (
+        name: DB Inv. - MySQL
+        type: breadcrumb
+        source {
+            breadcrumb: @breadcrumb
+        }
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            breadcrumbTemplate: @/breadcrumb
+            templateOptions: #DEFAULT#
+        }
+    )
 )
 

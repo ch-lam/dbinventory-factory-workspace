@@ -59,11 +59,8 @@ page 10016 (
             slot: contentBody
         }
         appearance {
-            template: @/interactive-report
-            templateOptions: [
-                #DEFAULT#
-                t-IRR-region--noBorders
-            ]
+            template: @/standard
+            templateOptions: #DEFAULT#
         }
         reportLayout {
             numberOfRows: 50
@@ -73,9 +70,7 @@ page 10016 (
             templateOptions: [
                 #DEFAULT#
                 t-Report--stretch
-                t-Report--altRowsDefault
-                t-Report--rowHighlight
-                t-Report--inline
+                t-Report--horizontalBorders
             ]
         }
         pagination {
@@ -112,7 +107,6 @@ page 10016 (
             }
             sorting {
                 defaultSequence: 1
-                direction: desc
             }
         )
 
@@ -157,6 +151,9 @@ page 10016 (
             template: @/optional-floating
             templateOptions: #DEFAULT#
         }
+        settings {
+            sendOnPageSubmit: false
+        }
     )
 
     pageItem P10016_LOG_ID (
@@ -191,6 +188,9 @@ page 10016 (
             template: @/optional-floating
             templateOptions: #DEFAULT#
         }
+        settings {
+            sendOnPageSubmit: false
+        }
     )
 
     pageItem P10016_STATUS (
@@ -209,6 +209,9 @@ page 10016 (
         appearance {
             template: @/optional-floating
             templateOptions: #DEFAULT#
+        }
+        settings {
+            sendOnPageSubmit: false
         }
     )
 

@@ -38,6 +38,8 @@ while getopts :m:h:u:p:w:c: OPTION
               echo "-m check_connect -h HOSTNAME -u USERNAME -p PASSWORD"
               echo "-m check_database_online -h HOSTNAME -u USERNAME -p PASSWORD"
               echo "-m check_database_sqlexpress_space_used -h HOSTNAME -u USERNAME -p PASSWORD -w WARNING MB -c WARNING MB"
+              echo "-m check_database_diffbackup_age -h HOSTNAME -u USERNAME -p PASSWORD -c CRITICAL (hours since last differential backup, databases never using differential backup are ignored)"
+              echo "-m check_backup_jobs_failed -h HOSTNAME -u USERNAME -p PASSWORD -w WARNING (number of hours to look back for FAILED backup jobs)"
               exit 1
          esac
 done
@@ -118,6 +120,47 @@ fi
 }
 
 
+fct_check_database_diffbackup_age(){
+RESULT=`sqlcmd -U ${USERNAME} -S ${HOST_NAME_TO_CHECK} -P ${PASSWORD} -C -Q "
+SET NOCOUNT ON
+SELECT bs.database_name, DATEDIFF(HOUR, MAX(bs.backup_start_date), GETDATE())
+FROM msdb.dbo.backupset bs
+WHERE bs.type='I' AND bs.is_copy_only=0
+AND bs.database_name NOT IN ('master','model','msdb','tempdb')
+GROUP BY bs.database_name
+HAVING DATEDIFF(HOUR, MAX(bs.backup_start_date), GETDATE()) > ${CRITICAL_THRESHOLD}
+" -h-1 -W -w 999 -s"," | grep -v "affected"`
+
+if [ ! -z "${RESULT}" ]; then
+        echo "CRITICAL - Database(s) with differential backup older than ${CRITICAL_THRESHOLD}h on ${HOST_NAME_TO_CHECK}: `echo ${RESULT} | tr '\n' ' '`"
+        exit $STATE_CRITICAL
+else
+        echo "OK - All differential backups (where used) are within ${CRITICAL_THRESHOLD}h on ${HOST_NAME_TO_CHECK}"
+        exit $STATE_OK
+fi
+}
+
+fct_check_backup_jobs_failed(){
+RESULT=`sqlcmd -U ${USERNAME} -S ${HOST_NAME_TO_CHECK} -P ${PASSWORD} -C -Q "
+SET NOCOUNT ON
+SELECT j.name+':'+CONVERT(varchar(19), msdb.dbo.agent_datetime(h.run_date, h.run_time), 120)
+FROM msdb.dbo.sysjobhistory h
+JOIN msdb.dbo.sysjobs j ON h.job_id=j.job_id
+JOIN msdb.dbo.sysjobsteps s ON h.job_id=s.job_id AND h.step_id=s.step_id
+WHERE h.run_status=0
+AND (j.name LIKE '%ackup%' OR s.command LIKE '%BACKUP DATABASE%' OR s.command LIKE '%BACKUP LOG%')
+AND msdb.dbo.agent_datetime(h.run_date, h.run_time) > DATEADD(HOUR,-${WARNING_THRESHOLD},GETDATE())
+" -h-1 -W -w 999 -s"," | grep -v "affected"`
+
+if [ ! -z "${RESULT}" ]; then
+        echo "CRITICAL - Failed backup job(s) detected in the last ${WARNING_THRESHOLD}h on ${HOST_NAME_TO_CHECK}: `echo ${RESULT} | tr '\n' ' '`"
+        exit $STATE_CRITICAL
+else
+        echo "OK - No failed backup job in the last ${WARNING_THRESHOLD}h on ${HOST_NAME_TO_CHECK}"
+        exit $STATE_OK
+fi
+}
+
 case "${MODE}" in
         check_connect)
                 fct_check_connect
@@ -128,10 +171,18 @@ case "${MODE}" in
 	check_database_sqlexpress_space_used)
                 fct_check_database_sqlexpress_space_used
                 ;;
+        check_database_diffbackup_age)
+                fct_check_database_diffbackup_age
+                ;;
+        check_backup_jobs_failed)
+                fct_check_backup_jobs_failed
+                ;;
         *)
                 echo Invalid Option $"Usage: "
 		echo "-m check_connect -h HOSTNAME -u USERNAME -p PASSWORD"
                 echo "-m check_database_online -h HOSTNAME -u USERNAME -p PASSWORD"
                 echo "-m check_database_sqlexpress_space_used -h HOSTNAME -u USERNAME -p PASSWORD -w WARNING MB -c WARNING MB"
+                echo "-m check_database_diffbackup_age -h HOSTNAME -u USERNAME -p PASSWORD -c CRITICAL (hours since last differential backup, databases never using differential backup are ignored)"
+                echo "-m check_backup_jobs_failed -h HOSTNAME -u USERNAME -p PASSWORD -w WARNING (number of hours to look back for FAILED backup jobs)"
                 exit 1
 esac

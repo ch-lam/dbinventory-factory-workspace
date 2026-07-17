@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# get_info_oracle_common — bibliothèque commune aux scripts de collecte Oracle
+# get_info_oracle_common.sh — bibliothèque commune aux scripts de collecte Oracle
 # À sourcer, ne pas exécuter directement.
 # =============================================================================
 
@@ -10,9 +10,9 @@
 # export LD_LIBRARY_PATH="${ORACLE_HOME}"
 # export PATH="${PATH}:${ORACLE_HOME}"
 
-MONITORING_USER="c##monitoring"
-MONITORING_PASS="Monitoring:PwdToChange:000:001"
-MAIL_TO="clam@clam.lu"
+MONITORING_USER="monitoring"
+MONITORING_PASS="F5t9TAcbjLTzhBNE69YeYBTx1BLgOZ"
+MAIL_TO="lambert.christophe@chl.lu"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIST_DIR="${SCRIPT_DIR}/../collect"

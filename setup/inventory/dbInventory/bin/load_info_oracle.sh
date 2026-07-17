@@ -14,9 +14,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Connexion Oracle ──────────────────────────────────────────────────────────
 DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="Tofu4567"
-DBINVENTORY_DSN="oracledb01:1521/DBINVENTORY_PRD_ALL"
-MAIL_TO="clam@clam.lu"
+DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
+DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
+MAIL_TO="lambert.christophe@chl.lu"
+
+# sqlcl dbinventory/uEjAYCnXhgbw3IputZCJbeMFKwGBvi@ORA-DEV:1521/DBINVENTORY_TST
 
 # ── Log ───────────────────────────────────────────────────────────────────────
 LOG_DIR="${SCRIPT_DIR}/logs"
@@ -94,8 +96,8 @@ TRUNCATE TABLE oracle_security_audit_enable;
 TRUNCATE TABLE oracle_sec_default_profile;
 TRUNCATE TABLE oracle_sec_default_user_pwd;
 TRUNCATE TABLE oracle_sec_high_role_privs;
-TRUNCATE TABLE oracle_security_high_sys_privs;
-TRUNCATE TABLE oracle_security_high_tab_privs;
+TRUNCATE TABLE oracle_sec_high_sys_privs;
+TRUNCATE TABLE oracle_sec_high_tab_privs;
 TRUNCATE TABLE oracle_sec_network_encryption;
 TRUNCATE TABLE oracle_security_parameter;
 TRUNCATE TABLE oracle_security_profile;
@@ -148,30 +150,30 @@ LOAD oracle_client_version ../collect/oracle_client_version.csv
 -- ORACLE – Sécurité
 -- ===========================================================================
 
-PROMPT -- LOADING: ../collect/oracle_security_admin_high_privs.csv
-LOAD oracle_sec_admin_high_privs ../collect/oracle_security_admin_high_privs.csv
-PROMPT -- LOADING: ../collect/oracle_security_default_user_pwd.csv
-LOAD oracle_sec_default_user_pwd ../collect/oracle_security_default_user_pwd.csv
-PROMPT -- LOADING: ../collect/oracle_security_high_role_privs.csv
-LOAD oracle_sec_high_role_privs ../collect/oracle_security_high_role_privs.csv
-PROMPT -- LOADING: ../collect/oracle_security_high_sys_privs.csv
-LOAD oracle_security_high_sys_privs ../collect/oracle_security_high_sys_privs.csv
-PROMPT -- LOADING: ../collect/oracle_security_high_tab_privs.csv
-LOAD oracle_security_high_tab_privs ../collect/oracle_security_high_tab_privs.csv
+PROMPT -- LOADING: ../collect/oracle_sec_admin_high_privs.csv
+LOAD oracle_sec_admin_high_privs ../collect/oracle_sec_admin_high_privs.csv
+PROMPT -- LOADING: ../collect/oracle_sec_default_user_pwd.csv
+LOAD oracle_sec_default_user_pwd ../collect/oracle_sec_default_user_pwd.csv
+PROMPT -- LOADING: ../collect/oracle_sec_high_role_privs.csv
+LOAD oracle_sec_high_role_privs ../collect/oracle_sec_high_role_privs.csv
+PROMPT -- LOADING: ../collect/oracle_sec_high_sys_privs.csv
+LOAD oracle_sec_high_sys_privs ../collect/oracle_sec_high_sys_privs.csv
+PROMPT -- LOADING: ../collect/oracle_sec_high_tab_privs.csv
+LOAD oracle_sec_high_tab_privs ../collect/oracle_sec_high_tab_privs.csv
 PROMPT -- LOADING: ../collect/oracle_security_profile.csv
 LOAD oracle_security_profile ../collect/oracle_security_profile.csv
-PROMPT -- LOADING: ../collect/oracle_security_default_profile.csv
-LOAD oracle_sec_default_profile ../collect/oracle_security_default_profile.csv
+PROMPT -- LOADING: ../collect/oracle_sec_default_profile.csv
+LOAD oracle_sec_default_profile ../collect/oracle_sec_default_profile.csv
 PROMPT -- LOADING: ../collect/oracle_security_parameter.csv
 LOAD oracle_security_parameter ../collect/oracle_security_parameter.csv
 PROMPT -- LOADING: ../collect/oracle_security_audit_enable.csv
 LOAD oracle_security_audit_enable ../collect/oracle_security_audit_enable.csv
 PROMPT -- LOADING: ../collect/oracle_security_tablespace.csv
 LOAD oracle_security_tablespace ../collect/oracle_security_tablespace.csv
-PROMPT -- LOADING: ../collect/oracle_security_usermig_table_exist.csv
-LOAD oracle_sec_usermig_tbl_exist ../collect/oracle_security_usermig_table_exist.csv
-PROMPT -- LOADING: ../collect/oracle_security_network_encryption.csv
-LOAD oracle_sec_network_encryption ../collect/oracle_security_network_encryption.csv
+PROMPT -- LOADING: ../collect/oracle_sec_usermig_tbl_exist.csv
+LOAD oracle_sec_usermig_tbl_exist ../collect/oracle_sec_usermig_tbl_exist.csv
+PROMPT -- LOADING: ../collect/oracle_sec_network_encryption.csv
+LOAD oracle_sec_network_encryption ../collect/oracle_sec_network_encryption.csv
 
 -- ===========================================================================
 -- ORACLE – Capacity Planning

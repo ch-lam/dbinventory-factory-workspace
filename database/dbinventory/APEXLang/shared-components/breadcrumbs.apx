@@ -1,6 +1,19 @@
 breadcrumb breadcrumb (
     name: Breadcrumb
 
+    entry activity-reports (
+        name: Activity Reports
+        pageNumber: 10001
+        execution {
+            sequence: 10
+        }
+        link {
+            target: {
+                page: 10001
+            }
+        }
+    )
+
     entry administration (
         name: Administration
         pageNumber: 10000
@@ -27,6 +40,19 @@ breadcrumb breadcrumb (
         }
     )
 
+    entry mongodb (
+        name: MongoDB
+        pageNumber: 6
+        execution {
+            sequence: 10
+        }
+        link {
+            target: {
+                page: 6
+            }
+        }
+    )
+
     entry ms-sql (
         name: MS SQL
         pageNumber: 3
@@ -40,6 +66,32 @@ breadcrumb breadcrumb (
         }
     )
 
+    entry mssql-server (
+        name: MSSQL Server
+        pageNumber: 8
+        execution {
+            sequence: 10
+        }
+        link {
+            target: {
+                page: 8
+            }
+        }
+    )
+
+    entry mysql (
+        name: MySQL
+        pageNumber: 5
+        execution {
+            sequence: 10
+        }
+        link {
+            target: {
+                page: 5
+            }
+        }
+    )
+
     entry oracle (
         name: Oracle
         pageNumber: 2
@@ -49,6 +101,32 @@ breadcrumb breadcrumb (
         link {
             target: {
                 page: 2
+            }
+        }
+    )
+
+    entry oracle-server (
+        name: Oracle Server
+        pageNumber: 7
+        execution {
+            sequence: 10
+        }
+        link {
+            target: {
+                page: 7
+            }
+        }
+    )
+
+    entry postgres (
+        name: Postgres
+        pageNumber: 4
+        execution {
+            sequence: 10
+        }
+        link {
+            target: {
+                page: 4
             }
         }
     )

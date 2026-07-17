@@ -6,12 +6,15 @@
 
 MONITORING_USER="monitoring"
 MONITORING_PASS="HY9Xine38wnkC2gLadd2YafJiz5gRw"
-MAIL_TO="sysadmin-mssql@chl.lu"   # à adapter : équipe en charge des serveurs Windows/MSSQL
+MAIL_TO="lambert.christophe@chl.lu"   # à adapter : équipe en charge des serveurs Windows/MSSQL
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIST_DIR="${SCRIPT_DIR}/../collect"
 LIST_FILE="${SCRIPT_DIR}/../collect/mssql_database_lists.lst"
 SQL_DIR="${SCRIPT_DIR}/sql"
+
+collect_id="COLL_ID_$(date +%Y%m%d)"
+echo "Starting collect : $collect_id"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 log()     { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
@@ -42,9 +45,9 @@ finalize_lst() {
     sort -u "${src}" \
         | grep -v '^\s*$' \
         | grep ',' \
-        | grep -Ev '^\([0-9]+ rows? affected\)' \
+        | grep -Ev '\([0-9]+ rows? affected\)' \
         | grep -iv 'Sqlcmd:' \
-        | grep -iv '^Changed database' \
+        | grep -iv 'Changed database' \
         | sed 's/\\/\//g' \
         | sed 's/""//g' \
         > "${dst}" || true

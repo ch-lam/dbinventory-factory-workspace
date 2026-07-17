@@ -13,5 +13,285 @@ page 2 (
         pageAccessProtection: argumentsMustHaveChecksum
         formAutoComplete: false
     }
+
+    region breadcrumb-nav (
+        name: DB Inv. - Oracle
+        type: breadcrumb
+        source {
+            breadcrumb: @breadcrumb
+        }
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            breadcrumbTemplate: @/breadcrumb
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region oracle-databases (
+        name: Oracle Databases
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d.hostname,
+                       d.instance_name,
+                       d.db_name,
+                       d.environment,
+                       d.license_type,
+                       d.db_version,
+                       d.db_edition,
+                       d.database_type,
+                       d.db_role,
+                       d.db_log_mode,
+                       d.db_charset,
+                       d.rac_state,
+                       d.db_unique_name,
+                       d.count_pdb,
+                       h.os_type,
+                       h.num_cpus,
+                       h.memory_gb
+                  from oracle_databases d
+                  left join oracle_hosts h on h.hostname = d.hostname
+                 order by d.hostname, d.instance_name
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No data found.
+        }
+
+        column COUNT_PDB (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            heading {
+                heading: PDB Count
+                alignment: end
+            }
+            layout {
+                sequence: 140
+                columnAlignment: end
+            }
+        )
+
+        column DATABASE_TYPE (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: DB Type
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column DB_CHARSET (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Charset
+            }
+            layout {
+                sequence: 110
+            }
+        )
+
+        column DB_EDITION (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Edition
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column DB_LOG_MODE (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Log Mode
+                alignment: center
+            }
+            layout {
+                sequence: 100
+                columnAlignment: center
+            }
+        )
+
+        column DB_NAME (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: DB Name
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column DB_ROLE (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Role
+                alignment: center
+            }
+            layout {
+                sequence: 90
+                columnAlignment: center
+            }
+        )
+
+        column DB_UNIQUE_NAME (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            heading {
+                heading: DB Unique Name
+            }
+            layout {
+                sequence: 130
+            }
+        )
+
+        column DB_VERSION (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+            comments {
+                comments: Display Label: Hostname. Display in Report: true. Display in Form: false. Format Mask: none. Value Required: false. Read Only: true. Primary Display Column: true. Authorization Scheme: none.
+            }
+        )
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column LICENSE_TYPE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: License
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column MEMORY_GB (
+            reportColumnQueryId: 17
+            derivedColumn: N
+            heading {
+                heading: Memory (GB)
+                alignment: end
+            }
+            layout {
+                sequence: 170
+                columnAlignment: end
+            }
+        )
+
+        column NUM_CPUS (
+            reportColumnQueryId: 16
+            derivedColumn: N
+            heading {
+                heading: CPUs
+                alignment: end
+            }
+            layout {
+                sequence: 160
+                columnAlignment: end
+            }
+        )
+
+        column OS_TYPE (
+            reportColumnQueryId: 15
+            derivedColumn: N
+            heading {
+                heading: OS Type
+            }
+            layout {
+                sequence: 150
+            }
+        )
+
+        column RAC_STATE (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            heading {
+                heading: RAC
+                alignment: center
+            }
+            layout {
+                sequence: 120
+                columnAlignment: center
+            }
+        )
+
+    )
+
 )
 

@@ -87,9 +87,9 @@ done < <(grep -v '^\s*#' "${LIST_FILE}" | grep -v '^\s*$' | sort -u)
 log "Finalisation..."
 finalize_lst "${LIST_DIR}/postgres_security_parameter_temp.csv"           "${LIST_DIR}/postgres_security_parameter.csv"
 finalize_lst "${LIST_DIR}/postgres_security_roles_temp.csv"               "${LIST_DIR}/postgres_security_roles.csv"
-finalize_lst "${LIST_DIR}/postgres_security_role_memberships_temp.csv"    "${LIST_DIR}/postgres_security_role_memberships.csv"
+finalize_lst "${LIST_DIR}/postgres_security_role_memberships_temp.csv"    "${LIST_DIR}/postgres_sec_role_members.csv"
 finalize_lst "${LIST_DIR}/postgres_security_hba_rules_temp.csv"           "${LIST_DIR}/postgres_security_hba_rules.csv"
-finalize_lst "${LIST_DIR}/postgres_security_database_privileges_temp.csv" "${LIST_DIR}/postgres_security_database_privileges.csv"
+finalize_lst "${LIST_DIR}/postgres_security_database_privileges_temp.csv" "${LIST_DIR}/postgres_sec_db_privs.csv"
 
 report_errors "PostgreSQL inventory (securite): erreurs de connexion"
 log "Termine."

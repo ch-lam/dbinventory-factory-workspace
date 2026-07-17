@@ -14,6 +14,26 @@ page 1 (
         formAutoComplete: false
     }
 
+    region breadcrumb-nav (
+        name: DB Inv. -  Dashboard
+        type: breadcrumb
+        source {
+            breadcrumb: @breadcrumb
+        }
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            breadcrumbTemplate: @/breadcrumb
+            templateOptions: #DEFAULT#
+        }
+    )
+
     region compliance (
         name: Scoring Activity
         title: Scoring Activity
@@ -32,13 +52,9 @@ page 1 (
                        status_color,
                        scoring_label,
                        apex_page.get_url( p_page => details_apex_page_number ) details_apex_page_number, scoring_order
-                  from scoring_activity_list;
-                
+                  from scoring_activity_list
+                 order by scoring_order asc
                 ```
-        }
-        orderBy {
-            type: staticValue
-            orderByClause: scoring_order asc
         }
         layout {
             sequence: 20
@@ -55,7 +71,6 @@ page 1 (
             gridColumns: 4
         }
         card {
-            cssClasses: &SCORING_CARD_CLASS.
             primaryKeyColumn1: SCORING_TYPE
         }
         title {
@@ -74,7 +89,7 @@ page 1 (
         }
 
         action action (
-            type: fullCard
+            label: View Details
             layout {
                 sequence: 10
             }
@@ -123,8 +138,8 @@ page 1 (
                     ```sql
                     SELECT ENVIRONMENT AS LABEL, COUNT(*) AS VALUE
                       FROM (
-                        SELECT ENV ENVIRONMENT FROM MSSQL_HOSTS
-                        UNION ALL
+                        /*SELECT ENV ENVIRONMENT FROM MSSQL_HOSTS
+                        UNION ALL */
                         SELECT ENVIRONMENT FROM ORACLE_HOSTS
                       )
                      GROUP BY ENVIRONMENT
@@ -195,6 +210,7 @@ page 1 (
         layout {
             sequence: 70
             slot: body
+            columnSpan: 4
         }
         appearance {
             template: @/standard
@@ -243,6 +259,7 @@ page 1 (
             sequence: 60
             slot: body
             startNewRow: false
+            columnSpan: 4
         }
         appearance {
             template: @/standard
@@ -343,6 +360,7 @@ page 1 (
             sequence: 80
             slot: body
             startNewRow: false
+            columnSpan: 4
         }
         appearance {
             template: @/standard

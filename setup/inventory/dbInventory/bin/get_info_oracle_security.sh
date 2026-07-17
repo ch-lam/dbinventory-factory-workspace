@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=get_info_oracle_common
-source "${SCRIPT_DIR}/get_info_oracle_common"
+source "${SCRIPT_DIR}/get_info_oracle_common.sh"
 
 init_temps sec_parameter sec_network_enc sec_profile sec_default_profile \
            sec_admin_high_privs sec_high_role_privs sec_high_sys_privs    \
@@ -259,15 +259,15 @@ done < <(grep -v '^\s*#' "${LIST_FILE}" | grep -v '^\s*$' | sort -u)
 # ── Finalisation ──────────────────────────────────────────────────────────────
 log "Finalisation..."
 finalize_lst "${LIST_DIR}/sec_parameter_temp.csv"        "${LIST_DIR}/oracle_security_parameter.csv"
-finalize_lst "${LIST_DIR}/sec_network_enc_temp.csv"      "${LIST_DIR}/oracle_security_network_encryption.csv"
+finalize_lst "${LIST_DIR}/sec_network_enc_temp.csv"      "${LIST_DIR}/oracle_sec_network_encryption.csv"
 finalize_lst "${LIST_DIR}/sec_profile_temp.csv"          "${LIST_DIR}/oracle_security_profile.csv"
-finalize_lst "${LIST_DIR}/sec_default_profile_temp.csv"  "${LIST_DIR}/oracle_security_default_profile.csv"
-finalize_lst "${LIST_DIR}/sec_usermig_temp.csv"          "${LIST_DIR}/oracle_security_usermig_table_exist.csv"
-finalize_lst "${LIST_DIR}/sec_admin_high_privs_temp.csv" "${LIST_DIR}/oracle_security_admin_high_privs.csv"
-finalize_lst "${LIST_DIR}/sec_high_role_privs_temp.csv"  "${LIST_DIR}/oracle_security_high_role_privs.csv"
-finalize_lst "${LIST_DIR}/sec_high_sys_privs_temp.csv"   "${LIST_DIR}/oracle_security_high_sys_privs.csv"
-finalize_lst "${LIST_DIR}/sec_high_tab_privs_temp.csv"   "${LIST_DIR}/oracle_security_high_tab_privs.csv"
-finalize_lst "${LIST_DIR}/sec_default_user_pwd_temp.csv" "${LIST_DIR}/oracle_security_default_user_pwd.csv"
+finalize_lst "${LIST_DIR}/sec_default_profile_temp.csv"  "${LIST_DIR}/oracle_sec_default_profile.csv"
+finalize_lst "${LIST_DIR}/sec_usermig_temp.csv"          "${LIST_DIR}/oracle_sec_usermig_tbl_exist.csv"
+finalize_lst "${LIST_DIR}/sec_admin_high_privs_temp.csv" "${LIST_DIR}/oracle_sec_admin_high_privs.csv"
+finalize_lst "${LIST_DIR}/sec_high_role_privs_temp.csv"  "${LIST_DIR}/oracle_sec_high_role_privs.csv"
+finalize_lst "${LIST_DIR}/sec_high_sys_privs_temp.csv"   "${LIST_DIR}/oracle_sec_high_sys_privs.csv"
+finalize_lst "${LIST_DIR}/sec_high_tab_privs_temp.csv"   "${LIST_DIR}/oracle_sec_high_tab_privs.csv"
+finalize_lst "${LIST_DIR}/sec_default_user_pwd_temp.csv" "${LIST_DIR}/oracle_sec_default_user_pwd.csv"
 finalize_lst "${LIST_DIR}/sec_tablespace_temp.csv"       "${LIST_DIR}/oracle_security_tablespace.csv"
 finalize_lst "${LIST_DIR}/sec_audit_temp.csv"            "${LIST_DIR}/oracle_security_audit_enable.csv"
 

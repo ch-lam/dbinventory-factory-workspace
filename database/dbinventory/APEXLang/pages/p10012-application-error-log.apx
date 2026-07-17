@@ -45,7 +45,7 @@ page 10012 (
                 ```sql
                 select step_id,
                        userid,
-                       time_stamp err_time,
+                       time_stamp as err_time,
                        sqlerrm,
                        sqlerrm_component_type,
                        sqlerrm_component_name
@@ -184,6 +184,7 @@ page 10012 (
         )
 
         page {
+            height: 8.5
             borderWidth: 0.5
             borderColor: #666666
         }

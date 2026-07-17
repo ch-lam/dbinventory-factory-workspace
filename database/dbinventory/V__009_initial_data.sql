@@ -1,6 +1,22 @@
 -- 
 -- Generate initial data for the DB Inventory database.
 --
+delete from environments cascade;
+insert into environments ( envt_short_code, environment ) values ( 'PRD', 'Production' );
+insert into environments ( envt_short_code, environment ) values ( 'UAT', 'UAT' );
+insert into environments ( envt_short_code, environment ) values ( 'TST', 'Test' );
+insert into environments ( envt_short_code, environment ) values ( 'DEV', 'Development' );
+commit;
+   
+delete from licence_types cascade;
+insert into licence_types ( license_type, description, scoring_impact ) values ( 'CPU', 'CPU license type', 100 );
+insert into licence_types ( license_type, description, scoring_impact ) values ( 'FREE', 'Free license type (No Cost like Open Source, SQLExpress, Oracle XE ...)', 0 );
+insert into licence_types ( license_type, description, scoring_impact ) values ( 'ENTERPRISE', 'Enterprise license type', 100 );
+insert into licence_types ( license_type, description, scoring_impact ) values ( 'STANDARD', 'Standard license type', 100 );
+insert into licence_types ( license_type, description, scoring_impact ) values ( 'SAP', 'SAP license type (bundle provider)', 0 );
+insert into licence_types ( license_type, description, scoring_impact ) values ( 'PROVIDER', 'PROVIDER license type (license is provided by a third party)', 0 );
+commit;
+
 delete from scoring_activity_list;
 
 insert into scoring_activity_list (
@@ -122,7 +138,7 @@ insert into scoring_activity_list (
            'Compliance is 80%, some configuration items need improvement.',
            5,
            7 );
-
+/*
 insert into scoring_activity_list (
    scoring_type,
    last_scoring_date,
@@ -162,5 +178,5 @@ insert into scoring_activity_list (
            'Compliance is 30%, this is critical, some configuration items need critical review.',
            6,
            10 );
-
+*/
 commit;

@@ -99,6 +99,18 @@ while getopts :m:t:u:p:w:c:f:q:e: OPTION
                         echo "-m check_orabasetab_exist"
                         echo "-m check_database_grows -t easy_connect_format -u USERNAME -p PASSWORD"
                         echo "-m check_cpu_usage_pdb -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_security_default_pwd -t easy_connect_format -u USERNAME -p PASSWORD (accounts with default password)"
+                        echo "-m check_security_usermig -t easy_connect_format -u USERNAME -p PASSWORD (legacy USER\$MIG hash table)"
+                        echo "-m check_security_admin_high_privs -t easy_connect_format -u USERNAME -p PASSWORD -w WARNING -c CRITICAL (number of SYSDBA/SYSOPER accounts)"
+                        echo "-m check_security_tablespace_encryption -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_security_audit_enabled -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_security_high_privs -t easy_connect_format -u USERNAME -p PASSWORD (non-standard accounts with elevated privileges)"
+                        echo "-m check_security_parameter -t easy_connect_format -u USERNAME -p PASSWORD (hardening parameters)"
+                        echo "-m check_security_network_encryption -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_psu_age -t easy_connect_format -u USERNAME -p PASSWORD -w WARNING -c CRITICAL (days since last PSU/RU)"
+                        echo "-m check_backup_failed -t easy_connect_format -u USERNAME -p PASSWORD -w WARNING (number of hours to look back for FAILED RMAN jobs)"
+                        echo "-m check_dg_protection_mode -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_new_open_accounts -t easy_connect_format -u USERNAME -p PASSWORD -w WARNING (number of hours to look back)"
                         exit 1
          esac
 done
@@ -2286,6 +2298,303 @@ order by WAIT_TIME_MILLI,WAIT_COUNT) a) c;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_
            exit $STATE_OK
 }
 
+fct_check_security_default_pwd(){
+USAGE=`echo "set feedback off;
+             set heading off;
+             SELECT 'VALUE'||USERNAME FROM DBA_USERS_WITH_DEFPWD WHERE USERNAME NOT LIKE '%XS\$NULL%';" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+if [ ! -z "${USAGE}" ]; then
+        echo "CRITICAL - Accounts with default password detected: ${USAGE}"
+        exit $STATE_CRITICAL
+else
+        echo "OK - No account with default password detected"
+        exit $STATE_OK
+fi
+}
+fct_check_security_usermig(){
+USAGE=`echo "set feedback off;
+             set heading off;
+             SELECT 'VALUE'||OWNER||'.'||TABLE_NAME FROM DBA_TABLES WHERE TABLE_NAME='USER\$MIG' AND OWNER='SYS';" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+if [ ! -z "${USAGE}" ]; then
+        echo "WARNING - Legacy password hash table detected: ${USAGE} (residual DES hashes from a 10g migration)"
+        exit $STATE_WARNING
+else
+        echo "OK - No legacy USER\$MIG table detected"
+        exit $STATE_OK
+fi
+}
+fct_check_security_admin_high_privs(){
+USAGE=`echo "set feedback off;
+             set heading off;
+             SELECT 'VALUE'||USERNAME FROM v\\$pwfile_users ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+NB=`echo "${USAGE}" | wc -w`
+
+if [[ "${NB}" -gt "${CRITICAL_THRESHOLD}" ]]; then
+        echo "CRITICAL - ${NB} accounts with SYSDBA/SYSOPER privilege (threshold ${CRITICAL_THRESHOLD}): ${USAGE}"
+        exit $STATE_CRITICAL
+elif [[ "${NB}" -gt "${WARNING_THRESHOLD}" ]]; then
+        echo "WARNING - ${NB} accounts with SYSDBA/SYSOPER privilege (threshold ${WARNING_THRESHOLD}): ${USAGE}"
+        exit $STATE_WARNING
+else
+        echo "OK - ${NB} accounts with SYSDBA/SYSOPER privilege: ${USAGE}"
+        exit $STATE_OK
+fi
+}
+fct_check_security_tablespace_encryption(){
+CHECK_VERSION=`echo "set feedback off;
+                     set heading off;
+                     select 'OK' from dba_objects where object_name='CDB_DATA_FILES' and object_type='VIEW';" | sqlplus -s ${USR_DB}/${PWD_DB}@${CON_TNS} `
+
+if [ `echo ${CHECK_VERSION} | grep "OK" | wc -l` -eq 1 ]; then
+CHECK_CONTAINER=`echo "set feedback off;
+                       set heading off;
+                       select distinct ('OK') from v\\$pdbs where CON_ID > 1;" | sqlplus -s ${USR_DB}/${PWD_DB}@${CON_TNS} `
+        if [ `echo ${CHECK_CONTAINER} | grep "OK" | wc -l` -eq 1 ]; then
+                USAGE=`echo "set feedback off;
+                             set heading off;
+                             SELECT 'VALUE'||pdb.pdb_name||':'||ts.tablespace_name FROM cdb_tablespaces ts, dba_pdbs pdb WHERE ts.con_id=pdb.pdb_id AND ts.con_id<>2 AND ts.encrypted='NO' AND ts.tablespace_name NOT IN ('TEMP','SYSTEM','SYSAUX','UNDOTBS1','UNDOTBS2') ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+        else
+                USAGE=`echo "set feedback off;
+                             set heading off;
+                             SELECT 'VALUE'||ts.tablespace_name FROM dba_tablespaces ts WHERE ts.encrypted='NO' AND ts.tablespace_name NOT IN ('TEMP','SYSTEM','SYSAUX','UNDOTBS1','UNDOTBS2') ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+        fi
+else
+        USAGE=`echo "set feedback off;
+                     set heading off;
+                     SELECT 'VALUE'||ts.tablespace_name FROM dba_tablespaces ts WHERE ts.encrypted='NO' AND ts.tablespace_name NOT IN ('TEMP','SYSTEM','SYSAUX','UNDOTBS1','UNDOTBS2') ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+fi
+
+if [ ! -z "${USAGE}" ]; then
+        echo "WARNING - Unencrypted tablespace(s) detected: ${USAGE}"
+        exit $STATE_WARNING
+else
+        echo "OK - All non-system tablespaces are encrypted"
+        exit $STATE_OK
+fi
+}
+fct_check_security_audit_enabled(){
+DB_VER=`echo "set feedback off;
+              set heading off;
+              SELECT 'VALUE'||REGEXP_SUBSTR(version,'^\\d+') FROM v\\$instance;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+if [[ "${DB_VER}" -ge 12 ]]; then
+CHECK_VERSION=`echo "set feedback off;
+                     set heading off;
+                     select 'OK' from dba_objects where object_name='CDB_DATA_FILES' and object_type='VIEW';" | sqlplus -s ${USR_DB}/${PWD_DB}@${CON_TNS} `
+        if [ `echo ${CHECK_VERSION} | grep "OK" | wc -l` -eq 1 ]; then
+CHECK_CONTAINER=`echo "set feedback off;
+                       set heading off;
+                       select distinct ('OK') from v\\$pdbs where CON_ID > 1;" | sqlplus -s ${USR_DB}/${PWD_DB}@${CON_TNS} `
+                if [ `echo ${CHECK_CONTAINER} | grep "OK" | wc -l` -eq 1 ]; then
+                        USAGE=`echo "set feedback off;
+                                     set heading off;
+                                     SELECT 'VALUE'||pdb.pdb_name FROM dba_pdbs pdb WHERE pdb.status='NORMAL' AND pdb.con_id<>2 AND pdb.pdb_name NOT IN (SELECT pdbs2.pdb_name FROM CONTAINERS(\"SYS\".\"AUDIT_UNIFIED_ENABLED_POLICIES\") pol, dba_pdbs pdbs2 WHERE pol.con_id=pdbs2.pdb_id AND pol.con_id<>2 AND pol.policy_name='ORA_CIS_RECOMMENDATIONS') ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+                else
+                        USAGE=`echo "set feedback off;
+                                     set heading off;
+                                     SELECT 'VALUE'||'CURRENT_PDB' FROM dual WHERE NOT EXISTS (SELECT 1 FROM AUDIT_UNIFIED_ENABLED_POLICIES WHERE POLICY_NAME='ORA_CIS_RECOMMENDATIONS');" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+                fi
+        else
+                USAGE=`echo "set feedback off;
+                             set heading off;
+                             SELECT 'VALUE'||'CURRENT_DB' FROM dual WHERE NOT EXISTS (SELECT 1 FROM AUDIT_UNIFIED_ENABLED_POLICIES WHERE POLICY_NAME='ORA_CIS_RECOMMENDATIONS');" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+        fi
+
+        if [ ! -z "${USAGE}" ]; then
+                echo "WARNING - Unified audit policy ORA_CIS_RECOMMENDATIONS not enabled on: ${USAGE}"
+                exit $STATE_WARNING
+        else
+                echo "OK - Unified audit policy ORA_CIS_RECOMMENDATIONS enabled"
+                exit $STATE_OK
+        fi
+else
+        USAGE=`echo "set feedback off;
+                     set heading off;
+                     SELECT 'VALUE'||opt.AO FROM (SELECT 'USER' AO FROM dual UNION ALL SELECT 'ROLE' FROM dual UNION ALL SELECT 'SYSTEM GRANT' FROM dual UNION ALL SELECT 'PROFILE' FROM dual UNION ALL SELECT 'DATABASE LINK' FROM dual UNION ALL SELECT 'ALTER SYSTEM' FROM dual UNION ALL SELECT 'CREATE SESSION' FROM dual UNION ALL SELECT 'TRIGGER' FROM dual) opt WHERE NOT EXISTS (SELECT 1 FROM DBA_STMT_AUDIT_OPTS WHERE AUDIT_OPTION=opt.AO AND USER_NAME IS NULL AND PROXY_NAME IS NULL AND SUCCESS='BY ACCESS' AND FAILURE='BY ACCESS') ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+        if [ ! -z "${USAGE}" ]; then
+                echo "WARNING - Classic audit option(s) not configured: ${USAGE}"
+                exit $STATE_WARNING
+        else
+                echo "OK - Classic audit options configured"
+                exit $STATE_OK
+        fi
+fi
+}
+fct_check_security_high_privs(){
+CHECK_VERSION=`echo "set feedback off;
+                     set heading off;
+                     select 'OK' from dba_objects where object_name='CDB_DATA_FILES' and object_type='VIEW';" | sqlplus -s ${USR_DB}/${PWD_DB}@${CON_TNS} `
+
+EXCL="'SYS','SYSTEM','OUTLN','DBSNMP','ANONYMOUS','AUDSYS','APPQOSSYS','DVSYS','DVF','GSMADMIN_INTERNAL','GSMCATUSER','GSMUSER','SI_INFORMTN_SCHEMA','SPATIAL_CSW_ADMIN_USR','SPATIAL_WFS_ADMIN_USR','SYSBACKUP','SYSDG','SYSKM','WMSYS','XS\$NULL','MDDATA','OJVMSYS','ORDDATA','OLAPSYS','ORDS_METADATA','ORDS_PUBLIC_USER','FLOWS_FILES','CTXSYS','DIP','LBACSYS','ORACLE_OCM','ORDPLUGINS','ORDSYS','TSMSYS','XDB','C##MONITORING','MONITORING'"
+
+if [ `echo ${CHECK_VERSION} | grep "OK" | wc -l` -eq 1 ]; then
+        USAGE=`echo "set feedback off;
+                     set heading off;
+                     SELECT 'VALUE'||pdb.pdb_name||':'||r.grantee||':'||r.granted_role FROM cdb_role_privs r, dba_pdbs pdb WHERE r.con_id=pdb.pdb_id AND r.con_id<>2 AND r.grantee NOT IN (${EXCL}) AND r.granted_role IN ('DELETE_CATALOG_ROLE','SELECT_CATALOG_ROLE','EXECUTE_CATALOG_ROLE','DBA') UNION ALL SELECT 'VALUE'||pdb.pdb_name||':'||p.grantee||':'||p.privilege FROM cdb_sys_privs p, dba_pdbs pdb WHERE p.con_id=pdb.pdb_id AND p.con_id<>2 AND p.grantee NOT IN (${EXCL}) AND p.privilege IN ('SELECT ANY DICTIONARY','SELECT ANY TABLE','AUDIT SYSTEM','EXEMPT ACCESS POLICY','BECOME USER','ALTER SYSTEM','CREATE ANY LIBRARY','CREATE LIBRARY','GRANT ANY OBJECT PRIVILEGE','GRANT ANY ROLE','GRANT ANY PRIVILEGE','CREATE EXTERNAL JOB') ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+else
+        USAGE=`echo "set feedback off;
+                     set heading off;
+                     SELECT 'VALUE'||r.grantee||':'||r.granted_role FROM dba_role_privs r WHERE r.grantee NOT IN (${EXCL}) AND r.granted_role IN ('DELETE_CATALOG_ROLE','SELECT_CATALOG_ROLE','EXECUTE_CATALOG_ROLE','DBA') UNION ALL SELECT 'VALUE'||p.grantee||':'||p.privilege FROM dba_sys_privs p WHERE p.grantee NOT IN (${EXCL}) AND p.privilege IN ('SELECT ANY DICTIONARY','SELECT ANY TABLE','AUDIT SYSTEM','EXEMPT ACCESS POLICY','BECOME USER','ALTER SYSTEM','CREATE ANY LIBRARY','CREATE LIBRARY','GRANT ANY OBJECT PRIVILEGE','GRANT ANY ROLE','GRANT ANY PRIVILEGE','CREATE EXTERNAL JOB') ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+fi
+
+if [ ! -z "${USAGE}" ]; then
+        echo "WARNING - Non-standard account(s) with elevated privileges: ${USAGE}"
+        exit $STATE_WARNING
+else
+        echo "OK - No non-standard account with elevated privileges detected"
+        exit $STATE_OK
+fi
+}
+fct_check_security_parameter(){
+USAGE=`echo "set feedback off;
+             set heading off;
+             SELECT 'VALUE'||prm.name||':'||prm.value FROM v\\$parameter prm WHERE lower(prm.name) IN ('o7_dictionary_accessibility','remote_os_authent','remote_os_roles','os_roles','audit_sys_operations','sec_case_sensitive_logon','resource_limit','utl_file_dir','sec_return_server_release_banner','sec_max_failed_login_attempts') ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+MESSAGE=""
+for line in ${USAGE}
+do
+        PNAME=`echo $line | cut -d ":" -f1`
+        PVALUE=`echo $line | cut -d ":" -f2`
+        case "${PNAME}" in
+                o7_dictionary_accessibility|remote_os_authent|remote_os_roles|os_roles|sec_return_server_release_banner)
+                        [ "${PVALUE}" = "TRUE" ] && MESSAGE="${MESSAGE} ${PNAME}=${PVALUE}(expected_FALSE) /"
+                        ;;
+                audit_sys_operations|sec_case_sensitive_logon|resource_limit)
+                        [ "${PVALUE}" = "FALSE" ] && MESSAGE="${MESSAGE} ${PNAME}=${PVALUE}(expected_TRUE) /"
+                        ;;
+                utl_file_dir)
+                        [ -n "${PVALUE}" ] && MESSAGE="${MESSAGE} ${PNAME}=${PVALUE}(expected_empty) /"
+                        ;;
+                sec_max_failed_login_attempts)
+                        if [[ "${PVALUE}" =~ ^[0-9]+$ ]] && [ "${PVALUE}" -gt 10 ]; then MESSAGE="${MESSAGE} ${PNAME}=${PVALUE}(expected_<=10) /"; fi
+                        ;;
+        esac
+done
+
+if [ ! -z "${MESSAGE}" ]; then
+        echo "WARNING - Insecure parameter(s) detected: ${MESSAGE}"
+        exit $STATE_WARNING
+else
+        echo "OK - All monitored security parameters have expected values"
+        exit $STATE_OK
+fi
+}
+fct_check_security_network_encryption(){
+USAGE=`echo "set feedback off;
+             set heading off;
+             SELECT 'VALUE'||NVL(sess.NETWORK_SERVICE_BANNER,'EMPTY') FROM v\\$session_connect_info sess WHERE sess.SID=SYS_CONTEXT('USERENV','SID') AND LOWER(sess.NETWORK_SERVICE_BANNER) LIKE '%encryption%service%adapter%';" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+if [ -z "${USAGE}" ]; then
+        echo "WARNING - Native network encryption (Advanced Security) not detected on this session"
+        exit $STATE_WARNING
+else
+        echo "OK - Native network encryption detected: ${USAGE}"
+        exit $STATE_OK
+fi
+}
+fct_check_psu_age(){
+USAGE=`echo "set feedback off;
+             set heading off;
+             SELECT 'VALUE'||TO_CHAR(MAX(action_time),'YYYY-MM-DD') FROM sys.dba_registry_sqlpatch WHERE action='APPLY' AND (description LIKE 'Database PSU%' OR description LIKE 'Database Rele%');" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+if [ -z "${USAGE}" ]; then
+        echo "WARNING - No PSU/RU patch registered in dba_registry_sqlpatch"
+        exit $STATE_WARNING
+fi
+
+PATCH_EPOCH=`date -d "${USAGE}" +%s 2>/dev/null`
+NOW_EPOCH=`date +%s`
+AGE_DAYS=$(( (NOW_EPOCH - PATCH_EPOCH) / 86400 ))
+
+if [[ "${AGE_DAYS}" -gt "${CRITICAL_THRESHOLD}" ]]; then
+        echo "CRITICAL - Last patch applied ${USAGE} (${AGE_DAYS} days ago, threshold ${CRITICAL_THRESHOLD}d)"
+        exit $STATE_CRITICAL
+elif [[ "${AGE_DAYS}" -gt "${WARNING_THRESHOLD}" ]]; then
+        echo "WARNING - Last patch applied ${USAGE} (${AGE_DAYS} days ago, threshold ${WARNING_THRESHOLD}d)"
+        exit $STATE_WARNING
+else
+        echo "OK - Last patch applied ${USAGE} (${AGE_DAYS} days ago)"
+        exit $STATE_OK
+fi
+}
+fct_check_backup_failed(){
+USAGE=`echo "set feedback off;
+             set heading off;
+             SELECT 'VALUE'||b.OPERATION||':'||b.OBJECT_TYPE||':'||TO_CHAR(b.START_TIME,'YYYY-MM-DD HH24:MI') FROM v\\$rman_backup_job_details b WHERE b.status LIKE '%FAILED%' AND b.start_time > SYSDATE-(${WARNING_THRESHOLD}/24) ORDER BY b.start_time;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+
+if [ ! -z "${USAGE}" ]; then
+        echo "CRITICAL - Failed RMAN job(s) detected in the last ${WARNING_THRESHOLD}h: ${USAGE}"
+        exit $STATE_CRITICAL
+else
+        echo "OK - No failed RMAN job in the last ${WARNING_THRESHOLD}h"
+        exit $STATE_OK
+fi
+}
+fct_check_dg_protection_mode(){
+BROKER_ON=`echo "set feedback off;
+                 set heading off;
+                 SELECT 'OK' FROM v\\$parameter WHERE name='dg_broker_start' AND LOWER(value)='true';" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS} `
+
+if [ `echo ${BROKER_ON} | grep "OK" | wc -l` -ne 1 ]; then
+        echo "OK - DataGuard broker not active - no protection mode to check"
+        exit $STATE_OK
+fi
+
+PROTECTION=`echo "show configuration;" | dgmgrl ${USR_DB}/${PWD_DB}@${CON_TNS} | grep -i "Protection Mode" | sed 's/Protection Mode://;s/ //g'`
+
+if [ -z "${PROTECTION}" ]; then
+        echo "WARNING - Unable to determine DataGuard protection mode"
+        exit $STATE_WARNING
+else
+        echo "OK - DataGuard protection mode: ${PROTECTION}"
+        exit $STATE_OK
+fi
+}
+fct_check_new_open_accounts(){
+STANDBY_CHECK=`echo "set feedback off;
+             set heading off;
+             SELECT 'OK' from v\\$database where DATABASE_ROLE='PHYSICAL STANDBY';" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS} `
+if [ `echo ${STANDBY_CHECK} | grep "OK" | wc -l` -eq 1 ]; then
+        echo "OK - Physical Standby database detected - No monitoring of new accounts required"
+        exit $STATE_OK
+fi
+
+EXCL="'SYS','SYSTEM','OUTLN','DBSNMP','ANONYMOUS','AUDSYS','APPQOSSYS','DVSYS','DVF','GSMADMIN_INTERNAL','GSMCATUSER','GSMUSER','SI_INFORMTN_SCHEMA','SPATIAL_CSW_ADMIN_USR','SPATIAL_WFS_ADMIN_USR','SYSBACKUP','SYSDG','SYSKM','WMSYS','XS\$NULL','MDDATA','OJVMSYS','ORDDATA','OLAPSYS','ORDS_METADATA','ORDS_PUBLIC_USER','FLOWS_FILES','CTXSYS','DIP','LBACSYS','ORACLE_OCM','ORDPLUGINS','ORDSYS','TSMSYS','XDB','C##MONITORING','MONITORING'"
+
+CHECK_VERSION=`echo "set feedback off;
+                     set heading off;
+                     select 'OK' from dba_objects where object_name='CDB_DATA_FILES' and object_type='VIEW';" | sqlplus -s ${USR_DB}/${PWD_DB}@${CON_TNS} `
+
+if [ `echo ${CHECK_VERSION} | grep "OK" | wc -l` -eq 1 ]; then
+CHECK_CONTAINER=`echo "set feedback off;
+                       set heading off;
+                       select distinct ('OK') from v\\$pdbs where CON_ID > 1;" | sqlplus -s ${USR_DB}/${PWD_DB}@${CON_TNS} `
+        if [ `echo ${CHECK_CONTAINER} | grep "OK" | wc -l` -eq 1 ]; then
+                USAGE=`echo "set feedback off;
+                             set heading off;
+                             SELECT 'VALUE'||pdb.pdb_name||':'||usr.username||':'||TO_CHAR(usr.created,'YYYY-MM-DD HH24:MI') FROM cdb_users usr, dba_pdbs pdb WHERE usr.con_id=pdb.pdb_id AND usr.con_id<>2 AND usr.username NOT IN (${EXCL}) AND usr.account_status='OPEN' AND usr.created > SYSDATE-(${WARNING_THRESHOLD}/24) ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+        else
+                USAGE=`echo "set feedback off;
+                             set heading off;
+                             SELECT 'VALUE'||usr.username||':'||TO_CHAR(usr.created,'YYYY-MM-DD HH24:MI') FROM cdb_users usr WHERE usr.username NOT IN (${EXCL}) AND usr.account_status='OPEN' AND usr.created > SYSDATE-(${WARNING_THRESHOLD}/24) ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+        fi
+else
+        USAGE=`echo "set feedback off;
+                     set heading off;
+                     SELECT 'VALUE'||usr.username||':'||TO_CHAR(usr.created,'YYYY-MM-DD HH24:MI') FROM dba_users usr WHERE usr.username NOT IN (${EXCL}) AND usr.account_status='OPEN' AND usr.created > SYSDATE-(${WARNING_THRESHOLD}/24) ORDER BY 1;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+fi
+
+if [ ! -z "${USAGE}" ]; then
+        echo "WARNING - New account(s) opened in the last ${WARNING_THRESHOLD}h - review regardless of naming convention: ${USAGE}"
+        exit $STATE_WARNING
+else
+        echo "OK - No new account opened in the last ${WARNING_THRESHOLD}h"
+        exit $STATE_OK
+fi
+}
 case "${MODE}" in
         check_connect)
                 fct_check_connect
@@ -2449,6 +2758,42 @@ case "${MODE}" in
         check_dataguard_latency)
                 fct_check_dataguard_latency
                 ;;
+        check_security_default_pwd)
+                fct_main fct_check_security_default_pwd
+                ;;
+        check_security_usermig)
+                fct_main fct_check_security_usermig
+                ;;
+        check_security_admin_high_privs)
+                fct_main fct_check_security_admin_high_privs
+                ;;
+        check_security_tablespace_encryption)
+                fct_main fct_check_security_tablespace_encryption
+                ;;
+        check_security_audit_enabled)
+                fct_main fct_check_security_audit_enabled
+                ;;
+        check_security_high_privs)
+                fct_main fct_check_security_high_privs
+                ;;
+        check_security_parameter)
+                fct_main fct_check_security_parameter
+                ;;
+        check_security_network_encryption)
+                fct_main fct_check_security_network_encryption
+                ;;
+        check_psu_age)
+                fct_main fct_check_psu_age
+                ;;
+        check_backup_failed)
+                fct_main fct_check_backup_failed
+                ;;
+        check_dg_protection_mode)
+                fct_main fct_check_dg_protection_mode
+                ;;
+        check_new_open_accounts)
+                fct_main fct_check_new_open_accounts
+                ;;
         *)
                 echo Invalid Option $"Usage: "
                         echo "-m check_connect -t easy_connect_format -u USERNAME -p PASSWORD"
@@ -2507,6 +2852,18 @@ case "${MODE}" in
                         echo "-m check_database_grows -t easy_connect_format -u USERNAME -p PASSWORD"
                         echo "-m check_cpu_usage_pdb  -t easy_connect_format -u USERNAME -p PASSWORD"
                         echo "-m check_orabasetab_exist"
+                        echo "-m check_security_default_pwd -t easy_connect_format -u USERNAME -p PASSWORD (accounts with default password)"
+                        echo "-m check_security_usermig -t easy_connect_format -u USERNAME -p PASSWORD (legacy USER\$MIG hash table)"
+                        echo "-m check_security_admin_high_privs -t easy_connect_format -u USERNAME -p PASSWORD -w WARNING -c CRITICAL (number of SYSDBA/SYSOPER accounts)"
+                        echo "-m check_security_tablespace_encryption -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_security_audit_enabled -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_security_high_privs -t easy_connect_format -u USERNAME -p PASSWORD (non-standard accounts with elevated privileges)"
+                        echo "-m check_security_parameter -t easy_connect_format -u USERNAME -p PASSWORD (hardening parameters)"
+                        echo "-m check_security_network_encryption -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_psu_age -t easy_connect_format -u USERNAME -p PASSWORD -w WARNING -c CRITICAL (days since last PSU/RU)"
+                        echo "-m check_backup_failed -t easy_connect_format -u USERNAME -p PASSWORD -w WARNING (number of hours to look back for FAILED RMAN jobs)"
+                        echo "-m check_dg_protection_mode -t easy_connect_format -u USERNAME -p PASSWORD"
+                        echo "-m check_new_open_accounts -t easy_connect_format -u USERNAME -p PASSWORD -w WARNING (number of hours to look back)"
 
             exit 1
 esac

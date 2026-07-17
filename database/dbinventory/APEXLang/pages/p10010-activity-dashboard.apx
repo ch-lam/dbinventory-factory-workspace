@@ -61,9 +61,6 @@ page 10010 (
                 t-Region--scrollBody
             ]
         }
-        settings {
-            timeAxisType: enabled
-        }
         tooltip {
             showSeriesName: false
         }
@@ -106,9 +103,6 @@ page 10010 (
             columnMapping {
                 label: LOG_TIME
                 value: VALUE
-            }
-            performance {
-                maxRowsToProcess: 350
             }
         )
 
@@ -161,12 +155,7 @@ page 10010 (
         }
         appearance {
             template: @/standard
-            templateOptions: [
-                #DEFAULT#
-                t-Region--noPadding
-                i-h240
-                t-Region--scrollBody
-            ]
+            templateOptions: #DEFAULT#
         }
         reportLayout {
             numberOfRows: 20
@@ -176,9 +165,7 @@ page 10010 (
             templateOptions: [
                 #DEFAULT#
                 t-Report--stretch
-                t-Report--altRowsDefault
-                t-Report--rowHighlight
-                t-Report--inline
+                t-Report--horizontalBorders
             ]
         }
         performance {
@@ -275,9 +262,6 @@ page 10010 (
                 label: LABEL
                 value: VALUE
             }
-            performance {
-                maxRowsToProcess: 10
-            }
         )
 
         axis x (
@@ -308,8 +292,8 @@ page 10010 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select sqlerrm    label,
-                       time_stamp value
+                select sqlerrm    as label,
+                       time_stamp as value
                   from apex_activity_log
                  where flow_id    = :app_id
                    and time_stamp >= sysdate - ( 1/24/60/60 * :P10010_TIMEFRAME )
@@ -324,12 +308,7 @@ page 10010 (
         }
         appearance {
             template: @/standard
-            templateOptions: [
-                #DEFAULT#
-                t-Region--noPadding
-                i-h240
-                t-Region--scrollBody
-            ]
+            templateOptions: #DEFAULT#
         }
         reportLayout {
             numberOfRows: 20
@@ -339,9 +318,7 @@ page 10010 (
             templateOptions: [
                 #DEFAULT#
                 t-Report--stretch
-                t-Report--altRowsDefault
-                t-Report--rowHighlight
-                t-Report--inline
+                t-Report--horizontalBorders
             ]
         }
         performance {
@@ -433,9 +410,6 @@ page 10010 (
                 label: LABEL
                 value: VALUE
             }
-            performance {
-                maxRowsToProcess: 10
-            }
         )
 
         axis x (
@@ -488,6 +462,9 @@ page 10010 (
         default {
             type: static
             staticValue: 900
+        }
+        help {
+            helpText: Limits the charts and reports below to activity within the selected timeframe.
         }
     )
 

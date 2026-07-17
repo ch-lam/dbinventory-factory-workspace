@@ -5,7 +5,7 @@ alter session set current_schema=dbinventory;
 -- mssql_backup
 -- ============================================================
 create table mssql_backup (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    hostname           varchar2(50 char) not null,
    database_name      varchar2(100 char) not null,
@@ -29,7 +29,7 @@ comment on column mssql_backup.backup_size is 'Size of the backup, in bytes.';
 -- mssql_backup_info_history
 -- ============================================================
 create table mssql_backup_info_history (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    scoring_result                  timestamp default on null systimestamp not null,
    cumulative_hours_between_backup number(10) not null
@@ -45,7 +45,7 @@ comment on column mssql_backup_info_history.cumulative_hours_between_backup is '
 -- mssql_backup_stats
 -- ============================================================
 create table mssql_backup_stats (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    hostname                        varchar2(50 char) not null,
    database_name                   varchar2(100 char) not null,
@@ -69,7 +69,7 @@ comment on column mssql_backup_stats.nbrebu is 'Number of backups considered in 
 -- mssql_backup_summary
 -- ============================================================
 create table mssql_backup_summary (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    hostname             varchar2(50 char) not null,
    database_name        varchar2(100 char) not null,
@@ -90,13 +90,12 @@ comment on column mssql_backup_summary.backup_type is 'Type of backup (e.g. FULL
 comment on column mssql_backup_summary.backup_start_date is 'Timestamp at which the backup started.';
 comment on column mssql_backup_summary.previous_backup is 'Start date of the previous backup, used to compute the interval.';
 comment on column mssql_backup_summary.hours_between_backup is 'Number of hours elapsed between this backup and the previous one.';
-comment on column mssql_backup_summary.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 
 -- ============================================================
 -- mssql_backup_temp
 -- ============================================================
 create table mssql_backup_temp (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    hostname           varchar2(50 char) not null,
    database_name      varchar2(100 char) not null,
@@ -120,7 +119,7 @@ comment on column mssql_backup_temp.backup_size is 'Size of the backup, in bytes
 -- mssql_databases
 -- ============================================================
 create table mssql_databases (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    hostname              varchar2(100 char),
    database_id           number(5),
@@ -162,7 +161,7 @@ comment on column mssql_databases.agname is 'Name of the Availability Group the 
 -- mssql_files
 -- ============================================================
 create table mssql_files (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    hostname       varchar2(100 char) not null,
    database_name  varchar2(100 char) not null,
@@ -193,8 +192,9 @@ comment on column mssql_files.max_size is 'Maximum size the file is allowed to g
 -- ============================================================
 -- mssql_hosts
 -- ============================================================
+-- drop table mssql_hosts;
 create table mssql_hosts (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    hostname              varchar2(100 char),
    mssql_edition         varchar2(100 char),
@@ -212,8 +212,8 @@ create table mssql_hosts (
    num_cpus              number(6),
    memory_gb             number(6),
    os_type               varchar2(100 char),
-   service_account       varchar2(100 char),
-   install_date          number(10) default 0 not null
+   install_date          varchar2(10 char),
+   service_account       varchar2(100 char)
 );
 
 comment on table mssql_hosts is 'Inventory of MSSQL instances/hosts and their engine, cluster and resource configuration.';
@@ -235,36 +235,37 @@ comment on column mssql_hosts.xp_cmdshell_enabled is 'Indicates whether the xp_c
 comment on column mssql_hosts.num_cpus is 'Number of CPUs available on the host.';
 comment on column mssql_hosts.memory_gb is 'Amount of memory available on the host, in gigabytes.';
 comment on column mssql_hosts.os_type is 'Operating system running on the host.';
-comment on column mssql_hosts.service_account is 'Windows account the SQL Server service runs as.';
 comment on column mssql_hosts.install_date is 'Installation date of the instance, as an integer (YYYYMMDD).';
+comment on column mssql_hosts.service_account is 'Windows account the SQL Server service runs as.';
 
 -- ============================================================
 -- mssql_logins
 -- ============================================================
+-- drop table mssql_logins;
 create table mssql_logins (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    instance_name           varchar2(40 char) not null,
    loginname               varchar2(100 char) not null,
    accountcreationdate     varchar2(30 char) not null,
-   lasttimeaccountmodified varchar2(30 char) not null,
-   passwordlastsettime     varchar2(30 char) not null,
-   defaultdatabase         varchar2(100 char) not null,
-   defaultlanguage         varchar2(50 char) not null,
-   isdisabledchecked       varchar2(30 char) not null,
-   ispolicychecked         varchar2(30 char) not null,
-   isexpirationchecked     varchar2(30 char) not null,
-   isexpired               varchar2(30 char) not null,
+   lasttimeaccountmodified varchar2(30 char),
+   passwordlastsettime     varchar2(30 char),
+   defaultdatabase         varchar2(100 char),
+   defaultlanguage         varchar2(50 char),
+   isdisabledchecked       varchar2(30 char),
+   ispolicychecked         varchar2(30 char),
+   isexpirationchecked     varchar2(30 char),
+   isexpired               varchar2(30 char),
    daysuntilexpiration     varchar2(30 char),
-   islocked                varchar2(30 char) not null,
-   ismustchange            varchar2(30 char) not null,
-   lockouttime             varchar2(30 char) not null,
-   badpasswordcount        varchar2(30 char) not null,
-   badpasswordtime         varchar2(30 char) not null,
-   historylength           varchar2(30 char) not null,
-   loginsid                varchar2(200 char) not null,
-   logintype               varchar2(10 char) not null,
-   hasserverrole           varchar2(100 char) not null
+   islocked                varchar2(30 char),
+   ismustchange            varchar2(30 char),
+   lockouttime             varchar2(30 char),
+   badpasswordcount        varchar2(30 char),
+   badpasswordtime         varchar2(30 char),
+   historylength           varchar2(30 char),
+   loginsid                varchar2(200 char),
+   logintype               varchar2(10 char),
+   hasserverrole           varchar2(100 char)
 );
 
 comment on table mssql_logins is 'Inventory of MSSQL server logins and their password/account policy attributes, as reported by LOGINPROPERTY.';
@@ -296,7 +297,7 @@ comment on column mssql_logins.hasserverrole is 'List of fixed server roles assi
 -- mssql_loginwoperm
 -- ============================================================
 create table mssql_loginwoperm (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    instance_name varchar2(50 char) not null,
    loginname     varchar2(150 char) not null,
@@ -324,7 +325,7 @@ comment on column mssql_loginwoperm.scandate is 'Timestamp at which this row was
 -- mssql_security_auditlevel
 -- ============================================================
 create table mssql_security_auditlevel (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    auditlevel       varchar2(50 char) not null,
@@ -344,7 +345,7 @@ comment on column mssql_security_auditlevel.date_value is 'Timestamp at which th
 -- mssql_sec_auditlvl_exc
 -- ============================================================
 create table mssql_sec_auditlvl_exc (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername varchar2(50 char) not null,
    auditlevel varchar2(50 char) not null,
@@ -364,7 +365,7 @@ comment on column mssql_sec_auditlvl_exc.date_value is 'Timestamp at which this 
 -- mssql_security_configoptions
 -- ============================================================
 create table mssql_security_configoptions (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    name             varchar2(200 char) not null,
@@ -388,7 +389,7 @@ comment on column mssql_security_configoptions.date_value is 'Timestamp at which
 -- mssql_sec_cfgopt_exc
 -- ============================================================
 create table mssql_sec_cfgopt_exc (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername   varchar2(50 char) not null,
    name         varchar2(200 char) not null,
@@ -411,14 +412,15 @@ comment on column mssql_sec_cfgopt_exc.date_value is 'Timestamp at which this ro
 -- ============================================================
 -- mssql_security_dbproperties
 -- ============================================================
+-- drop table mssql_security_dbproperties;
 create table mssql_security_dbproperties (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername        varchar2(50 char) not null,
    db_name           varchar2(50 char) not null,
    is_auto_close_on  number(10) not null,
    is_trustworthy_on number(10) not null,
-   compliance_score  number(2) default 0 not null,
+   compliance_score  number(2) default 0,
    date_value        timestamp default on null systimestamp not null
 );
 
@@ -436,7 +438,7 @@ comment on column mssql_security_dbproperties.date_value is 'Timestamp at which 
 -- mssql_sec_dbprops_exc
 -- ============================================================
 create table mssql_sec_dbprops_exc (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername        varchar2(50 char) not null,
    db_name           varchar2(50 char) not null,
@@ -460,7 +462,7 @@ comment on column mssql_sec_dbprops_exc.date_value is 'Timestamp at which this r
 -- mssql_security_encryption
 -- ============================================================
 create table mssql_security_encryption (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
@@ -486,7 +488,7 @@ comment on column mssql_security_encryption.date_value is 'Timestamp at which th
 -- mssql_sec_encryption_exc
 -- ============================================================
 create table mssql_sec_encryption_exc (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
@@ -512,7 +514,7 @@ comment on column mssql_sec_encryption_exc.date_value is 'Timestamp at which thi
 -- mssql_security_groups
 -- ============================================================
 create table mssql_security_groups (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    localgroupname   varchar2(50 char) not null,
@@ -536,7 +538,7 @@ comment on column mssql_security_groups.date_value is 'Timestamp at which this r
 -- mssql_sec_groups_exc
 -- ============================================================
 create table mssql_sec_groups_exc (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername      varchar2(50 char) not null,
    localgroupname  varchar2(50 char) not null,
@@ -560,7 +562,7 @@ comment on column mssql_sec_groups_exc.date_value is 'Timestamp at which this ro
 -- mssql_security_guestconnect
 -- ============================================================
 create table mssql_security_guestconnect (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null, 
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
@@ -584,7 +586,7 @@ comment on column mssql_security_guestconnect.date_value is 'Timestamp at which 
 -- mssql_sec_guestconn_exc
 -- ============================================================
 create table mssql_sec_guestconn_exc (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername      varchar2(50 char) not null,
    db_name         varchar2(50 char) not null,
@@ -608,7 +610,7 @@ comment on column mssql_sec_guestconn_exc.date_value is 'Timestamp at which this
 -- mssql_security_history
 -- ============================================================
 create table mssql_security_history (
-   collect_id             number(16) not null,
+   collect_id             varchar2(16) not null,
    collect_target         varchar2(50 char) not null,
    servername             varchar2(50 char) not null,
    compliance_score_total number(2),
@@ -624,10 +626,10 @@ comment on column mssql_security_history.date_value is 'Timestamp at which this 
 
 -- ============================================================
 -- mssql_security_logins
--- Note : ON UPDATE current_timestamp() non supporte en Oracle (supprime)
 -- ============================================================
+-- drop table mssql_security_logins;
 create table mssql_security_logins (
-   collect_id             number(16) not null,
+   collect_id             varchar2(16) not null,
    collect_target         varchar2(50 char) not null,
    servername            varchar2(50 char) not null,
    login_name            varchar2(100 char) not null,
@@ -638,8 +640,8 @@ create table mssql_security_logins (
    is_expiration_checked number(2) not null,
    is_disabled           number(2) not null,
    create_date           date not null,
-   compliance_score      number(2) default 0 not null,
-   date_value            timestamp default on null systimestamp not null
+   compliance_score      number(2) default 0,
+   date_value            timestamp
 );
 
 comment on table mssql_security_logins is 'MSSQL sysadmin / high-privilege login compliance check results.';
@@ -662,7 +664,7 @@ comment on column mssql_security_logins.date_value is 'Timestamp at which this r
 -- Note : ON UPDATE current_timestamp() non supporte en Oracle (supprime)
 -- ============================================================
 create table mssql_sec_logins_exc (
-   collect_id             number(16) not null,
+   collect_id             varchar2(16) not null,
    collect_target         varchar2(50 char) not null,
    servername varchar2(50 char) not null,
    login_name varchar2(100 char) not null,
@@ -682,7 +684,7 @@ comment on column mssql_sec_logins_exc.date_value is 'Timestamp at which this ro
 -- mssql_security_orphanedusers
 -- ============================================================
 create table mssql_security_orphanedusers (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
@@ -704,7 +706,7 @@ comment on column mssql_security_orphanedusers.date_value is 'Timestamp at which
 -- mssql_sec_orphanusr_exc
 -- ============================================================
 create table mssql_sec_orphanusr_exc (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername varchar2(50 char) not null,
    db_name    varchar2(50 char) not null,
@@ -726,7 +728,7 @@ comment on column mssql_sec_orphanusr_exc.date_value is 'Timestamp at which this
 -- mssql_sec_pubperm
 -- ============================================================
 create table mssql_sec_pubperm (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
@@ -752,7 +754,7 @@ comment on column mssql_sec_pubperm.date_value is 'Timestamp at which this row w
 -- mssql_sec_pubperm_exc
 -- ============================================================
 create table mssql_sec_pubperm_exc (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername      varchar2(50 char) not null,
    db_name         varchar2(50 char) not null,
@@ -778,7 +780,7 @@ comment on column mssql_sec_pubperm_exc.date_value is 'Timestamp at which this r
 -- mssql_security_registryinfo
 -- ============================================================
 create table mssql_security_registryinfo (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    name             varchar2(100 char) not null,
@@ -800,7 +802,7 @@ comment on column mssql_security_registryinfo.date_value is 'Timestamp at which 
 -- mssql_sec_reginfo_exc
 -- ============================================================
 create table mssql_sec_reginfo_exc (
-   collect_id         number(16) not null,
+   collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
    servername varchar2(50 char) not null,
    name       varchar2(100 char) not null,
@@ -861,8 +863,9 @@ comment on column mssql_security_scoring.date_value is 'Timestamp at which this 
 -- ============================================================
 -- mssql_security_sqlserveraudit
 -- ============================================================
+-- drop table mssql_security_sqlserveraudit;
 create table mssql_security_sqlserveraudit (
-   collect_id                number(16) not null,
+   collect_id                varchar2(16) not null,
    collect_target            varchar2(50 char) not null,
    servername                varchar2(50 char) not null,
    auditname                 varchar2(50 char) not null,
@@ -872,8 +875,8 @@ create table mssql_security_sqlserveraudit (
    auditspecificationenabled number(2) not null,
    auditactionname           varchar2(100 char) not null,
    audited_result            varchar2(30 char) not null,
-   compliance_score          number(2) default 0 not null,
-   date_value                timestamp default on null systimestamp not null
+   compliance_score          number(2),
+   date_value                timestamp
 );
 
 comment on table mssql_security_sqlserveraudit is 'MSSQL Server Audit (SQL Server Audit feature) configuration compliance check results.';
@@ -894,7 +897,7 @@ comment on column mssql_security_sqlserveraudit.date_value is 'Timestamp at whic
 -- mssql_sec_srvaudit_exc
 -- ============================================================
 create table mssql_sec_srvaudit_exc (
-   collect_id       number(16) not null,
+   collect_id       varchar2(16) not null,
    collect_target   varchar2(50 char) not null,
    servername      varchar2(50 char) not null,
    auditactionname varchar2(100 char) not null,
@@ -913,18 +916,19 @@ comment on column mssql_sec_srvaudit_exc.date_value is 'Timestamp at which this 
 -- ============================================================
 -- mssql_users
 -- ============================================================
+-- drop table mssql_users;
 create table mssql_users (
-   collect_id        number(16) not null,
+   collect_id        varchar2(16) not null,
    collect_target    varchar2(50 char) not null,
    instance_name     varchar2(50 char) not null,
    database_name     varchar2(100 char) not null,
    name              varchar2(100 char) not null,
-   groupname         varchar2(100 char) not null,
-   loginname         varchar2(100 char) not null,
-   defaultdbname     varchar2(100 char) not null,
-   defaultschemaname varchar2(100 char) not null,
-   principalid       number(10) not null,
-   sid               varchar2(100 char) not null
+   groupname         varchar2(100 char),
+   loginname         varchar2(100 char),
+   defaultdbname     varchar2(100 char),
+   defaultschemaname varchar2(100 char),
+   principalid       number(10),
+   sid               varchar2(100 char)
 );
 
 comment on table mssql_users is 'Inventory of MSSQL database users and their mapped logins.';
@@ -944,7 +948,7 @@ comment on column mssql_users.sid is 'Security identifier (SID) of the user.';
 -- mssql_validatelogin
 -- ============================================================
 create table mssql_validatelogin (
-   collect_id   number(16) not null,
+   collect_id   varchar2(16) not null,
    collect_target varchar2(50 char) not null,
    servername  varchar2(150 char) not null,
    sid         varchar2(200 char) not null,

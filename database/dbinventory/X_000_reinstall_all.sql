@@ -1,1 +1,3 @@
 @V__001_create_schema.sql
+@V__002_create_app_model.sql
+@V__003_app_model_reference_data.sql

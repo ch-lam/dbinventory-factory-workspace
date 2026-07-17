@@ -157,6 +157,390 @@ page 10011 (
             savedReportMappingIdentifier: 2181060179368252
         }
 
+        column C00 (
+            type: hidden
+            heading {
+                heading: Hour 00 Class
+            }
+            layout {
+                sequence: 100
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: I
+            }
+        )
+
+        column C01 (
+            type: hidden
+            heading {
+                heading: Hour 01 Class
+            }
+            layout {
+                sequence: 120
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: K
+            }
+        )
+
+        column C02 (
+            type: hidden
+            heading {
+                heading: Hour 02 Class
+            }
+            layout {
+                sequence: 140
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: M
+            }
+        )
+
+        column C03 (
+            type: hidden
+            heading {
+                heading: Hour 03 Class
+            }
+            layout {
+                sequence: 160
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: O
+            }
+        )
+
+        column C04 (
+            type: hidden
+            heading {
+                heading: Hour 04 Class
+            }
+            layout {
+                sequence: 180
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: Q
+            }
+        )
+
+        column C05 (
+            type: hidden
+            heading {
+                heading: Hour 05 Class
+            }
+            layout {
+                sequence: 200
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: S
+            }
+        )
+
+        column C06 (
+            type: hidden
+            heading {
+                heading: Hour 06 Class
+            }
+            layout {
+                sequence: 220
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: U
+            }
+        )
+
+        column C07 (
+            type: hidden
+            heading {
+                heading: Hour 07 Class
+            }
+            layout {
+                sequence: 240
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: W
+            }
+        )
+
+        column C08 (
+            type: hidden
+            heading {
+                heading: Hour 08 Class
+            }
+            layout {
+                sequence: 260
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: Y
+            }
+        )
+
+        column C09 (
+            type: hidden
+            heading {
+                heading: Hour 09 Class
+            }
+            layout {
+                sequence: 280
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AA
+            }
+        )
+
+        column C10 (
+            type: hidden
+            heading {
+                heading: Hour 10 Class
+            }
+            layout {
+                sequence: 300
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AC
+            }
+        )
+
+        column C11 (
+            type: hidden
+            heading {
+                heading: Hour 11 Class
+            }
+            layout {
+                sequence: 320
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AE
+            }
+        )
+
+        column C12 (
+            type: hidden
+            heading {
+                heading: Hour 12 Class
+            }
+            layout {
+                sequence: 340
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AG
+            }
+        )
+
+        column C13 (
+            type: hidden
+            heading {
+                heading: Hour 13 Class
+            }
+            layout {
+                sequence: 360
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AI
+            }
+        )
+
+        column C14 (
+            type: hidden
+            heading {
+                heading: Hour 14 Class
+            }
+            layout {
+                sequence: 380
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AK
+            }
+        )
+
+        column C15 (
+            type: hidden
+            heading {
+                heading: Hour 15 Class
+            }
+            layout {
+                sequence: 400
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AM
+            }
+        )
+
+        column C16 (
+            type: hidden
+            heading {
+                heading: Hour 16 Class
+            }
+            layout {
+                sequence: 420
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AO
+            }
+        )
+
+        column C17 (
+            type: hidden
+            heading {
+                heading: Hour 17 Class
+            }
+            layout {
+                sequence: 440
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AQ
+            }
+        )
+
+        column C18 (
+            type: hidden
+            heading {
+                heading: Hour 18 Class
+            }
+            layout {
+                sequence: 460
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AS
+            }
+        )
+
+        column C19 (
+            type: hidden
+            heading {
+                heading: Hour 19 Class
+            }
+            layout {
+                sequence: 480
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AU
+            }
+        )
+
+        column C20 (
+            type: hidden
+            heading {
+                heading: Hour 20 Class
+            }
+            layout {
+                sequence: 500
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AW
+            }
+        )
+
+        column C21 (
+            type: hidden
+            heading {
+                heading: Hour 21 Class
+            }
+            layout {
+                sequence: 520
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: AY
+            }
+        )
+
+        column C22 (
+            type: hidden
+            heading {
+                heading: Hour 22 Class
+            }
+            layout {
+                sequence: 540
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: BA
+            }
+        )
+
+        column C23 (
+            type: hidden
+            heading {
+                heading: Hour 23 Class
+            }
+            layout {
+                sequence: 560
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: BC
+            }
+        )
+
         column ERRORS (
             type: plainText
             heading {
@@ -179,17 +563,12 @@ page 10011 (
         )
 
         column HOURS (
+            type: plainText
             heading {
                 heading: Activity by Hour
             }
             layout {
                 sequence: 2
-            }
-            source {
-                dataType: STRING
-            }
-            advanced {
-                endUserAlias: B
             }
             columnFormatting {
                 htmlExpression:
@@ -221,6 +600,12 @@ page 10011 (
                     <span class="hour #C23#"><span class="hour-label">23</span> <span class="hour-value">#V23#</span></span>
                     </div>
                     ```
+            }
+            source {
+                dataType: STRING
+            }
+            advanced {
+                endUserAlias: B
             }
         )
 
@@ -343,19 +728,6 @@ page 10011 (
             }
         )
 
-        column C00 (
-            type: hidden
-            heading {
-                heading: Hour 00 Class
-            }
-            layout {
-                sequence: 100
-            }
-            source {
-                dataType: STRING
-            }
-        )
-
         column V00 (
             type: hidden
             heading {
@@ -367,18 +739,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C01 (
-            type: hidden
-            heading {
-                heading: Hour 01 Class
-            }
-            layout {
-                sequence: 120
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: J
             }
         )
 
@@ -393,18 +755,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C02 (
-            type: hidden
-            heading {
-                heading: Hour 02 Class
-            }
-            layout {
-                sequence: 140
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: L
             }
         )
 
@@ -419,18 +771,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C03 (
-            type: hidden
-            heading {
-                heading: Hour 03 Class
-            }
-            layout {
-                sequence: 160
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: N
             }
         )
 
@@ -445,18 +787,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C04 (
-            type: hidden
-            heading {
-                heading: Hour 04 Class
-            }
-            layout {
-                sequence: 180
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: P
             }
         )
 
@@ -471,18 +803,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C05 (
-            type: hidden
-            heading {
-                heading: Hour 05 Class
-            }
-            layout {
-                sequence: 200
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: R
             }
         )
 
@@ -497,18 +819,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C06 (
-            type: hidden
-            heading {
-                heading: Hour 06 Class
-            }
-            layout {
-                sequence: 220
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: T
             }
         )
 
@@ -523,18 +835,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C07 (
-            type: hidden
-            heading {
-                heading: Hour 07 Class
-            }
-            layout {
-                sequence: 240
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: V
             }
         )
 
@@ -549,18 +851,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C08 (
-            type: hidden
-            heading {
-                heading: Hour 08 Class
-            }
-            layout {
-                sequence: 260
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: X
             }
         )
 
@@ -575,18 +867,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C09 (
-            type: hidden
-            heading {
-                heading: Hour 09 Class
-            }
-            layout {
-                sequence: 280
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: Z
             }
         )
 
@@ -601,18 +883,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C10 (
-            type: hidden
-            heading {
-                heading: Hour 10 Class
-            }
-            layout {
-                sequence: 300
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AB
             }
         )
 
@@ -627,18 +899,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C11 (
-            type: hidden
-            heading {
-                heading: Hour 11 Class
-            }
-            layout {
-                sequence: 320
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AD
             }
         )
 
@@ -653,18 +915,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C12 (
-            type: hidden
-            heading {
-                heading: Hour 12 Class
-            }
-            layout {
-                sequence: 340
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AF
             }
         )
 
@@ -679,18 +931,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C13 (
-            type: hidden
-            heading {
-                heading: Hour 13 Class
-            }
-            layout {
-                sequence: 360
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AH
             }
         )
 
@@ -705,18 +947,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C14 (
-            type: hidden
-            heading {
-                heading: Hour 14 Class
-            }
-            layout {
-                sequence: 380
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AJ
             }
         )
 
@@ -731,18 +963,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C15 (
-            type: hidden
-            heading {
-                heading: Hour 15 Class
-            }
-            layout {
-                sequence: 400
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AL
             }
         )
 
@@ -757,18 +979,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C16 (
-            type: hidden
-            heading {
-                heading: Hour 16 Class
-            }
-            layout {
-                sequence: 420
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AN
             }
         )
 
@@ -783,18 +995,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C17 (
-            type: hidden
-            heading {
-                heading: Hour 17 Class
-            }
-            layout {
-                sequence: 440
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AP
             }
         )
 
@@ -809,18 +1011,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C18 (
-            type: hidden
-            heading {
-                heading: Hour 18 Class
-            }
-            layout {
-                sequence: 460
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AR
             }
         )
 
@@ -835,18 +1027,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C19 (
-            type: hidden
-            heading {
-                heading: Hour 19 Class
-            }
-            layout {
-                sequence: 480
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AT
             }
         )
 
@@ -861,18 +1043,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C20 (
-            type: hidden
-            heading {
-                heading: Hour 20 Class
-            }
-            layout {
-                sequence: 500
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AV
             }
         )
 
@@ -887,18 +1059,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C21 (
-            type: hidden
-            heading {
-                heading: Hour 21 Class
-            }
-            layout {
-                sequence: 520
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AX
             }
         )
 
@@ -913,18 +1075,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C22 (
-            type: hidden
-            heading {
-                heading: Hour 22 Class
-            }
-            layout {
-                sequence: 540
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: AZ
             }
         )
 
@@ -939,18 +1091,8 @@ page 10011 (
             source {
                 dataType: STRING
             }
-        )
-
-        column C23 (
-            type: hidden
-            heading {
-                heading: Hour 23 Class
-            }
-            layout {
-                sequence: 560
-            }
-            source {
-                dataType: STRING
+            advanced {
+                endUserAlias: BB
             }
         )
 
@@ -965,9 +1107,13 @@ page 10011 (
             source {
                 dataType: STRING
             }
+            advanced {
+                endUserAlias: BD
+            }
         )
 
         page {
+            height: 8.5
             borderWidth: 0.5
             borderColor: #666666
         }
@@ -1027,6 +1173,11 @@ page 10011 (
                 t-Region--hideHeader js-addHiddenHeadingRoleDesc
                 t-Region--hiddenOverflow
             ]
+        }
+        serverSideCondition {
+            type: item=value
+            item: P10011_VIEW_AS
+            value: CHART
         }
         chart {
             type: donut
@@ -1222,49 +1373,6 @@ page 10011 (
             execution {
                 sequence: 10
                 fireOnInit: false
-            }
-        )
-
-    )
-
-    dynamicAction toggle-chart-visibility (
-        name: Toggle Chart Visibility
-        execution {
-            sequence: 10
-        }
-        when {
-            event: ready
-            selectionType: region
-            region: @top-users-chart
-        }
-        clientSideCondition {
-            type: item=value
-            item: P10011_VIEW_AS
-            value: CHART
-        }
-
-        action native-show-chart (
-            action: show
-            affectedElements {
-                selectionType: region
-                region: @top-users-chart
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
-        action native-hide-chart (
-            action: hide
-            affectedElements {
-                selectionType: region
-                region: @top-users-chart
-            }
-            execution {
-                sequence: 20
-                fireOnInit: false
-                fireWhenEventResultIs: false
             }
         )
 

@@ -107,30 +107,30 @@ SET LOAD COMMIT OFF
 -- ===========================================================================
 
 PROMPT -- LOADING: ../collect/postgres_hosts.csv
-LOAD postgres_hosts       ../collect/postgres_hosts.csv
+LOAD postgres_hosts ../collect/postgres_hosts.csv
 PROMPT -- LOADING: ../collect/postgres_databases.csv
-LOAD postgres_databases   ../collect/postgres_databases.csv
+LOAD postgres_databases ../collect/postgres_databases.csv
 PROMPT -- LOADING: ../collect/postgres_replication.csv
 LOAD postgres_replication ../collect/postgres_replication.csv
 PROMPT -- LOADING: ../collect/postgres_backup.csv
-LOAD postgres_backup      ../collect/postgres_backup.csv
+LOAD postgres_backup ../collect/postgres_backup.csv
 PROMPT -- LOADING: ../collect/postgres_extensions.csv
-LOAD postgres_extensions  ../collect/postgres_extensions.csv
+LOAD postgres_extensions ../collect/postgres_extensions.csv
 
 -- ===========================================================================
 -- PostgreSQL – Securite
 -- ===========================================================================
 
 PROMPT -- LOADING: ../collect/postgres_security_parameter.csv
-LOAD postgres_security_parameter           ../collect/postgres_security_parameter.csv
+LOAD postgres_security_parameter ../collect/postgres_security_parameter.csv
 PROMPT -- LOADING: ../collect/postgres_security_roles.csv
-LOAD postgres_security_roles               ../collect/postgres_security_roles.csv
+LOAD postgres_security_roles ../collect/postgres_security_roles.csv
 PROMPT -- LOADING: ../collect/postgres_sec_role_members.csv
-LOAD postgres_sec_role_members             ../collect/postgres_sec_role_members.csv
+LOAD postgres_sec_role_members ../collect/postgres_sec_role_members.csv
 PROMPT -- LOADING: ../collect/postgres_security_hba_rules.csv
-LOAD postgres_security_hba_rules           ../collect/postgres_security_hba_rules.csv
+LOAD postgres_security_hba_rules ../collect/postgres_security_hba_rules.csv
 PROMPT -- LOADING: ../collect/postgres_sec_db_privs.csv
-LOAD postgres_sec_db_privs                 ../collect/postgres_sec_db_privs.csv
+LOAD postgres_sec_db_privs ../collect/postgres_sec_db_privs.csv
 
 -- Commit final pour valider tous les chargements
 COMMIT;

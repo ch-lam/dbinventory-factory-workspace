@@ -138,8 +138,8 @@ page 1 (
                     ```sql
                     SELECT ENVIRONMENT AS LABEL, COUNT(*) AS VALUE
                       FROM (
-                        SELECT ENV ENVIRONMENT FROM MSSQL_HOSTS
-                        UNION ALL
+                        /*SELECT ENV ENVIRONMENT FROM MSSQL_HOSTS
+                        UNION ALL */
                         SELECT ENVIRONMENT FROM ORACLE_HOSTS
                       )
                      GROUP BY ENVIRONMENT

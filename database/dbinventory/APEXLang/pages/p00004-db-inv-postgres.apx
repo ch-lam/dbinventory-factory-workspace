@@ -80,52 +80,27 @@ page 4 (
             whenNoDataFound: No data found.
         }
 
-        column HOSTNAME (
-            reportColumnQueryId: 1
+        column ARCHIVE_MODE (
+            reportColumnQueryId: 8
             derivedColumn: N
             heading {
-                heading: Hostname
-            }
-            layout {
-                sequence: 10
-            }
-            comments {
-                comments: Display Label: Hostname. Display in Report: true. Display in Form: false. Format Mask: none. Value Required: false. Read Only: true. Primary Display Column: true. Authorization Scheme: none.
-            }
-        )
-
-        column ENVIRONMENT (
-            reportColumnQueryId: 2
-            derivedColumn: N
-            heading {
-                heading: Environment
+                heading: Archive Mode
                 alignment: center
             }
             layout {
-                sequence: 20
+                sequence: 80
                 columnAlignment: center
             }
         )
 
-        column LICENSE_TYPE (
-            reportColumnQueryId: 3
+        column DATA_DIRECTORY (
+            reportColumnQueryId: 11
             derivedColumn: N
             heading {
-                heading: License
+                heading: Data Directory
             }
             layout {
-                sequence: 30
-            }
-        )
-
-        column PG_VERSION (
-            reportColumnQueryId: 4
-            derivedColumn: N
-            heading {
-                heading: Version
-            }
-            layout {
-                sequence: 40
+                sequence: 110
             }
         )
 
@@ -142,40 +117,41 @@ page 4 (
             }
         )
 
-        column PORT (
-            reportColumnQueryId: 6
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
             derivedColumn: N
             heading {
-                heading: Port
-                alignment: end
-            }
-            layout {
-                sequence: 60
-                columnAlignment: end
-            }
-        )
-
-        column WAL_LEVEL (
-            reportColumnQueryId: 7
-            derivedColumn: N
-            heading {
-                heading: WAL Level
-            }
-            layout {
-                sequence: 70
-            }
-        )
-
-        column ARCHIVE_MODE (
-            reportColumnQueryId: 8
-            derivedColumn: N
-            heading {
-                heading: Archive Mode
+                heading: Environment
                 alignment: center
             }
             layout {
-                sequence: 80
+                sequence: 20
                 columnAlignment: center
+            }
+        )
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+            comments {
+                comments: Display Label: Hostname. Display in Report: true. Display in Form: false. Format Mask: none. Value Required: false. Read Only: true. Primary Display Column: true. Authorization Scheme: none.
+            }
+        )
+
+        column LICENSE_TYPE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: License
+            }
+            layout {
+                sequence: 30
             }
         )
 
@@ -188,6 +164,30 @@ page 4 (
             }
             layout {
                 sequence: 90
+                columnAlignment: end
+            }
+        )
+
+        column PG_VERSION (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column PORT (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Port
+                alignment: end
+            }
+            layout {
+                sequence: 60
                 columnAlignment: end
             }
         )
@@ -205,14 +205,14 @@ page 4 (
             }
         )
 
-        column DATA_DIRECTORY (
-            reportColumnQueryId: 11
+        column WAL_LEVEL (
+            reportColumnQueryId: 7
             derivedColumn: N
             heading {
-                heading: Data Directory
+                heading: WAL Level
             }
             layout {
-                sequence: 110
+                sequence: 70
             }
         )
 

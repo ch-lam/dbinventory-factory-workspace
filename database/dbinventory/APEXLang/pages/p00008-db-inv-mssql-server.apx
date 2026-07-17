@@ -34,19 +34,6 @@ page 8 (
         }
     )
 
-    region server-filter (
-        name: Server Selection
-        type: staticContent
-        layout {
-            sequence: 5
-            slot: body
-        }
-        appearance {
-            template: @/standard
-            templateOptions: #DEFAULT#
-        }
-    )
-
     region mssql-server-identity (
         name: Server Identity Card
         type: classicReport
@@ -129,15 +116,6 @@ page 8 (
             whenNoDataFound: Select a server above to view its identity card.
         }
 
-        column SEQ (
-            reportColumnQueryId: 1
-            derivedColumn: N
-            type: hidden
-            layout {
-                sequence: 5
-            }
-        )
-
         column ATTRIBUTE (
             reportColumnQueryId: 2
             derivedColumn: N
@@ -163,6 +141,28 @@ page 8 (
             }
         )
 
+        column SEQ (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+        )
+
+    )
+
+    region server-filter (
+        name: Server Selection
+        type: staticContent
+        layout {
+            sequence: 5
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
     )
 
     pageItem P8_HOSTNAME (
@@ -170,16 +170,6 @@ page 8 (
         label {
             label: Server
             alignment: left
-        }
-        layout {
-            sequence: 10
-            region: @server-filter
-            slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
         }
         lov {
             type: sqlQuery
@@ -191,6 +181,16 @@ page 8 (
                  order by hostname
                 ```
             displayNullValue: false
+        }
+        layout {
+            sequence: 10
+            region: @server-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
         }
         help {
             helpText: Select the MSSQL host whose identity card is displayed below.
@@ -222,3 +222,4 @@ page 8 (
     )
 
 )
+

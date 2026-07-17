@@ -5,7 +5,7 @@
 # =============================================================================
 
 MONITORING_USER="monitoring"
-MONITORING_PASS="*********************************"
+MONITORING_PASS="F5t9TAcbjLTzhBNE69YeYBTx1BLgOZ"
 MAIL_TO="lambert.christophe@chl.lu"
 
 # Base de connexion par defaut pour les requetes cluster-wide (pg_database,
@@ -23,10 +23,15 @@ log_err() { log "ERROR: $*" >&2; printf '%s\n' "$*" >> "${LIST_DIR}/error_db.lst
 # Execute une requete SQL contre une instance PostgreSQL cible et retourne le
 # resultat au format CSV (RFC4180, sans en-tete) pret pour LOAD SQLcl.
 # Usage : psql_run host port dbname "SELECT ..."
+#psql_run() {
+#    local host="$1" port="$2" dbname="$3" sql="$4"
+#    PGPASSWORD="${MONITORING_PASS}" psql -h "${host}" -p "${port}" -U "${MONITORING_USER}" -d "${dbname}" \
+#        --csv -t -c "${sql}" # 2>/dev/null
+#}
 psql_run() {
     local host="$1" port="$2" dbname="$3" sql="$4"
     PGPASSWORD="${MONITORING_PASS}" psql -h "${host}" -p "${port}" -U "${MONITORING_USER}" -d "${dbname}" \
-        --csv -t -A -c "${sql}" # 2>/dev/null
+        -X -q -c "COPY (${sql}) TO STDOUT WITH (FORMAT csv, FORCE_QUOTE *)"
 }
 
 # Execute une requete SQL et retourne une simple liste de valeurs (une par ligne).

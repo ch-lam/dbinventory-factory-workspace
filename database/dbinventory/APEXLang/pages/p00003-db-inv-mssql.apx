@@ -43,8 +43,6 @@ page 3 (
             sqlQuery:
                 ```sql
                 select hostname,
-                       env,
-                       license_type,
                        mssql_product_version,
                        mssql_edition,
                        collation,
@@ -81,6 +79,34 @@ page 3 (
             whenNoDataFound: No data found.
         }
 
+        column ACTIVENODENAME (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Active Node
+            }
+            layout {
+                sequence: 90
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column COLLATION (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Collation
+            }
+            layout {
+                sequence: 60
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
         column HOSTNAME (
             reportColumnQueryId: 1
             derivedColumn: N
@@ -90,81 +116,16 @@ page 3 (
             layout {
                 sequence: 10
             }
+            sorting {
+                sortable: false
+            }
             comments {
                 comments: Display Label: Hostname. Display in Report: true. Display in Form: false. Format Mask: none. Value Required: false. Read Only: true. Primary Display Column: true. Authorization Scheme: none.
             }
         )
 
-        column ENV (
-            reportColumnQueryId: 2
-            derivedColumn: N
-            heading {
-                heading: Environment
-                alignment: center
-            }
-            layout {
-                sequence: 20
-                columnAlignment: center
-            }
-        )
-
-        column LICENSE_TYPE (
-            reportColumnQueryId: 3
-            derivedColumn: N
-            heading {
-                heading: License
-            }
-            layout {
-                sequence: 30
-            }
-        )
-
-        column MSSQL_PRODUCT_VERSION (
-            reportColumnQueryId: 4
-            derivedColumn: N
-            heading {
-                heading: Version
-            }
-            layout {
-                sequence: 40
-            }
-        )
-
-        column MSSQL_EDITION (
-            reportColumnQueryId: 5
-            derivedColumn: N
-            heading {
-                heading: Edition
-            }
-            layout {
-                sequence: 50
-            }
-        )
-
-        column COLLATION (
-            reportColumnQueryId: 6
-            derivedColumn: N
-            heading {
-                heading: Collation
-            }
-            layout {
-                sequence: 60
-            }
-        )
-
-        column OS_TYPE (
-            reportColumnQueryId: 7
-            derivedColumn: N
-            heading {
-                heading: OS Type
-            }
-            layout {
-                sequence: 70
-            }
-        )
-
         column IS_CLUSTERED (
-            reportColumnQueryId: 8
+            reportColumnQueryId: 6
             derivedColumn: N
             heading {
                 heading: Clustered
@@ -174,34 +135,13 @@ page 3 (
                 sequence: 80
                 columnAlignment: center
             }
-        )
-
-        column ACTIVENODENAME (
-            reportColumnQueryId: 9
-            derivedColumn: N
-            heading {
-                heading: Active Node
-            }
-            layout {
-                sequence: 90
-            }
-        )
-
-        column NUM_CPUS (
-            reportColumnQueryId: 10
-            derivedColumn: N
-            heading {
-                heading: CPUs
-                alignment: end
-            }
-            layout {
-                sequence: 100
-                columnAlignment: end
+            sorting {
+                sortable: false
             }
         )
 
         column MEMORY_GB (
-            reportColumnQueryId: 11
+            reportColumnQueryId: 9
             derivedColumn: N
             heading {
                 heading: Memory (GB)
@@ -211,16 +151,80 @@ page 3 (
                 sequence: 110
                 columnAlignment: end
             }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column MSSQL_EDITION (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Edition
+            }
+            layout {
+                sequence: 50
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column MSSQL_PRODUCT_VERSION (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 40
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column NUM_CPUS (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: CPUs
+                alignment: end
+            }
+            layout {
+                sequence: 100
+                columnAlignment: end
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column OS_TYPE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: OS Type
+            }
+            layout {
+                sequence: 70
+            }
+            sorting {
+                sortable: false
+            }
         )
 
         column SERVICE_ACCOUNT (
-            reportColumnQueryId: 12
+            reportColumnQueryId: 10
             derivedColumn: N
             heading {
                 heading: Service Account
             }
             layout {
                 sequence: 120
+            }
+            sorting {
+                sortable: false
             }
         )
 

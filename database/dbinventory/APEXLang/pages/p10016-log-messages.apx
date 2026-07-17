@@ -140,6 +140,9 @@ page 10016 (
             label: Automation
             alignment: left
         }
+        settings {
+            sendOnPageSubmit: false
+        }
         layout {
             sequence: 20
             region: @automation-execution
@@ -150,9 +153,6 @@ page 10016 (
         appearance {
             template: @/optional-floating
             templateOptions: #DEFAULT#
-        }
-        settings {
-            sendOnPageSubmit: false
         }
     )
 
@@ -177,6 +177,9 @@ page 10016 (
             label: Started
             alignment: left
         }
+        settings {
+            sendOnPageSubmit: false
+        }
         layout {
             sequence: 30
             region: @automation-execution
@@ -188,9 +191,6 @@ page 10016 (
             template: @/optional-floating
             templateOptions: #DEFAULT#
         }
-        settings {
-            sendOnPageSubmit: false
-        }
     )
 
     pageItem P10016_STATUS (
@@ -198,6 +198,9 @@ page 10016 (
         label {
             label: Status
             alignment: left
+        }
+        settings {
+            sendOnPageSubmit: false
         }
         layout {
             sequence: 40
@@ -209,9 +212,6 @@ page 10016 (
         appearance {
             template: @/optional-floating
             templateOptions: #DEFAULT#
-        }
-        settings {
-            sendOnPageSubmit: false
         }
     )
 

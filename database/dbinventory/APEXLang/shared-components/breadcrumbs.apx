@@ -1,6 +1,19 @@
 breadcrumb breadcrumb (
     name: Breadcrumb
 
+    entry activity-reports (
+        name: Activity Reports
+        pageNumber: 10001
+        execution {
+            sequence: 10
+        }
+        link {
+            target: {
+                page: 10001
+            }
+        }
+    )
+
     entry administration (
         name: Administration
         pageNumber: 10000
@@ -27,6 +40,19 @@ breadcrumb breadcrumb (
         }
     )
 
+    entry mongodb (
+        name: MongoDB
+        pageNumber: 6
+        execution {
+            sequence: 10
+        }
+        link {
+            target: {
+                page: 6
+            }
+        }
+    )
+
     entry ms-sql (
         name: MS SQL
         pageNumber: 3
@@ -40,28 +66,15 @@ breadcrumb breadcrumb (
         }
     )
 
-    entry oracle (
-        name: Oracle
-        pageNumber: 2
+    entry mssql-server (
+        name: MSSQL Server
+        pageNumber: 8
         execution {
             sequence: 10
         }
         link {
             target: {
-                page: 2
-            }
-        }
-    )
-
-    entry postgres (
-        name: Postgres
-        pageNumber: 4
-        execution {
-            sequence: 10
-        }
-        link {
-            target: {
-                page: 4
+                page: 8
             }
         }
     )
@@ -79,28 +92,15 @@ breadcrumb breadcrumb (
         }
     )
 
-    entry mongodb (
-        name: MongoDB
-        pageNumber: 6
+    entry oracle (
+        name: Oracle
+        pageNumber: 2
         execution {
             sequence: 10
         }
         link {
             target: {
-                page: 6
-            }
-        }
-    )
-
-    entry activity-reports (
-        name: Activity Reports
-        pageNumber: 10001
-        execution {
-            sequence: 10
-        }
-        link {
-            target: {
-                page: 10001
+                page: 2
             }
         }
     )
@@ -118,15 +118,15 @@ breadcrumb breadcrumb (
         }
     )
 
-    entry mssql-server (
-        name: MSSQL Server
-        pageNumber: 8
+    entry postgres (
+        name: Postgres
+        pageNumber: 4
         execution {
             sequence: 10
         }
         link {
             target: {
-                page: 8
+                page: 4
             }
         }
     )

@@ -12,8 +12,3 @@ SELECT DISTINCT
 FROM msdb.dbo.backupmediafamily
 INNER JOIN msdb.dbo.backupset ON msdb.dbo.backupmediafamily.media_set_id = msdb.dbo.backupset.media_set_id
 WHERE (CONVERT(datetime, msdb.dbo.backupset.backup_start_date, 102) >= GETDATE() - 31)
--- ORDER BY par position : avec SELECT DISTINCT, T-SQL exige que les colonnes
--- de tri figurent dans la liste SELECT. Les colonnes originales etant
--- maintenant fondues dans des expressions concatenees, on trie par ordinal
--- (2 = database_name, 4 = backup_finish_date) plutot que par nom.
-ORDER BY 2, 4

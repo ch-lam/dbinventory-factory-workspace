@@ -45,6 +45,5 @@ BEGIN
      AND r.role_principal_id IS NULL )
    OR (u.stat = 'no_db_permissions' AND p.major_id IS NULL
      AND r.role_principal_id IS NULL))
- ORDER BY l.name, l.is_disabled
 END
 DROP TABLE #all_users

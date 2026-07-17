@@ -18,6 +18,8 @@ DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
 DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
 MAIL_TO="lambert.christophe@chl.lu"
 
+# sqlcl dbinventory/uEjAYCnXhgbw3IputZCJbeMFKwGBvi@ORA-DEV:1521/DBINVENTORY_TST
+
 # ── Log ───────────────────────────────────────────────────────────────────────
 LOG_DIR="${SCRIPT_DIR}/logs"
 mkdir -p "${LOG_DIR}"

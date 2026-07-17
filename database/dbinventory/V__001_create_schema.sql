@@ -5,6 +5,8 @@ alter session set current_schema=dbinventory;
 -- mssql_backup
 -- ============================================================
 create table mssql_backup (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    hostname           varchar2(50 char) not null,
    database_name      varchar2(100 char) not null,
    backup_start_date  date not null,
@@ -13,20 +15,9 @@ create table mssql_backup (
    backup_size        number(19) not null
 );
 
-create index backup_type_idx on
-   mssql_backup (
-      backup_type
-   );
-create index backup_finish_date_idx on
-   mssql_backup (
-      backup_finish_date
-   );
-create index backup_start_date_idx on
-   mssql_backup (
-      backup_start_date
-   );
-
 comment on table mssql_backup is 'Raw MSSQL backup history collected daily from msdb.dbo.backupset (one row per backup operation).';
+comment on column mssql_backup.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_backup.collect_target is 'Target of the collection.';
 comment on column mssql_backup.hostname is 'Host name of the database server or instance.';
 comment on column mssql_backup.database_name is 'Name of the database.';
 comment on column mssql_backup.backup_start_date is 'Timestamp at which the backup started.';
@@ -38,20 +29,24 @@ comment on column mssql_backup.backup_size is 'Size of the backup, in bytes.';
 -- mssql_backup_info_history
 -- ============================================================
 create table mssql_backup_info_history (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    scoring_result                  timestamp default on null systimestamp not null,
-   environment                     varchar2(20 char) not null,
    cumulative_hours_between_backup number(10) not null
 );
 
 comment on table mssql_backup_info_history is 'Historical trend of the aggregated MSSQL backup freshness score, snapshotted at each daily scoring run.';
+comment on column mssql_backup_info_history.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_backup_info_history.collect_target is 'Target of the collection.';
 comment on column mssql_backup_info_history.scoring_result is 'Timestamp at which this scoring snapshot was taken.';
-comment on column mssql_backup_info_history.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column mssql_backup_info_history.cumulative_hours_between_backup is 'Cumulative number of hours elapsed between successive backups.';
 
 -- ============================================================
 -- mssql_backup_stats
 -- ============================================================
 create table mssql_backup_stats (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    hostname                        varchar2(50 char) not null,
    database_name                   varchar2(100 char) not null,
    recovery_model                  varchar2(20 char) not null,
@@ -61,6 +56,8 @@ create table mssql_backup_stats (
 );
 
 comment on table mssql_backup_stats is 'Aggregated MSSQL backup statistics per database and backup type (average interval, number of backups).';
+comment on column mssql_backup_stats.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_backup_stats.collect_target is 'Target of the collection.';
 comment on column mssql_backup_stats.hostname is 'Host name of the database server or instance.';
 comment on column mssql_backup_stats.database_name is 'Name of the database.';
 comment on column mssql_backup_stats.recovery_model is 'Database recovery model (e.g. FULL, SIMPLE, BULK_LOGGED).';
@@ -72,17 +69,20 @@ comment on column mssql_backup_stats.nbrebu is 'Number of backups considered in 
 -- mssql_backup_summary
 -- ============================================================
 create table mssql_backup_summary (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    hostname             varchar2(50 char) not null,
    database_name        varchar2(100 char) not null,
    recovery_model       varchar2(100 char),
    backup_type          varchar2(20 char) not null,
    backup_start_date    date not null,
    previous_backup      date not null,
-   hours_between_backup number(10) not null,
-   environment          varchar2(20 char)
+   hours_between_backup number(10) not null
 );
 
 comment on table mssql_backup_summary is 'Per-database MSSQL backup summary comparing the latest backup to the previous one, used to compute backup freshness.';
+comment on column mssql_backup_summary.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_backup_summary.collect_target is 'Target of the collection.';
 comment on column mssql_backup_summary.hostname is 'Host name of the database server or instance.';
 comment on column mssql_backup_summary.database_name is 'Name of the database.';
 comment on column mssql_backup_summary.recovery_model is 'Database recovery model (e.g. FULL, SIMPLE, BULK_LOGGED).';
@@ -96,6 +96,8 @@ comment on column mssql_backup_summary.environment is 'Environment the row appli
 -- mssql_backup_temp
 -- ============================================================
 create table mssql_backup_temp (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    hostname           varchar2(50 char) not null,
    database_name      varchar2(100 char) not null,
    backup_start_date  date not null,
@@ -105,6 +107,8 @@ create table mssql_backup_temp (
 );
 
 comment on table mssql_backup_temp is 'Staging table used to land MSSQL backup data during the load process before it is merged into mssql_backup.';
+comment on column mssql_backup_temp.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_backup_temp.collect_target is 'Target of the collection.';
 comment on column mssql_backup_temp.hostname is 'Host name of the database server or instance.';
 comment on column mssql_backup_temp.database_name is 'Name of the database.';
 comment on column mssql_backup_temp.backup_start_date is 'Timestamp at which the backup started.';
@@ -116,6 +120,8 @@ comment on column mssql_backup_temp.backup_size is 'Size of the backup, in bytes
 -- mssql_databases
 -- ============================================================
 create table mssql_databases (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    hostname              varchar2(100 char),
    database_id           number(5),
    database_name         varchar2(100 char),
@@ -130,11 +136,12 @@ create table mssql_databases (
    is_mirroring_enabled  number(6),
    owner                 varchar2(100 char),
    agtype                varchar2(50 char),
-   agname                varchar2(50 char),
-   env                   varchar2(10 char) not null
+   agname                varchar2(50 char)
 );
 
 comment on table mssql_databases is 'Inventory of MSSQL databases and their configuration, collected per instance.';
+comment on column mssql_databases.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_databases.collect_target is 'Target of the collection.';
 comment on column mssql_databases.hostname is 'Host name of the database server or instance.';
 comment on column mssql_databases.database_id is 'Database ID as reported by sys.databases.';
 comment on column mssql_databases.database_name is 'Name of the database.';
@@ -150,12 +157,13 @@ comment on column mssql_databases.is_mirroring_enabled is 'Indicates whether dat
 comment on column mssql_databases.owner is 'Owner (schema) of the object.';
 comment on column mssql_databases.agtype is 'Availability Group type the database belongs to, if any.';
 comment on column mssql_databases.agname is 'Name of the Availability Group the database belongs to, if any.';
-comment on column mssql_databases.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 
 -- ============================================================
 -- mssql_files
 -- ============================================================
 create table mssql_files (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    hostname       varchar2(100 char) not null,
    database_name  varchar2(100 char) not null,
    file_id        number(10) not null,
@@ -165,11 +173,12 @@ create table mssql_files (
    size_mb        number(10) not null,
    growth_percent number(10) not null,
    growth_mb      number(10) not null,
-   max_size       number(10) not null,
-   env            varchar2(10 char) not null
+   max_size       number(10) not null
 );
 
 comment on table mssql_files is 'Inventory of MSSQL database files (data and log) and their sizing/autogrowth settings.';
+comment on column mssql_files.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_files.collect_target is 'Target of the collection.';
 comment on column mssql_files.hostname is 'Host name of the database server or instance.';
 comment on column mssql_files.database_name is 'Name of the database.';
 comment on column mssql_files.file_id is 'File ID as reported by sys.database_files.';
@@ -180,12 +189,13 @@ comment on column mssql_files.size_mb is 'Size, in megabytes.';
 comment on column mssql_files.growth_percent is 'Autogrowth increment expressed as a percentage, if configured that way.';
 comment on column mssql_files.growth_mb is 'Autogrowth increment expressed in megabytes, if configured that way.';
 comment on column mssql_files.max_size is 'Maximum size the file is allowed to grow to, in megabytes (-1/unlimited if unrestricted).';
-comment on column mssql_files.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 
 -- ============================================================
 -- mssql_hosts
 -- ============================================================
 create table mssql_hosts (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    hostname              varchar2(100 char),
    mssql_edition         varchar2(100 char),
    mssql_product_version varchar2(100 char),
@@ -203,12 +213,12 @@ create table mssql_hosts (
    memory_gb             number(6),
    os_type               varchar2(100 char),
    service_account       varchar2(100 char),
-   env                   varchar2(10 char) not null,
-   license_type          varchar2(50 char) not null,
    install_date          number(10) default 0 not null
 );
 
 comment on table mssql_hosts is 'Inventory of MSSQL instances/hosts and their engine, cluster and resource configuration.';
+comment on column mssql_hosts.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_hosts.collect_target is 'Target of the collection.';
 comment on column mssql_hosts.hostname is 'Host name of the database server or instance.';
 comment on column mssql_hosts.mssql_edition is 'SQL Server edition (e.g. Enterprise, Standard).';
 comment on column mssql_hosts.mssql_product_version is 'SQL Server product version.';
@@ -226,14 +236,14 @@ comment on column mssql_hosts.num_cpus is 'Number of CPUs available on the host.
 comment on column mssql_hosts.memory_gb is 'Amount of memory available on the host, in gigabytes.';
 comment on column mssql_hosts.os_type is 'Operating system running on the host.';
 comment on column mssql_hosts.service_account is 'Windows account the SQL Server service runs as.';
-comment on column mssql_hosts.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column mssql_hosts.license_type is 'Licensing type applied to this host/instance.';
 comment on column mssql_hosts.install_date is 'Installation date of the instance, as an integer (YYYYMMDD).';
 
 -- ============================================================
 -- mssql_logins
 -- ============================================================
 create table mssql_logins (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    instance_name           varchar2(40 char) not null,
    loginname               varchar2(100 char) not null,
    accountcreationdate     varchar2(30 char) not null,
@@ -258,6 +268,8 @@ create table mssql_logins (
 );
 
 comment on table mssql_logins is 'Inventory of MSSQL server logins and their password/account policy attributes, as reported by LOGINPROPERTY.';
+comment on column mssql_logins.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_logins.collect_target is 'Target of the collection.';
 comment on column mssql_logins.instance_name is 'Name of the database instance.';
 comment on column mssql_logins.loginname is 'Name of the login being evaluated.';
 comment on column mssql_logins.accountcreationdate is 'Timestamp at which the login was created.';
@@ -284,6 +296,8 @@ comment on column mssql_logins.hasserverrole is 'List of fixed server roles assi
 -- mssql_loginwoperm
 -- ============================================================
 create table mssql_loginwoperm (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    instance_name varchar2(50 char) not null,
    loginname     varchar2(150 char) not null,
    type_desc     varchar2(50 char) not null,
@@ -295,6 +309,8 @@ create table mssql_loginwoperm (
 );
 
 comment on table mssql_loginwoperm is 'MSSQL logins that hold no explicit database or server permission (candidates for cleanup review).';
+comment on column mssql_loginwoperm.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_loginwoperm.collect_target is 'Target of the collection.';
 comment on column mssql_loginwoperm.instance_name is 'Name of the database instance.';
 comment on column mssql_loginwoperm.loginname is 'Name of the login being evaluated.';
 comment on column mssql_loginwoperm.type_desc is 'Type of login (e.g. SQL_LOGIN, WINDOWS_LOGIN).';
@@ -308,6 +324,8 @@ comment on column mssql_loginwoperm.scandate is 'Timestamp at which this row was
 -- mssql_security_auditlevel
 -- ============================================================
 create table mssql_security_auditlevel (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    auditlevel       varchar2(50 char) not null,
    compliance_score number(2) default 0,
@@ -315,6 +333,8 @@ create table mssql_security_auditlevel (
 );
 
 comment on table mssql_security_auditlevel is 'MSSQL server audit level compliance check results.';
+comment on column mssql_security_auditlevel.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_auditlevel.collect_target is 'Target of the collection.';
 comment on column mssql_security_auditlevel.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_auditlevel.auditlevel is 'Audit level configured on the server.';
 comment on column mssql_security_auditlevel.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
@@ -324,6 +344,8 @@ comment on column mssql_security_auditlevel.date_value is 'Timestamp at which th
 -- mssql_sec_auditlvl_exc
 -- ============================================================
 create table mssql_sec_auditlvl_exc (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername varchar2(50 char) not null,
    auditlevel varchar2(50 char) not null,
    comments   varchar2(200 char) default '0' not null,
@@ -331,6 +353,8 @@ create table mssql_sec_auditlvl_exc (
 );
 
 comment on table mssql_sec_auditlvl_exc is 'Documented exceptions accepted for the MSSQL server audit level compliance check.';
+comment on column mssql_sec_auditlvl_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_auditlvl_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_auditlvl_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_auditlvl_exc.auditlevel is 'Audit level configured on the server.';
 comment on column mssql_sec_auditlvl_exc.comments is 'Free-text justification for this documented exception.';
@@ -340,6 +364,8 @@ comment on column mssql_sec_auditlvl_exc.date_value is 'Timestamp at which this 
 -- mssql_security_configoptions
 -- ============================================================
 create table mssql_security_configoptions (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    name             varchar2(200 char) not null,
    config_value     number(10) not null,
@@ -349,6 +375,8 @@ create table mssql_security_configoptions (
 );
 
 comment on table mssql_security_configoptions is 'MSSQL sp_configure options compliance check results.';
+comment on column mssql_security_configoptions.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_configoptions.collect_target is 'Target of the collection.';
 comment on column mssql_security_configoptions.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_configoptions.name is 'Name of the sp_configure option.';
 comment on column mssql_security_configoptions.config_value is 'Configured value of the option.';
@@ -360,6 +388,8 @@ comment on column mssql_security_configoptions.date_value is 'Timestamp at which
 -- mssql_sec_cfgopt_exc
 -- ============================================================
 create table mssql_sec_cfgopt_exc (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername   varchar2(50 char) not null,
    name         varchar2(200 char) not null,
    config_value number(10) not null,
@@ -369,6 +399,8 @@ create table mssql_sec_cfgopt_exc (
 );
 
 comment on table mssql_sec_cfgopt_exc is 'Documented exceptions accepted for the MSSQL sp_configure options compliance check.';
+comment on column mssql_sec_cfgopt_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_cfgopt_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_cfgopt_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_cfgopt_exc.name is 'Name of the sp_configure option.';
 comment on column mssql_sec_cfgopt_exc.config_value is 'Configured value of the option.';
@@ -380,6 +412,8 @@ comment on column mssql_sec_cfgopt_exc.date_value is 'Timestamp at which this ro
 -- mssql_security_dbproperties
 -- ============================================================
 create table mssql_security_dbproperties (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername        varchar2(50 char) not null,
    db_name           varchar2(50 char) not null,
    is_auto_close_on  number(10) not null,
@@ -389,6 +423,8 @@ create table mssql_security_dbproperties (
 );
 
 comment on table mssql_security_dbproperties is 'MSSQL database property compliance check results (AUTO_CLOSE, TRUSTWORTHY).';
+comment on column mssql_security_dbproperties.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_dbproperties.collect_target is 'Target of the collection.';
 comment on column mssql_security_dbproperties.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_dbproperties.db_name is 'Name of the database.';
 comment on column mssql_security_dbproperties.is_auto_close_on is 'Indicates whether the AUTO_CLOSE database option is enabled.';
@@ -400,6 +436,8 @@ comment on column mssql_security_dbproperties.date_value is 'Timestamp at which 
 -- mssql_sec_dbprops_exc
 -- ============================================================
 create table mssql_sec_dbprops_exc (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername        varchar2(50 char) not null,
    db_name           varchar2(50 char) not null,
    is_auto_close_on  number(10) not null,
@@ -409,6 +447,8 @@ create table mssql_sec_dbprops_exc (
 );
 
 comment on table mssql_sec_dbprops_exc is 'Documented exceptions accepted for the MSSQL database property compliance check.';
+comment on column mssql_sec_dbprops_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_dbprops_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_dbprops_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_dbprops_exc.db_name is 'Name of the database.';
 comment on column mssql_sec_dbprops_exc.is_auto_close_on is 'Indicates whether the AUTO_CLOSE database option is enabled.';
@@ -420,6 +460,8 @@ comment on column mssql_sec_dbprops_exc.date_value is 'Timestamp at which this r
 -- mssql_security_encryption
 -- ============================================================
 create table mssql_security_encryption (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
    key_type         varchar2(50 char) not null,
@@ -430,6 +472,8 @@ create table mssql_security_encryption (
 );
 
 comment on table mssql_security_encryption is 'MSSQL encryption keys (TDE certificates/keys) compliance check results.';
+comment on column mssql_security_encryption.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_encryption.collect_target is 'Target of the collection.';
 comment on column mssql_security_encryption.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_encryption.db_name is 'Name of the database.';
 comment on column mssql_security_encryption.key_type is 'Type of encryption key (e.g. certificate, asymmetric key).';
@@ -442,16 +486,20 @@ comment on column mssql_security_encryption.date_value is 'Timestamp at which th
 -- mssql_sec_encryption_exc
 -- ============================================================
 create table mssql_sec_encryption_exc (
-   servername     varchar2(50 char) not null,
-   db_name        varchar2(50 char) not null,
-   key_type       varchar2(50 char) not null,
-   key_name       varchar2(100 char) not null,
-   algorithm_desc varchar2(50 char) not null,
-   comments       varchar2(200 char) default '0' not null,
-   date_value     timestamp default on null systimestamp not null
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
+   servername       varchar2(50 char) not null,
+   db_name          varchar2(50 char) not null,
+   key_type         varchar2(50 char) not null,
+   key_name         varchar2(100 char) not null,
+   algorithm_desc   varchar2(50 char) not null,
+   comments         varchar2(200 char) default '0' not null,
+   date_value       timestamp default on null systimestamp not null
 );
 
 comment on table mssql_sec_encryption_exc is 'Documented exceptions accepted for the MSSQL encryption compliance check.';
+comment on column mssql_sec_encryption_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_encryption_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_encryption_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_encryption_exc.db_name is 'Name of the database.';
 comment on column mssql_sec_encryption_exc.key_type is 'Type of encryption key (e.g. certificate, asymmetric key).';
@@ -464,6 +512,8 @@ comment on column mssql_sec_encryption_exc.date_value is 'Timestamp at which thi
 -- mssql_security_groups
 -- ============================================================
 create table mssql_security_groups (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    localgroupname   varchar2(50 char) not null,
    permission_name  varchar2(100 char) not null,
@@ -473,6 +523,8 @@ create table mssql_security_groups (
 );
 
 comment on table mssql_security_groups is 'MSSQL local Windows group permissions compliance check results.';
+comment on column mssql_security_groups.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_groups.collect_target is 'Target of the collection.';
 comment on column mssql_security_groups.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_groups.localgroupname is 'Name of the local Windows group.';
 comment on column mssql_security_groups.permission_name is 'Name of the permission being evaluated.';
@@ -484,6 +536,8 @@ comment on column mssql_security_groups.date_value is 'Timestamp at which this r
 -- mssql_sec_groups_exc
 -- ============================================================
 create table mssql_sec_groups_exc (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername      varchar2(50 char) not null,
    localgroupname  varchar2(50 char) not null,
    permission_name varchar2(100 char) not null,
@@ -493,6 +547,8 @@ create table mssql_sec_groups_exc (
 );
 
 comment on table mssql_sec_groups_exc is 'Documented exceptions accepted for the MSSQL local Windows group permissions compliance check.';
+comment on column mssql_sec_groups_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_groups_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_groups_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_groups_exc.localgroupname is 'Name of the local Windows group.';
 comment on column mssql_sec_groups_exc.permission_name is 'Name of the permission being evaluated.';
@@ -504,6 +560,8 @@ comment on column mssql_sec_groups_exc.date_value is 'Timestamp at which this ro
 -- mssql_security_guestconnect
 -- ============================================================
 create table mssql_security_guestconnect (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null, 
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
    permission_name  varchar2(50 char) not null,
@@ -513,6 +571,8 @@ create table mssql_security_guestconnect (
 );
 
 comment on table mssql_security_guestconnect is 'MSSQL guest account CONNECT permission compliance check results.';
+comment on column mssql_security_guestconnect.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_guestconnect.collect_target is 'Target of the collection.';
 comment on column mssql_security_guestconnect.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_guestconnect.db_name is 'Name of the database.';
 comment on column mssql_security_guestconnect.permission_name is 'Name of the permission being evaluated.';
@@ -524,6 +584,8 @@ comment on column mssql_security_guestconnect.date_value is 'Timestamp at which 
 -- mssql_sec_guestconn_exc
 -- ============================================================
 create table mssql_sec_guestconn_exc (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
    servername      varchar2(50 char) not null,
    db_name         varchar2(50 char) not null,
    permission_name varchar2(50 char) not null,
@@ -533,6 +595,8 @@ create table mssql_sec_guestconn_exc (
 );
 
 comment on table mssql_sec_guestconn_exc is 'Documented exceptions accepted for the MSSQL guest account CONNECT permission compliance check.';
+comment on column mssql_sec_guestconn_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_guestconn_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_guestconn_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_guestconn_exc.db_name is 'Name of the database.';
 comment on column mssql_sec_guestconn_exc.permission_name is 'Name of the permission being evaluated.';
@@ -544,15 +608,17 @@ comment on column mssql_sec_guestconn_exc.date_value is 'Timestamp at which this
 -- mssql_security_history
 -- ============================================================
 create table mssql_security_history (
+   collect_id             number(16) not null,
+   collect_target         varchar2(50 char) not null,
    servername             varchar2(50 char) not null,
-   environment            varchar2(20 char) not null,
    compliance_score_total number(2),
    date_value             timestamp default on null systimestamp not null
 );
 
 comment on table mssql_security_history is 'Historical trend of the overall MSSQL security compliance score per server.';
+comment on column mssql_security_history.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_history.collect_target is 'Target of the collection.';
 comment on column mssql_security_history.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_history.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column mssql_security_history.compliance_score_total is 'Overall compliance score aggregated across all checks.';
 comment on column mssql_security_history.date_value is 'Timestamp at which this row was collected or computed.';
 
@@ -561,6 +627,8 @@ comment on column mssql_security_history.date_value is 'Timestamp at which this 
 -- Note : ON UPDATE current_timestamp() non supporte en Oracle (supprime)
 -- ============================================================
 create table mssql_security_logins (
+   collect_id             number(16) not null,
+   collect_target         varchar2(50 char) not null,
    servername            varchar2(50 char) not null,
    login_name            varchar2(100 char) not null,
    principal_id          varchar2(100 char) not null,
@@ -575,6 +643,8 @@ create table mssql_security_logins (
 );
 
 comment on table mssql_security_logins is 'MSSQL sysadmin / high-privilege login compliance check results.';
+comment on column mssql_security_logins.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_logins.collect_target is 'Target of the collection.';
 comment on column mssql_security_logins.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_logins.login_name is 'Name of the login being evaluated.';
 comment on column mssql_security_logins.principal_id is 'Principal ID of the login as reported by sys.server_principals.';
@@ -592,6 +662,8 @@ comment on column mssql_security_logins.date_value is 'Timestamp at which this r
 -- Note : ON UPDATE current_timestamp() non supporte en Oracle (supprime)
 -- ============================================================
 create table mssql_sec_logins_exc (
+   collect_id             number(16) not null,
+   collect_target         varchar2(50 char) not null,
    servername varchar2(50 char) not null,
    login_name varchar2(100 char) not null,
    comments   varchar2(200 char) default '0' not null,
@@ -599,6 +671,8 @@ create table mssql_sec_logins_exc (
 );
 
 comment on table mssql_sec_logins_exc is 'Documented exceptions accepted for the MSSQL sysadmin / high-privilege login compliance check.';
+comment on column mssql_sec_logins_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_logins_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_logins_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_logins_exc.login_name is 'Name of the login being evaluated.';
 comment on column mssql_sec_logins_exc.comments is 'Free-text justification for this documented exception.';
@@ -608,6 +682,8 @@ comment on column mssql_sec_logins_exc.date_value is 'Timestamp at which this ro
 -- mssql_security_orphanedusers
 -- ============================================================
 create table mssql_security_orphanedusers (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
    user_name        varchar2(100 char) not null,
@@ -616,6 +692,8 @@ create table mssql_security_orphanedusers (
 );
 
 comment on table mssql_security_orphanedusers is 'MSSQL orphaned database users (users without a matching server login) compliance check results.';
+comment on column mssql_security_orphanedusers.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_orphanedusers.collect_target is 'Target of the collection.';
 comment on column mssql_security_orphanedusers.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_orphanedusers.db_name is 'Name of the database.';
 comment on column mssql_security_orphanedusers.user_name is 'Name of the orphaned database user.';
@@ -626,6 +704,8 @@ comment on column mssql_security_orphanedusers.date_value is 'Timestamp at which
 -- mssql_sec_orphanusr_exc
 -- ============================================================
 create table mssql_sec_orphanusr_exc (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
    servername varchar2(50 char) not null,
    db_name    varchar2(50 char) not null,
    user_name  varchar2(100 char) not null,
@@ -634,6 +714,8 @@ create table mssql_sec_orphanusr_exc (
 );
 
 comment on table mssql_sec_orphanusr_exc is 'Documented exceptions accepted for the MSSQL orphaned database users compliance check.';
+comment on column mssql_sec_orphanusr_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_orphanusr_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_orphanusr_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_orphanusr_exc.db_name is 'Name of the database.';
 comment on column mssql_sec_orphanusr_exc.user_name is 'Name of the orphaned database user.';
@@ -644,6 +726,8 @@ comment on column mssql_sec_orphanusr_exc.date_value is 'Timestamp at which this
 -- mssql_sec_pubperm
 -- ============================================================
 create table mssql_sec_pubperm (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    db_name          varchar2(50 char) not null,
    username         varchar2(100 char) not null,
@@ -654,6 +738,8 @@ create table mssql_sec_pubperm (
 );
 
 comment on table mssql_sec_pubperm is 'MSSQL permissions granted to the public role compliance check results.';
+comment on column mssql_sec_pubperm.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_pubperm.collect_target is 'Target of the collection.';
 comment on column mssql_sec_pubperm.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_pubperm.db_name is 'Name of the database.';
 comment on column mssql_sec_pubperm.username is 'Name of the database account being evaluated.';
@@ -666,6 +752,8 @@ comment on column mssql_sec_pubperm.date_value is 'Timestamp at which this row w
 -- mssql_sec_pubperm_exc
 -- ============================================================
 create table mssql_sec_pubperm_exc (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
    servername      varchar2(50 char) not null,
    db_name         varchar2(50 char) not null,
    username        varchar2(100 char) not null,
@@ -676,6 +764,8 @@ create table mssql_sec_pubperm_exc (
 );
 
 comment on table mssql_sec_pubperm_exc is 'Documented exceptions accepted for the MSSQL public role permissions compliance check.';
+comment on column mssql_sec_pubperm_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_pubperm_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_pubperm_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_pubperm_exc.db_name is 'Name of the database.';
 comment on column mssql_sec_pubperm_exc.username is 'Name of the database account being evaluated.';
@@ -688,6 +778,8 @@ comment on column mssql_sec_pubperm_exc.date_value is 'Timestamp at which this r
 -- mssql_security_registryinfo
 -- ============================================================
 create table mssql_security_registryinfo (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
    servername       varchar2(50 char) not null,
    name             varchar2(100 char) not null,
    value            number(10) not null,
@@ -696,6 +788,8 @@ create table mssql_security_registryinfo (
 );
 
 comment on table mssql_security_registryinfo is 'MSSQL registry configuration compliance check results (e.g. ForceEncryption).';
+comment on column mssql_security_registryinfo.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_registryinfo.collect_target is 'Target of the collection.';
 comment on column mssql_security_registryinfo.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_registryinfo.name is 'Name of the registry value being evaluated.';
 comment on column mssql_security_registryinfo.value is 'Value read from the registry.';
@@ -706,6 +800,8 @@ comment on column mssql_security_registryinfo.date_value is 'Timestamp at which 
 -- mssql_sec_reginfo_exc
 -- ============================================================
 create table mssql_sec_reginfo_exc (
+   collect_id         number(16) not null,
+   collect_target     varchar2(50 char) not null,
    servername varchar2(50 char) not null,
    name       varchar2(100 char) not null,
    comments   varchar2(200 char) default '0' not null,
@@ -713,6 +809,8 @@ create table mssql_sec_reginfo_exc (
 );
 
 comment on table mssql_sec_reginfo_exc is 'Documented exceptions accepted for the MSSQL registry configuration compliance check.';
+comment on column mssql_sec_reginfo_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_reginfo_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_reginfo_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_reginfo_exc.name is 'Name of the registry value being evaluated.';
 comment on column mssql_sec_reginfo_exc.comments is 'Free-text justification for this documented exception.';
@@ -764,6 +862,8 @@ comment on column mssql_security_scoring.date_value is 'Timestamp at which this 
 -- mssql_security_sqlserveraudit
 -- ============================================================
 create table mssql_security_sqlserveraudit (
+   collect_id                number(16) not null,
+   collect_target            varchar2(50 char) not null,
    servername                varchar2(50 char) not null,
    auditname                 varchar2(50 char) not null,
    auditenabled              number(2) not null,
@@ -777,6 +877,8 @@ create table mssql_security_sqlserveraudit (
 );
 
 comment on table mssql_security_sqlserveraudit is 'MSSQL Server Audit (SQL Server Audit feature) configuration compliance check results.';
+comment on column mssql_security_sqlserveraudit.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_sqlserveraudit.collect_target is 'Target of the collection.';
 comment on column mssql_security_sqlserveraudit.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_sqlserveraudit.auditname is 'Name of the SQL Server Audit object.';
 comment on column mssql_security_sqlserveraudit.auditenabled is 'Indicates whether the SQL Server Audit object is enabled.';
@@ -792,6 +894,8 @@ comment on column mssql_security_sqlserveraudit.date_value is 'Timestamp at whic
 -- mssql_sec_srvaudit_exc
 -- ============================================================
 create table mssql_sec_srvaudit_exc (
+   collect_id       number(16) not null,
+   collect_target   varchar2(50 char) not null,
    servername      varchar2(50 char) not null,
    auditactionname varchar2(100 char) not null,
    comments        varchar2(200 char) default '0' not null,
@@ -799,6 +903,8 @@ create table mssql_sec_srvaudit_exc (
 );
 
 comment on table mssql_sec_srvaudit_exc is 'Documented exceptions accepted for the MSSQL Server Audit compliance check.';
+comment on column mssql_sec_srvaudit_exc.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_sec_srvaudit_exc.collect_target is 'Target of the collection.';
 comment on column mssql_sec_srvaudit_exc.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_sec_srvaudit_exc.auditactionname is 'Name of the audited action.';
 comment on column mssql_sec_srvaudit_exc.comments is 'Free-text justification for this documented exception.';
@@ -808,6 +914,8 @@ comment on column mssql_sec_srvaudit_exc.date_value is 'Timestamp at which this 
 -- mssql_users
 -- ============================================================
 create table mssql_users (
+   collect_id        number(16) not null,
+   collect_target    varchar2(50 char) not null,
    instance_name     varchar2(50 char) not null,
    database_name     varchar2(100 char) not null,
    name              varchar2(100 char) not null,
@@ -820,6 +928,8 @@ create table mssql_users (
 );
 
 comment on table mssql_users is 'Inventory of MSSQL database users and their mapped logins.';
+comment on column mssql_users.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_users.collect_target is 'Target of the collection.';
 comment on column mssql_users.instance_name is 'Name of the database instance.';
 comment on column mssql_users.database_name is 'Name of the database.';
 comment on column mssql_users.name is 'Name of the database user.';
@@ -834,6 +944,8 @@ comment on column mssql_users.sid is 'Security identifier (SID) of the user.';
 -- mssql_validatelogin
 -- ============================================================
 create table mssql_validatelogin (
+   collect_id   number(16) not null,
+   collect_target varchar2(50 char) not null,
    servername  varchar2(150 char) not null,
    sid         varchar2(200 char) not null,
    login       varchar2(150 char) not null,
@@ -843,6 +955,8 @@ create table mssql_validatelogin (
 );
 
 comment on table mssql_validatelogin is 'MSSQL login validation results, cross-checking login state (e.g. against Active Directory).';
+comment on column mssql_validatelogin.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_validatelogin.collect_target is 'Target of the collection.';
 comment on column mssql_validatelogin.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_validatelogin.sid is 'Security identifier (SID) of the login.';
 comment on column mssql_validatelogin.login is 'Name of the login being validated.';
@@ -1901,29 +2015,34 @@ comment on column oracle_users.db_name is 'Name of the database.';
 -- product_support
 -- ============================================================
 create table product_support (
-   product_type                varchar2(15 char) not null,
-   product_version             varchar2(100 char) not null,
+   product_company     varchar2(15 char) not null,
+   product_type        varchar2(15 char) not null,
+   product_version     varchar2(100 char) not null,
+   commercial_name     varchar2(100 char),
+   display_name        varchar2(30 char) not null,
+   current_patch_name  varchar2(30 char),
    current_patch_level varchar2(100 char),
    current_patch_date  date,
-   commercial_name     varchar2(100 char) not null,
-   display_name        varchar2(30 char) not null,
+   edition_date        date not null,
    end_of_support_date date not null,
    end_of_ext_support_date date,
-   constraint pk_product_support primary key ( product_type,
+   constraint pk_product_support primary key ( product_company,
+                                               product_type,
                                                product_version )
 );
 
 comment on table product_support is 'Reference table of vendor product end-of-support (EOL/EOSL) dates, used for lifecycle compliance checks.';
+comment on column product_support.product_company is 'Company that produces the product (e.g. ORACLE, MICROSOFT, POSTGRESQL).';
 comment on column product_support.product_type is 'Product family (e.g. ORACLE, MSSQL, POSTGRES, OS).';
 comment on column product_support.product_version is 'Product version this end-of-support date applies to.';
 comment on column product_support.commercial_name is 'Commercial name of the product version.';
 comment on column product_support.display_name is 'Short display name used in reports/dashboards.';
+comment on column product_support.edition_date is 'Date on which the product version was released.';
 comment on column product_support.end_of_support_date is 'Date on which the vendor ends support for this product version.';
 comment on column product_support.end_of_ext_support_date is 'Date on which the vendor ends extended support for this product version.';
 comment on column product_support.current_patch_level is 'Current patch level for the product version.';
 comment on column product_support.current_patch_date is 'Date of the current patch level.';
-
-
+   
 -- ============================================================
 -- postgres_hosts
 -- ============================================================
@@ -2192,17 +2311,15 @@ comment on column postgres_collect_list.active is 'Flag indicating whether this 
 -- mssql_collect_list
 -- ============================================================
 create table mssql_collect_list (
-   collect_name varchar2(30 char) not null,
    hostname     varchar2(150 char) not null,
    port         number(5) default 1433 not null,
    environment  varchar2(10 char) not null,
    license_type varchar2(50 char) not null,
    active       number(1) default 1 not null,
-   constraint pk_mssql_collect_list primary key ( collect_name )
+   constraint pk_mssql_collect_list primary key ( hostname, port )
 );
 
 comment on table mssql_collect_list is 'List of MSSQL instances to be collected by the inventory pipeline.';
-comment on column mssql_collect_list.collect_name is 'Unique name identifying this collection target.';
 comment on column mssql_collect_list.hostname is 'Host name of the database server or instance.';
 comment on column mssql_collect_list.port is 'TCP port the instance listens on.';
 comment on column mssql_collect_list.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';

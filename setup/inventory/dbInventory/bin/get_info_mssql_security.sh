@@ -27,40 +27,51 @@ while IFS=';' read -r env license server; do
     status_check "${target}" || { log_err "${target}"; continue; }
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getconfigoptions.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_configoptions_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getregistryinfo.sql" \
         | grep -v "The system cannot find the file specified" \
         | grep -v "introuvable" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_registryinfo_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getguestconnect.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_guestconnect_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getorphanedusers.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_orphanedusers_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getdbproperties.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_dbproperties_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getpublicperm.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_publicpermission_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getgroups.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_groups_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getlogins.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_logins_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getauditlevel.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_auditlevel_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getsqlserveraudit.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_sqlserveraudit_temp.csv" || log_err "${target}"
 
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getencryption.sql" \
         | grep -v "Invalid column" \
         | grep -v "Msg 207, Level 16" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_encryption_temp.csv" || log_err "${target}"
 
 done < <(grep -v '^\s*#' "${LIST_FILE}" | grep -v '^\s*$' | sort -u)

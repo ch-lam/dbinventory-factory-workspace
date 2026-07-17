@@ -105,7 +105,7 @@ TRUNCATE TABLE mssql_security_sqlserveraudit;
 SET LOADFORMAT CSV
 SET LOADFORMAT COLUMN_NAMES OFF
 SET LOADFORMAT DELIMITER ,
-SET LOADFORMAT ENCLOSURES "
+SET LOADFORMAT ENCLOSURES ""
 SET LOAD SCAN_ROWS 0
 SET LOAD ERRORS UNLIMITED
 SET LOAD BATCHES_PER_COMMIT 0
@@ -116,48 +116,48 @@ SET LOAD COMMIT OFF
 -- ===========================================================================
 
 PROMPT -- LOADING: ../collect/mssql_hosts.csv
-LOAD mssql_hosts         ../collect/mssql_hosts.csv
+LOAD mssql_hosts ../collect/mssql_hosts.csv
 PROMPT -- LOADING: ../collect/mssql_databases.csv
-LOAD mssql_databases     ../collect/mssql_databases.csv
+-- LOAD mssql_databases ../collect/mssql_databases.csv
 PROMPT -- LOADING: ../collect/mssql_files.csv
-LOAD mssql_files         ../collect/mssql_files.csv
+-- LOAD mssql_files ../collect/mssql_files.csv
 PROMPT -- LOADING: ../collect/mssql_logins.csv
-LOAD mssql_logins        ../collect/mssql_logins.csv
+-- LOAD mssql_logins ../collect/mssql_logins.csv
 PROMPT -- LOADING: ../collect/mssql_users.csv
-LOAD mssql_users         ../collect/mssql_users.csv
+-- LOAD mssql_users ../collect/mssql_users.csv
 PROMPT -- LOADING: ../collect/mssql_loginwoperm.csv
-LOAD mssql_loginwoperm   ../collect/mssql_loginwoperm.csv
+-- LOAD mssql_loginwoperm ../collect/mssql_loginwoperm.csv
 PROMPT -- LOADING: ../collect/mssql_validatelogin.csv
-LOAD mssql_validatelogin ../collect/mssql_validatelogin.csv
+-- LOAD mssql_validatelogin ../collect/mssql_validatelogin.csv
 PROMPT -- LOADING: ../collect/mssql_backup.csv
-LOAD mssql_backup        ../collect/mssql_backup.csv
+-- LOAD mssql_backup ../collect/mssql_backup.csv
 
 -- ===========================================================================
 -- MSSQL – Sécurité
 -- ===========================================================================
 
 PROMPT -- LOADING: ../collect/mssql_security_auditlevel.csv
-LOAD mssql_security_auditlevel       ../collect/mssql_security_auditlevel.csv
+-- LOAD mssql_security_auditlevel ../collect/mssql_security_auditlevel.csv
 PROMPT -- LOADING: ../collect/mssql_security_configoptions.csv
-LOAD mssql_security_configoptions    ../collect/mssql_security_configoptions.csv
+-- LOAD mssql_security_configoptions ../collect/mssql_security_configoptions.csv
 PROMPT -- LOADING: ../collect/mssql_security_dbproperties.csv
-LOAD mssql_security_dbproperties     ../collect/mssql_security_dbproperties.csv
+-- LOAD mssql_security_dbproperties ../collect/mssql_security_dbproperties.csv
 PROMPT -- LOADING: ../collect/mssql_security_encryption.csv
-LOAD mssql_security_encryption       ../collect/mssql_security_encryption.csv
+-- LOAD mssql_security_encryption ../collect/mssql_security_encryption.csv
 PROMPT -- LOADING: ../collect/mssql_security_groups.csv
-LOAD mssql_security_groups           ../collect/mssql_security_groups.csv
+-- LOAD mssql_security_groups ../collect/mssql_security_groups.csv
 PROMPT -- LOADING: ../collect/mssql_security_guestconnect.csv
-LOAD mssql_security_guestconnect     ../collect/mssql_security_guestconnect.csv
+-- LOAD mssql_security_guestconnect ../collect/mssql_security_guestconnect.csv
 PROMPT -- LOADING: ../collect/mssql_security_logins.csv
-LOAD mssql_security_logins           ../collect/mssql_security_logins.csv
+-- LOAD mssql_security_logins ../collect/mssql_security_logins.csv
 PROMPT -- LOADING: ../collect/mssql_security_orphanedusers.csv
-LOAD mssql_security_orphanedusers    ../collect/mssql_security_orphanedusers.csv
+-- LOAD mssql_security_orphanedusers ../collect/mssql_security_orphanedusers.csv
 PROMPT -- LOADING: ../collect/mssql_sec_pubperm.csv
-LOAD mssql_sec_pubperm ../collect/mssql_sec_pubperm.csv
+-- LOAD mssql_sec_pubperm ../collect/mssql_sec_pubperm.csv
 PROMPT -- LOADING: ../collect/mssql_security_registryinfo.csv
-LOAD mssql_security_registryinfo     ../collect/mssql_security_registryinfo.csv
+--LOAD mssql_security_registryinfo ../collect/mssql_security_registryinfo.csv
 PROMPT -- LOADING: ../collect/mssql_security_sqlserveraudit.csv
-LOAD mssql_security_sqlserveraudit   ../collect/mssql_security_sqlserveraudit.csv
+--LOAD mssql_security_sqlserveraudit ../collect/mssql_security_sqlserveraudit.csv
 
 -- Commit final pour valider tous les chargements
 COMMIT;

@@ -5,7 +5,7 @@
 # =============================================================================
 
 MONITORING_USER="monitoring"
-MONITORING_PASS="F5t9TAcbjLTzhBNE69YeYBTx1BLgOZ"
+MONITORING_PASS="*********************************"
 MAIL_TO="lambert.christophe@chl.lu"
 
 # Base de connexion par defaut pour les requetes cluster-wide (pg_database,

@@ -23,30 +23,35 @@ while IFS=';' read -r env license server; do
     status_check "${host}" || { log_err "${host}"; continue; }
 
     sqlcmd_run "${host}" "${SQL_DIR}/mssql_getinstanceinfo.sql" \
-        | sed "s/$/,${env},${license}/" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_hosts_temp.csv" || log_err "${host}"
 
     sqlcmd_run "${host}" "${SQL_DIR}/mssql_getdbinfo.sql" \
-        | sed "s/$/,${env}/" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_databases_temp.csv" || log_err "${host}"
 
     sqlcmd_run "${host}" "${SQL_DIR}/mssql_getbackupinfo.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_backup_temp.csv" || log_err "${host}"
 
     sqlcmd_run "${host}" "${SQL_DIR}/mssql_getfileinfo.sql" \
-        | sed "s/$/,${env}/" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_files_temp.csv" || log_err "${host}"
 
     sqlcmd_run "${host}" "${SQL_DIR}/mssql_getloginsinfo.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_logins_temp.csv" || log_err "${host}"
 
     sqlcmd_run "${host}" "${SQL_DIR}/mssql_getuserinfo.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_users_temp.csv" || log_err "${host}"
 
     sqlcmd_run "${host}" "${SQL_DIR}/mssql_loginwithoutperm.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_loginwoperm_temp.csv" || log_err "${host}"
 
     sqlcmd_run "${host}" "${SQL_DIR}/mssql_validatelogin.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_validatelogin_temp.csv" || log_err "${host}"
 
 done < <(grep -v '^\s*#' "${LIST_FILE}" | grep -v '^\s*$' | sort -u)

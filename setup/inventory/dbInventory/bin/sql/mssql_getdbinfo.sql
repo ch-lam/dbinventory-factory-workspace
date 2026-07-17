@@ -46,8 +46,7 @@ left join(SELECT bs.database_name,
 MAX(case bs.type when ''D'' then bs.backup_start_date end) as bkup_dt,
 MAX(case bs.type when ''I'' then bs.backup_start_date end) as diff_dt,
 MAX(case bs.type when ''L'' then bs.backup_start_date end) as log_dt
-FROM msdb.dbo.backupset bs where bs.is_copy_only = 0 group by bs.database_name) b on b.database_name = d.name
-order by 1, 2')
+FROM msdb.dbo.backupset bs where bs.is_copy_only = 0 group by bs.database_name) b on b.database_name = d.name')
 ELSE
 (         select @sqlstmt = '
            select distinct
@@ -105,7 +104,6 @@ MAX(case bs.type when ''D'' then bs.backup_start_date end) as bkup_dt,
 MAX(case bs.type when ''I'' then bs.backup_start_date end) as diff_dt,
 MAX(case bs.type when ''L'' then bs.backup_start_date end) as log_dt
 FROM msdb.dbo.backupset bs where bs.is_copy_only = 0 group by bs.database_name) b on b.database_name = d.name
-order by 1, 2
 '
 )
 EXEC (@sqlstmt)

@@ -318,7 +318,9 @@ select
 	dbsn.NAME||','||
 	inst.HOST_NAME
   from PFUS pfs, v$database dbsn, v$instance inst
-  where pfs.USAGE in ('2.NO_CURRENT_USAGE', '4.PAST_USAGE', '5.PAST_OR_CURRENT_USAGE', '6.CURRENT_USAGE') 
+  where pfs.USAGE in ('2.NO_CURRENT_USAGE', '4.PAST_USAGE', '5.PAST_OR_CURRENT_USAGE', '6.CURRENT_USAGE')
   group by rollup(pfs.CON_ID), pfs.PRODUCT,dbsn.NAME,inst.HOST_NAME
   having not (max(pfs.CON_ID) in (-1, 0) and grouping_id(pfs.CON_ID) = 1)            -- aggregation not needed for non-container databases
 order by 1 desc, pfs.CON_ID, decode(substr(pfs.PRODUCT, 1, 1), '.', 2, 1), pfs.PRODUCT;
+
+

@@ -18,6 +18,4 @@ EXEC sp_MSforeachdb
 	   LEFT JOIN [?].sys.server_principals l
 	   ON u.sid = l.sid
 	 WHERE u.TYPE <> ''R''
-	   /*and u.name like ''tester''*/
-	 order by u.name
 	 '

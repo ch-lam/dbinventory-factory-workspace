@@ -120,22 +120,22 @@ SQL
     else
         sql_run "${db}" <<SQL >> /dev/null
 SPOOL ${LIST_DIR}/services_temp.csv APPEND
-SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","NA","'||svc.name||'"'
-FROM   v\$active_services svc, v\$instance inst
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","'||dbs.name||'","'||svc.name||'"'
+FROM   v\$active_services svc, v\$instance inst, v\$database dbs
 WHERE  svc.name NOT LIKE 'SYS%' ORDER BY 1;
 SPOOL OFF
 SPOOL ${LIST_DIR}/users_temp.csv APPEND
-SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||dbs.name||'","'||inst.instance_name||'","NON_CONTAINER","'||
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||dbs.name||'","'||inst.instance_name||'","'||dbs.name||'","'||
        usr.username||'","'||usr.account_status||'"'
 FROM   dba_users usr, v\$instance inst, v\$database dbs
 WHERE  usr.account_status = 'OPEN' ORDER BY 1;
 SPOOL OFF
 SPOOL ${LIST_DIR}/size_usage_temp.csv APPEND
-SELECT '"'||dbs.name||'","NON_CONTAINER","'||dbf.tablespace_name||'","'||ROUND(SUM(dbf.bytes/1024/1024))||'"'
+SELECT '"'||dbs.name||'","'||dbs.name||'","'||dbf.tablespace_name||'","'||ROUND(SUM(dbf.bytes/1024/1024))||'"'
 FROM   v\$database dbs, dba_data_files dbf GROUP BY dbs.name, dbf.tablespace_name;
 SPOOL OFF
 SPOOL ${LIST_DIR}/size_usage_seg_temp.csv APPEND
-SELECT '"'||dbs.name||'","NON_CONTAINER","'||seg.tablespace_name||'","'||ROUND(SUM(seg.bytes/1024/1024))||'"'
+SELECT '"'||dbs.name||'","'||dbs.name||'","'||seg.tablespace_name||'","'||ROUND(SUM(seg.bytes/1024/1024))||'"'
 FROM   v\$database dbs, dba_segments seg GROUP BY dbs.name, seg.tablespace_name;
 SPOOL OFF
 SQL

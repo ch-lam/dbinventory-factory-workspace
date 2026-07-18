@@ -19,9 +19,12 @@
 --   * MSSQL instance identity = hostname (this collection has no separate
 --     instance name); dim_instance.instance_name = hostname.
 --   * Oracle storage/metrics/parameter link to a database through
---     oracle_databases (db_name) -> (hostname, instance_name) -> PDB (pdb_name).
+--     oracle_databases (db_name) -> (hostname, instance_name) -> database (pdb_name).
+--   * Coherent refuge value: the collection emits the db_name into the pdb_name
+--     field for non-CDB databases (real PDB name for CDB), so dd.db_name = pdb_name
+--     resolves uniformly. is_pdb=0 (ext_oracle_database) keeps the non-PDB distinction.
 --   * oracle_metrics_cpu_memory only carries pdb_name; matched on
---     dim_database.db_name = pdb_name (assumed unique enough per run).
+--     dim_database.db_name = pdb_name (unique per instance after the refuge fix).
 -- ============================================================================
 
 create or replace package pkg_dbinv_inventory as

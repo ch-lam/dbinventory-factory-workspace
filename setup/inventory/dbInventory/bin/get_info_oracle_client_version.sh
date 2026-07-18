@@ -27,7 +27,7 @@ while IFS=';' read -r db_env lic db; do
     # db_name et db_version extraits de la base cible (plus fiable que le fichier liste)
     sql_run "${db}" <<SQL >> "${LIST_DIR}/client_info_temp.csv"
 SELECT '"'||dbs.name||'","'||(SELECT version FROM v\$instance)||'","${db_env}","'||
-       NVL(pdbs.pdb_name,'NON_CONTAINER')||'","'||
+       NVL(pdbs.pdb_name,dbs.name)||'","'||
        REPLACE(inf.CLIENT_VERSION,'"','')||'","'||REPLACE(inf.CLIENT_DRIVER,'"','')||'","'||
        REPLACE(sess.USERNAME,'"','')||'","'||REPLACE(sess.MACHINE,'"','')||'","'||
        REPLACE(sess.SERVICE_NAME,'"','')||'","'||

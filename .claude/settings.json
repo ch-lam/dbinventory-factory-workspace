@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sql -S -name DEV_DBINVENTORY_dbinventory *)"
+    ]
+  }
+}

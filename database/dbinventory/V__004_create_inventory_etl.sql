@@ -12,12 +12,14 @@
 --     re-run for the same day overwrites that day's snapshot (idempotent).
 --   * snapshot_date is a single value for the whole run (default trunc(sysdate)).
 --
--- Join assumptions to validate against real data (documented inline with
--- "-- ASSUMPTION"):
---   * MSSQL environment/license come from mssql_collect_list (mssql_hosts has
---     none); joined on hostname.
---   * MSSQL instance identity = hostname (this collection has no separate
---     instance name); dim_instance.instance_name = hostname.
+-- MSSQL host/instance separation (validated against real data):
+--   * mssql_hosts.collect_target = machine FQDN (prepended by get_info_mssql.sh);
+--     mssql_hosts.hostname = @@SERVERNAME = instance identity (e.g. MACHINE/INSTANCE).
+--     dim_host is keyed on collect_target (a machine hosting several instances
+--     shares one host); dim_instance.instance_name = hostname.
+--   * MSSQL environment/license come from mssql_collect_list, joined on
+--     collect_target (= the FQDN) with active = 1.
+-- Oracle join notes:
 --   * Oracle storage/metrics/parameter link to a database through
 --     oracle_databases (db_name) -> (hostname, instance_name) -> database (pdb_name).
 --   * Coherent refuge value: the collection emits the db_name into the pdb_name
@@ -85,10 +87,10 @@ create or replace package body pkg_dbinv_inventory as
          values ( s.date_id, s.cal_date, s.cal_year, s.cal_quarter, s.cal_month, s.month_name, s.cal_day, s.day_of_week, s.is_month_end );
    end load_dim_date;
 
-   procedure load_dim_server is
+   procedure load_dim_host is
    begin
       -- Oracle: environment/license carried directly by oracle_hosts
-      merge into dim_server d
+      merge into dim_host d
       using ( select 'ORACLE' platform, hostname,
                      max(os_type) os_type, max(num_cpus) num_cpus, max(memory_gb) memory_gb,
                      max(environment) environment, max(license_type) license_type
@@ -102,14 +104,14 @@ create or replace package body pkg_dbinv_inventory as
          insert ( platform, hostname, os_type, num_cpus, memory_gb, environment, license_type )
          values ( s.platform, s.hostname, s.os_type, s.num_cpus, s.memory_gb, s.environment, s.license_type );
 
-      -- MSSQL: environment/license from mssql_collect_list (ASSUMPTION: join on hostname)
-      merge into dim_server d
-      using ( select 'MSSQL' platform, h.hostname,
+      -- MSSQL: host = collect_target (FQDN); env/license from mssql_collect_list joined on collect_target
+      merge into dim_host d
+      using ( select 'MSSQL' platform, h.collect_target hostname,
                      max(h.os_type) os_type, max(h.num_cpus) num_cpus, max(h.memory_gb) memory_gb,
                      max(cl.environment) environment, max(cl.license_type) license_type
                 from mssql_hosts h
-                left join mssql_collect_list cl on cl.hostname = h.hostname
-               group by h.hostname ) s
+                left join mssql_collect_list cl on cl.hostname = h.collect_target and cl.active = 1
+               group by h.collect_target ) s
       on ( d.platform = s.platform and d.hostname = s.hostname )
       when matched then update set
          d.os_type = s.os_type, d.num_cpus = s.num_cpus, d.memory_gb = s.memory_gb,
@@ -119,54 +121,54 @@ create or replace package body pkg_dbinv_inventory as
          values ( s.platform, s.hostname, s.os_type, s.num_cpus, s.memory_gb, s.environment, s.license_type );
 
       -- MSSQL host extension (cluster configuration)
-      merge into ext_mssql_server e
-      using ( select ds.server_id,
+      merge into ext_mssql_host e
+      using ( select ds.host_id,
                      max(h.is_clustered) is_clustered, max(h.activenodename) activenodename,
                      max(h.clusternode1) clusternode1, max(h.clusternode2) clusternode2
                 from mssql_hosts h
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = h.hostname
-               group by ds.server_id ) s
-      on ( e.server_id = s.server_id )
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = h.collect_target
+               group by ds.host_id ) s
+      on ( e.host_id = s.host_id )
       when matched then update set
          e.is_clustered = s.is_clustered, e.activenodename = s.activenodename,
          e.clusternode1 = s.clusternode1, e.clusternode2 = s.clusternode2
       when not matched then
-         insert ( server_id, is_clustered, activenodename, clusternode1, clusternode2 )
-         values ( s.server_id, s.is_clustered, s.activenodename, s.clusternode1, s.clusternode2 );
-   end load_dim_server;
+         insert ( host_id, is_clustered, activenodename, clusternode1, clusternode2 )
+         values ( s.host_id, s.is_clustered, s.activenodename, s.clusternode1, s.clusternode2 );
+   end load_dim_host;
 
    procedure load_dim_instance is
    begin
       -- Oracle instance (one per hostname+instance_name)
       merge into dim_instance di
-      using ( select ds.server_id, 'ORACLE' platform, od.instance_name,
+      using ( select ds.host_id, 'ORACLE' platform, od.instance_name,
                      max(od.db_version) engine_version, max(od.db_edition) edition
                 from oracle_databases od
-                join dim_server ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
-               group by ds.server_id, od.instance_name ) s
-      on ( di.server_id = s.server_id and di.instance_name = s.instance_name )
+                join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
+               group by ds.host_id, od.instance_name ) s
+      on ( di.host_id = s.host_id and di.instance_name = s.instance_name )
       when matched then update set
          di.engine_version = s.engine_version, di.edition = s.edition
       when not matched then
-         insert ( server_id, platform, instance_name, engine_version, edition )
-         values ( s.server_id, s.platform, s.instance_name, s.engine_version, s.edition );
+         insert ( host_id, platform, instance_name, engine_version, edition )
+         values ( s.host_id, s.platform, s.instance_name, s.engine_version, s.edition );
 
       -- MSSQL instance (instance_name = hostname in this collection)
       merge into dim_instance di
-      using ( select ds.server_id, 'MSSQL' platform, h.hostname instance_name,
+      using ( select ds.host_id, 'MSSQL' platform, h.hostname instance_name,
                      max(h.mssql_product_version) engine_version, max(h.mssql_edition) edition,
                      max(h.collation) collation, max(cl.port) port, max(h.install_date) install_date
                 from mssql_hosts h
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = h.hostname
-                left join mssql_collect_list cl on cl.hostname = h.hostname
-               group by ds.server_id, h.hostname ) s
-      on ( di.server_id = s.server_id and di.instance_name = s.instance_name )
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = h.collect_target
+                left join mssql_collect_list cl on cl.hostname = h.collect_target and cl.active = 1
+               group by ds.host_id, h.hostname ) s
+      on ( di.host_id = s.host_id and di.instance_name = s.instance_name )
       when matched then update set
          di.engine_version = s.engine_version, di.edition = s.edition, di.collation = s.collation,
          di.port = s.port, di.install_date = s.install_date
       when not matched then
-         insert ( server_id, platform, instance_name, engine_version, edition, collation, port, install_date )
-         values ( s.server_id, s.platform, s.instance_name, s.engine_version, s.edition, s.collation, s.port, s.install_date );
+         insert ( host_id, platform, instance_name, engine_version, edition, collation, port, install_date )
+         values ( s.host_id, s.platform, s.instance_name, s.engine_version, s.edition, s.collation, s.port, s.install_date );
 
       -- Oracle instance extension
       merge into ext_oracle_instance e
@@ -176,8 +178,8 @@ create or replace package body pkg_dbinv_inventory as
                      max( ( select max(dg.protection_mode) from oracle_dataguard dg
                               where dg.primary_db in ( od.db_name, od.db_unique_name ) ) ) protection_mode
                 from oracle_databases od
-                join dim_server ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = od.instance_name
+                join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = od.instance_name
                group by di.instance_id ) s
       on ( e.instance_id = s.instance_id )
       when matched then update set
@@ -195,8 +197,8 @@ create or replace package body pkg_dbinv_inventory as
                      max(h.min_memory) min_memory, max(h.max_memory) max_memory,
                      max(h.xp_cmdshell_enabled) xp_cmdshell_enabled, max(h.service_account) service_account
                 from mssql_hosts h
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = h.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = h.hostname
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = h.collect_target
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = h.hostname
                group by di.instance_id ) s
       on ( e.instance_id = s.instance_id )
       when matched then update set
@@ -215,8 +217,8 @@ create or replace package body pkg_dbinv_inventory as
       using ( select di.instance_id, 'ORACLE' platform, p.pdb_name db_name,
                      max(p.pdb_state) db_state, max(od.environment) environment
                 from oracle_pdbs p
-                join dim_server ds on ds.platform = 'ORACLE' and ds.hostname = p.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = p.instance_name
+                join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = p.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = p.instance_name
                 left join oracle_databases od on od.hostname = p.hostname and od.instance_name = p.instance_name
                group by di.instance_id, p.pdb_name ) s
       on ( dd.instance_id = s.instance_id and dd.db_name = s.db_name )
@@ -230,8 +232,8 @@ create or replace package body pkg_dbinv_inventory as
       using ( select di.instance_id, 'ORACLE' platform, od.db_name,
                      max(od.environment) environment
                 from oracle_databases od
-                join dim_server ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = od.instance_name
+                join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = od.instance_name
                where nvl(od.count_pdb, 0) = 0
                group by di.instance_id, od.db_name ) s
       on ( dd.instance_id = s.instance_id and dd.db_name = s.db_name )
@@ -246,9 +248,9 @@ create or replace package body pkg_dbinv_inventory as
                      max(d.database_state) db_state, max(d.create_date) create_date,
                      max(d.owner) owner, max(cl.environment) environment
                 from mssql_databases d
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = d.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = d.hostname
-                left join mssql_collect_list cl on cl.hostname = d.hostname
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = d.collect_target
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = d.hostname
+                left join mssql_collect_list cl on cl.hostname = d.collect_target and cl.active = 1
                group by di.instance_id, d.database_name ) s
       on ( dd.instance_id = s.instance_id and dd.db_name = s.db_name )
       when matched then update set dd.db_state = s.db_state, dd.create_date = s.create_date,
@@ -265,7 +267,7 @@ create or replace package body pkg_dbinv_inventory as
                      max(od.db_charset) charset
                 from dim_database dd
                 join dim_instance di on di.instance_id = dd.instance_id
-                join dim_server ds on ds.server_id = di.server_id
+                join dim_host ds on ds.host_id = di.host_id
                 left join oracle_pdbs p on p.hostname = ds.hostname and p.instance_name = di.instance_name and p.pdb_name = dd.db_name
                 left join oracle_databases od on od.hostname = ds.hostname and od.instance_name = di.instance_name
                where dd.platform = 'ORACLE'
@@ -284,8 +286,8 @@ create or replace package body pkg_dbinv_inventory as
                      max(d.compatibility_level) compatibility_level, max(d.collation) collation,
                      max(d.is_mirroring_enabled) is_mirroring_enabled, max(d.agtype) agtype, max(d.agname) agname
                 from mssql_databases d
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = d.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = d.hostname
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = d.collect_target
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = d.hostname
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = d.database_name
                group by dd.database_id ) s
       on ( e.database_id = s.database_id )
@@ -304,8 +306,8 @@ create or replace package body pkg_dbinv_inventory as
       using ( select dd.database_id, 'ORACLE' platform, 'TABLESPACE' storage_type, z.tablespace_name name
                 from oracle_size_usage z
                 join oracle_databases od on od.db_name = z.db_name
-                join dim_server ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = od.instance_name
+                join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = od.instance_name
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = z.pdb_name
                group by dd.database_id, z.tablespace_name ) s
       on ( su.database_id = s.database_id and su.storage_type = s.storage_type and su.name = s.name )
@@ -321,8 +323,8 @@ create or replace package body pkg_dbinv_inventory as
                      max(f.physical_name) physical_name, max(f.max_size) max_size_mb,
                      max(f.growth_percent) autogrowth_pct, max(f.growth_mb) autogrowth_mb
                 from mssql_files f
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = f.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = f.hostname
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = f.collect_target
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = f.hostname
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = f.database_name
                group by dd.database_id,
                      case when upper(f.type_desc) like 'LOG%' then 'LOGFILE' else 'DATAFILE' end, f.name ) s
@@ -369,52 +371,53 @@ create or replace package body pkg_dbinv_inventory as
       -- Oracle database users (scope DATABASE)
       merge into dim_account a
       using ( select 'ORACLE' platform, 'DATABASE' scope,
-                     cast(null as number) server_id, dd.database_id, u.username account_name,
+                     cast(null as number) host_id, dd.database_id, u.username account_name,
                      cast(null as varchar2(50 char)) account_type
                 from oracle_users u
-                join dim_server ds on ds.platform = 'ORACLE' and ds.hostname = u.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = u.instance_name
+                join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = u.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = u.instance_name
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = u.pdb_name
                group by dd.database_id, u.username ) s
       on ( a.platform = s.platform and a.scope = s.scope and a.account_name = s.account_name
-           and nvl(a.database_id, -1) = nvl(s.database_id, -1) and nvl(a.server_id, -1) = nvl(s.server_id, -1) )
+           and nvl(a.database_id, -1) = nvl(s.database_id, -1) and nvl(a.host_id, -1) = nvl(s.host_id, -1) )
       when not matched then
-         insert ( platform, scope, server_id, database_id, account_name, account_type )
-         values ( s.platform, s.scope, s.server_id, s.database_id, s.account_name, s.account_type );
+         insert ( platform, scope, host_id, database_id, account_name, account_type )
+         values ( s.platform, s.scope, s.host_id, s.database_id, s.account_name, s.account_type );
 
-      -- MSSQL server logins (scope SERVER; instance_name = hostname)
+      -- MSSQL server logins (scope SERVER): attached to the host via collect_target
+      -- (dim_account has no instance FK; per-instance login granularity is a future refinement)
       merge into dim_account a
-      using ( select 'MSSQL' platform, 'SERVER' scope, ds.server_id,
+      using ( select 'MSSQL' platform, 'SERVER' scope, ds.host_id,
                      cast(null as number) database_id, l.loginname account_name,
                      max(l.logintype) account_type
                 from mssql_logins l
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = l.instance_name
-               group by ds.server_id, l.loginname ) s
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = l.collect_target
+               group by ds.host_id, l.loginname ) s
       on ( a.platform = s.platform and a.scope = s.scope and a.account_name = s.account_name
-           and nvl(a.server_id, -1) = nvl(s.server_id, -1) and nvl(a.database_id, -1) = nvl(-1, -1) )
+           and nvl(a.host_id, -1) = nvl(s.host_id, -1) and nvl(a.database_id, -1) = nvl(-1, -1) )
       when not matched then
-         insert ( platform, scope, server_id, database_id, account_name, account_type )
-         values ( s.platform, s.scope, s.server_id, s.database_id, s.account_name, s.account_type );
+         insert ( platform, scope, host_id, database_id, account_name, account_type )
+         values ( s.platform, s.scope, s.host_id, s.database_id, s.account_name, s.account_type );
 
       -- MSSQL database users (scope DATABASE)
       merge into dim_account a
-      using ( select 'MSSQL' platform, 'DATABASE' scope, cast(null as number) server_id,
+      using ( select 'MSSQL' platform, 'DATABASE' scope, cast(null as number) host_id,
                      dd.database_id, u.name account_name, cast(null as varchar2(50 char)) account_type
                 from mssql_users u
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = u.instance_name
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = u.instance_name
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = u.collect_target
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = u.instance_name
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = u.database_name
                group by dd.database_id, u.name ) s
       on ( a.platform = s.platform and a.scope = s.scope and a.account_name = s.account_name
-           and nvl(a.database_id, -1) = nvl(s.database_id, -1) and nvl(a.server_id, -1) = nvl(s.server_id, -1) )
+           and nvl(a.database_id, -1) = nvl(s.database_id, -1) and nvl(a.host_id, -1) = nvl(s.host_id, -1) )
       when not matched then
-         insert ( platform, scope, server_id, database_id, account_name, account_type )
-         values ( s.platform, s.scope, s.server_id, s.database_id, s.account_name, s.account_type );
+         insert ( platform, scope, host_id, database_id, account_name, account_type )
+         values ( s.platform, s.scope, s.host_id, s.database_id, s.account_name, s.account_type );
    end load_dim_account;
 
    procedure load_dimensions is
    begin
-      load_dim_server;
+      load_dim_host;
       load_dim_instance;
       load_dim_database;
       load_dim_storage_unit;
@@ -438,8 +441,8 @@ create or replace package body pkg_dbinv_inventory as
                      round(100 * max(nvl(z.sum_segment_mb, 0)) / nullif(max(z.size_mb), 0), 2) pct_used
                 from oracle_size_usage z
                 join oracle_databases od on od.db_name = z.db_name
-                join dim_server ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = od.instance_name
+                join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = od.instance_name
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = z.pdb_name
                 join dim_storage_unit su on su.database_id = dd.database_id
                      and su.storage_type = 'TABLESPACE' and su.name = z.tablespace_name
@@ -458,8 +461,8 @@ create or replace package body pkg_dbinv_inventory as
                      case when max(f2.max_size) > 0 then max(f2.max_size) else null end max_size_mb,
                      case when max(f2.max_size) > 0 then round(100 * max(f2.size_mb) / max(f2.max_size), 2) else null end pct_used
                 from mssql_files f2
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = f2.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = f2.hostname
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = f2.collect_target
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = f2.hostname
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = f2.database_name
                 join dim_storage_unit su on su.database_id = dd.database_id
                      and su.storage_type = case when upper(f2.type_desc) like 'LOG%' then 'LOGFILE' else 'DATAFILE' end
@@ -505,8 +508,8 @@ create or replace package body pkg_dbinv_inventory as
                      cast(null as number) backup_size_mb,
                      cast(null as varchar2(30 char)) status
                 from mssql_databases d
-                join dim_server ds on ds.platform = 'MSSQL' and ds.hostname = d.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = d.hostname
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = d.collect_target
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = d.hostname
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = d.database_name
                group by dd.database_id ) s
       on ( f.database_id = s.database_id and f.snapshot_date = s.snapshot_date )
@@ -528,8 +531,8 @@ create or replace package body pkg_dbinv_inventory as
                 from oracle_security_parameter sp
                 join dim_parameter dp on dp.platform = 'ORACLE' and dp.source = 'INIT' and dp.parameter_name = sp.parameter_name
                 join oracle_databases od on od.db_name = sp.db_name
-                join dim_server ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
-                join dim_instance di on di.server_id = ds.server_id and di.instance_name = od.instance_name
+                join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = od.instance_name
                group by di.instance_id, dp.parameter_id ) s
       on ( f.instance_id = s.instance_id and f.parameter_id = s.parameter_id and f.snapshot_date = s.snapshot_date )
       when matched then update set f.config_value = s.config_value, f.run_value = s.run_value, f.value_text = s.value_text

@@ -357,7 +357,7 @@ create or replace package body pkg_dbinv_scoring as
                      else 'CRITICAL' end status
          from inst_score isc
          join dim_instance di on di.instance_id = isc.instance_id
-         join dim_server ds on ds.server_id = di.server_id
+         join dim_host ds on ds.host_id = di.host_id
       ) s
       on ( f.platform = s.platform and f.environment = s.environment and f.score_domain = s.score_domain
            and f.entity_type = s.entity_type and f.entity_id = s.entity_id and f.snapshot_date = s.snapshot_date )

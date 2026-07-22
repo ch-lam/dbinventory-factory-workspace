@@ -505,12 +505,27 @@ create or replace package body pkg_dbinv_inventory as
                      max(pkg_dbinv_inventory.safe_to_date(d.last_backup_log_date)) last_log_date,
                      round( ( cast(p_snapshot_date as date)
                               - max(pkg_dbinv_inventory.safe_to_date(d.last_backup_date)) ) * 24, 2 ) hours_since_backup,
-                     cast(null as number) backup_size_mb,
+                     -- Size of the most recent Full backup, from the collected
+                     -- msdb.dbo.backupset history (backup_size is in bytes).
+                     max(bs.backup_size_mb) backup_size_mb,
+                     -- status has NO source: msdb.dbo.backupset only records
+                     -- successful backups, so a FAILED verdict cannot be derived
+                     -- from it. Populating this needs SQL Agent job history
+                     -- (msdb.dbo.sysjobhistory), which is not collected today.
                      cast(null as varchar2(30 char)) status
                 from mssql_databases d
                 join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = d.collect_target
                 join dim_instance di on di.host_id = ds.host_id and di.instance_name = d.hostname
                 join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = d.database_name
+                left join ( select b.collect_target, b.hostname, b.database_name,
+                                   round( max(b.backup_size) keep ( dense_rank last order by b.backup_finish_date )
+                                          / 1024 / 1024 ) backup_size_mb
+                              from mssql_backup b
+                             where b.backup_type = 'Full'
+                             group by b.collect_target, b.hostname, b.database_name ) bs
+                       on bs.collect_target = d.collect_target
+                      and bs.hostname = d.hostname
+                      and bs.database_name = d.database_name
                group by dd.database_id ) s
       on ( f.database_id = s.database_id and f.snapshot_date = s.snapshot_date )
       when matched then update set f.last_full_date = s.last_full_date, f.last_diff_date = s.last_diff_date,

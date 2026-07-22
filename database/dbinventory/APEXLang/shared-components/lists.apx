@@ -469,22 +469,6 @@ list navigation-menu (
         }
     )
 
-    entry mssql-server-identity (
-        label: Server Identity
-        icon {
-            imageIconCssClasses: fa-database-application
-        }
-        layout {
-            sequence: 34
-            parentEntry: @ms-sql
-        }
-        link {
-            target: {
-                page: 8
-            }
-        }
-    )
-
     entry mysql (
         label: MySQL
         icon {

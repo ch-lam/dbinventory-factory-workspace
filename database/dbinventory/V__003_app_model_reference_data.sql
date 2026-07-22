@@ -152,4 +152,62 @@ insert into ref_threshold ( control_code, metric, warn_value, crit_value )
 insert into ref_threshold ( control_code, metric, warn_value, crit_value )
    values ( 'ORACLE_BACKUP_FRESHNESS', 'hours_since_backup', 24, 48 );
 
+
+-- ============================================================
+-- product_support   (vendor end-of-support calendar)
+-- ============================================================
+-- Keyed on the MAJOR version (major.minor of the ProductVersion), because that
+-- is what end-of-support dates actually depend on: every service pack of a given
+-- release shares the same EOS dates (all SQL Server 2016 SPs end 2021-07-13 /
+-- 2026-07-14). This makes the join to dim_instance.engine_version exact rather
+-- than a fuzzy string match. Note 2008 R2 is 10.50, distinct from 2008 = 10.0.
+--
+-- Source: discovery/mssql/sqlserver_versions.csv. That file is transcribed by
+-- hand here rather than loaded: it is ~10 rows of reference data that change
+-- once or twice a year, and its CSV quoting is broken on several lines.
+-- current_patch_level / current_patch_name reflect the latest published CU.
+
+delete from product_support where product_company = 'MICROSOFT' and product_type = 'MSSQL';
+
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '17.0', 'SQL Server 2025', 'SQL Server 2025',
+            'CU6', '17.0.4055.5', date '2025-11-18', date '2031-01-06', date '2036-01-06' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '16.0', 'SQL Server 2022 (Dallas)', 'SQL Server 2022',
+            'CU25', '16.0.4255.1', date '2022-11-16', date '2028-01-11', date '2033-01-11' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '15.0', 'SQL Server 2019 (Seattle)', 'SQL Server 2019',
+            'CU32 + GDR securite', '15.0.4470.1', date '2019-11-04', date '2025-02-28', date '2030-01-08' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '14.0', 'SQL Server 2017 (Helsinki)', 'SQL Server 2017',
+            'CU31 + GDR securite', '14.0.3530.2', date '2017-10-02', date '2022-10-11', date '2027-10-12' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '13.0', 'SQL Server 2016', 'SQL Server 2016',
+            'SP3 GDR (securite)', '13.0.6490.1', date '2016-06-01', date '2021-07-13', date '2026-07-14' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '12.0', 'SQL Server 2014 (Hekaton)', 'SQL Server 2014',
+            'SP3 CU4+GDR', '12.0.6449.1', date '2014-04-01', date '2019-07-09', date '2024-07-09' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '11.0', 'SQL Server 2012 (Denali)', 'SQL Server 2012',
+            'SP4 GDR (ESU)', '11.0.7512.11', date '2012-03-06', date '2017-07-11', date '2022-07-12' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '10.50', 'SQL Server 2008 R2 (Kilimanjaro)', 'SQL Server 2008 R2',
+            'SP3 GDR (ESU)', '10.50.6785.2', date '2010-04-21', date '2014-07-08', date '2019-07-09' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '10.0', 'SQL Server 2008 (Katmai)', 'SQL Server 2008',
+            'SP4 GDR (ESU)', '10.0.6814.4', date '2008-08-07', date '2014-07-08', date '2019-07-09' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'MICROSOFT', 'MSSQL', '9.0', 'SQL Server 2005 (Yukon)', 'SQL Server 2005',
+            'SP4 QFE', '9.0.5324.0', date '2005-11-07', date '2011-04-12', date '2016-04-12' );
+
 commit;

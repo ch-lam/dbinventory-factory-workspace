@@ -14,22 +14,15 @@ page 6 (
         formAutoComplete: false
     }
 
-    region breadcrumb-nav (
+    region page-title (
         name: DB Inv. - MongoDB
-        type: breadcrumb
-        source {
-            breadcrumb: @breadcrumb
-        }
+        type: staticContent
         layout {
             sequence: 1
             slot: body
         }
         appearance {
             template: @/title-bar
-            templateOptions: #DEFAULT#
-        }
-        componentAppearance {
-            breadcrumbTemplate: @/breadcrumb
             templateOptions: #DEFAULT#
         }
     )

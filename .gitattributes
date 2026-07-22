@@ -1,0 +1,10 @@
+# APEXLang sources must use LF line endings.
+# The APEXLang compiler embedded in SQLcl ("apex validate" / "apex import")
+# has a lexer that rejects CR, producing thousands of
+# "token recognition error at: '\r\n'" errors on a CRLF checkout.
+# core.autocrlf=true would otherwise check these out as CRLF on Windows.
+*.apx text eol=lf
+
+# Shell scripts break under Git Bash if checked out with CRLF (the trailing \r
+# is parsed as part of the shebang and of every command).
+*.sh text eol=lf

@@ -43,16 +43,46 @@ page 1 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select scoring_type,
-                       to_char(last_scoring_date, 'DD/MM/YYYY HH24:MI:SS') last_scoring_date,
-                       last_scoring_value||'%' last_scoring_value,
-                       scoring_card_class,
-                       'fa fa-user' SCORING_ICON,
-                       scoring_status,
-                       status_color,
-                       scoring_label,
-                       apex_page.get_url( p_page => details_apex_page_number ) details_apex_page_number, scoring_order
-                  from scoring_activity_list
+                with latest as (
+                    select platform,
+                           score_domain,
+                           max(snapshot_date) snapshot_date
+                      from fact_scoring
+                     where entity_type = 'ENVIRONMENT'
+                     group by platform, score_domain
+                ), agg as (
+                    select f.platform,
+                           f.score_domain,
+                           f.snapshot_date,
+                           round(avg(f.score_value)) score_value
+                      from fact_scoring f
+                      join latest l
+                        on l.platform      = f.platform
+                       and l.score_domain  = f.score_domain
+                       and l.snapshot_date = f.snapshot_date
+                     where f.entity_type = 'ENVIRONMENT'
+                     group by f.platform, f.score_domain, f.snapshot_date
+                )
+                select initcap(platform)||' '||initcap(score_domain) scoring_type,
+                       to_char(snapshot_date, 'DD/MM/YYYY') last_scoring_date,
+                       score_value||'%' last_scoring_value,
+                       case when score_value >= 90 then 'u-color-4-border'
+                            when score_value >= 70 then 'u-color-7-border'
+                            else 'u-color-1-border' end scoring_card_class,
+                       'fa fa-shield' SCORING_ICON,
+                       case when score_value >= 90 then 'OK'
+                            when score_value >= 70 then 'Warning'
+                            else 'Critical' end scoring_status,
+                       case when score_value >= 90 then 'u-color-4'
+                            when score_value >= 70 then 'u-color-7'
+                            else 'u-color-1' end status_color,
+                       initcap(score_domain)||' score is '||score_value||'%, '
+                       ||case when score_value >= 90 then 'all checks passed.'
+                              when score_value >= 70 then 'some checks need improvement.'
+                              else 'several checks are failing.' end scoring_label,
+                       apex_page.get_url( p_page => case platform when 'ORACLE' then 2 when 'MSSQL' then 3 when 'POSTGRES' then 4 else 1 end ) details_apex_page_number,
+                       row_number() over ( order by platform, score_domain ) scoring_order
+                  from agg
                  order by scoring_order asc
                 ```
         }
@@ -136,14 +166,11 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    SELECT ENVIRONMENT AS LABEL, COUNT(*) AS VALUE
-                      FROM (
-                        /*SELECT ENV ENVIRONMENT FROM MSSQL_HOSTS
-                        UNION ALL */
-                        SELECT ENVIRONMENT FROM ORACLE_HOSTS
-                      )
-                     GROUP BY ENVIRONMENT
-                     ORDER BY VALUE DESC
+                    select nvl(environment, 'UNKNOWN') as label,
+                           count(*) as value
+                      from dim_host
+                     group by nvl(environment, 'UNKNOWN')
+                     order by value desc
                     ```
             }
             columnMapping {
@@ -189,10 +216,12 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    SELECT mssql_product_version AS LABEL, COUNT(*) AS VALUE
-                      FROM MSSQL_HOSTS
-                     GROUP BY mssql_product_version
-                     ORDER BY VALUE DESC
+                    select nvl(engine_version, 'UNKNOWN') as label,
+                           count(*) as value
+                      from dim_instance
+                     where platform = 'MYSQL'
+                     group by nvl(engine_version, 'UNKNOWN')
+                     order by value desc
                     ```
             }
             columnMapping {
@@ -237,10 +266,12 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    SELECT mssql_product_version AS LABEL, COUNT(*) AS VALUE
-                      FROM MSSQL_HOSTS
-                     GROUP BY mssql_product_version
-                     ORDER BY VALUE DESC
+                    select nvl(engine_version, 'UNKNOWN') as label,
+                           count(*) as value
+                      from dim_instance
+                     where platform = 'MSSQL'
+                     group by nvl(engine_version, 'UNKNOWN')
+                     order by value desc
                     ```
             }
             columnMapping {
@@ -286,10 +317,12 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    SELECT DB_VERSION AS LABEL, COUNT(*) AS VALUE
-                      FROM ORACLE_DATABASES
-                     GROUP BY DB_VERSION
-                     ORDER BY VALUE DESC
+                    select nvl(engine_version, 'UNKNOWN') as label,
+                           count(*) as value
+                      from dim_instance
+                     where platform = 'ORACLE'
+                     group by nvl(engine_version, 'UNKNOWN')
+                     order by value desc
                     ```
             }
             columnMapping {
@@ -334,14 +367,11 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    SELECT OS_TYPE AS LABEL, COUNT(*) AS VALUE
-                      FROM (
-                        SELECT OS_TYPE FROM MSSQL_HOSTS
-                        UNION ALL
-                        SELECT OS_TYPE FROM ORACLE_HOSTS
-                      )
-                     GROUP BY OS_TYPE
-                     ORDER BY VALUE DESC
+                    select nvl(os_type, 'UNKNOWN') as label,
+                           count(*) as value
+                      from dim_host
+                     group by nvl(os_type, 'UNKNOWN')
+                     order by value desc
                     ```
             }
             columnMapping {
@@ -387,10 +417,12 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    SELECT mssql_product_version AS LABEL, COUNT(*) AS VALUE
-                      FROM MSSQL_HOSTS
-                     GROUP BY mssql_product_version
-                     ORDER BY VALUE DESC
+                    select nvl(engine_version, 'UNKNOWN') as label,
+                           count(*) as value
+                      from dim_instance
+                     where platform = 'POSTGRES'
+                     group by nvl(engine_version, 'UNKNOWN')
+                     order by value desc
                     ```
             }
             columnMapping {

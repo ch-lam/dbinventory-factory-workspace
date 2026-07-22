@@ -42,26 +42,30 @@ page 2 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select d.hostname,
-                       d.instance_name,
+                select h.hostname,
+                       i.instance_name,
                        d.db_name,
-                       d.environment,
-                       d.license_type,
-                       d.db_version,
-                       d.db_edition,
-                       d.database_type,
-                       d.db_role,
-                       d.db_log_mode,
-                       d.db_charset,
-                       d.rac_state,
-                       d.db_unique_name,
-                       d.count_pdb,
+                       nvl(d.environment, h.environment) environment,
+                       h.license_type,
+                       i.engine_version db_version,
+                       i.edition db_edition,
+                       xi.database_type,
+                       xi.db_role,
+                       xi.protection_mode,
+                       nvl(xd.charset, xi.charset) db_charset,
+                       xi.rac_state,
+                       xi.db_unique_name,
+                       xi.count_pdb,
                        h.os_type,
                        h.num_cpus,
                        h.memory_gb
-                  from oracle_databases d
-                  left join oracle_hosts h on h.hostname = d.hostname
-                 order by d.hostname, d.instance_name
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join dim_host h on h.host_id = i.host_id
+                  left join ext_oracle_instance xi on xi.instance_id = i.instance_id
+                  left join ext_oracle_database xd on xd.database_id = d.database_id
+                 where d.platform = 'ORACLE'
+                 order by h.hostname, i.instance_name, d.db_name
                 ```
         }
         layout {
@@ -130,19 +134,6 @@ page 2 (
             }
             layout {
                 sequence: 70
-            }
-        )
-
-        column DB_LOG_MODE (
-            reportColumnQueryId: 10
-            derivedColumn: N
-            heading {
-                heading: Log Mode
-                alignment: center
-            }
-            layout {
-                sequence: 100
-                columnAlignment: center
             }
         )
 
@@ -275,6 +266,19 @@ page 2 (
             }
             layout {
                 sequence: 150
+            }
+        )
+
+        column PROTECTION_MODE (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Protection Mode
+                alignment: center
+            }
+            layout {
+                sequence: 100
+                columnAlignment: center
             }
         )
 

@@ -331,13 +331,15 @@ page 40 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select distinct platform,
-                       platform
-                  from disc_host
-                 order by 1
+                select d, r
+                  from ( select '- All -' d, cast(null as varchar2(10)) r, 0 ord
+                           from dual
+                          union all
+                         select distinct platform d, platform r, 1 ord
+                           from disc_host )
+                 order by ord, d
                 ```
-            displayNullValue: true
-            nullDisplayValue: - All -
+            displayNullValue: false
         }
         layout {
             sequence: 10
@@ -361,10 +363,18 @@ page 40 (
             alignment: left
         }
         lov {
-            type: staticValues
-            staticValues: STATIC:New;NEW,Collected;COLLECTED,Ignored;IGNORED,Not Seen;NOT_SEEN
-            displayNullValue: true
-            nullDisplayValue: - All -
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d, r
+                  from ( select '- All -'   d, cast(null as varchar2(10)) r, 0 ord from dual
+                          union all select 'New',       'NEW',       1 from dual
+                          union all select 'Collected', 'COLLECTED', 2 from dual
+                          union all select 'Ignored',   'IGNORED',   3 from dual
+                          union all select 'Not Seen',  'NOT_SEEN',  4 from dual )
+                 order by ord
+                ```
+            displayNullValue: false
         }
         layout {
             sequence: 20

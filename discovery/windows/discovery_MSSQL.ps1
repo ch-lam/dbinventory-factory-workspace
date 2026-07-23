@@ -111,6 +111,17 @@ function Get-SqlServerInstances {
             $patch   = (Invoke-CimMethod @reg -MethodName GetStringValue -Arguments @{
                 hDefKey = $HKLM; sSubKeyName = $setupKey; sValueName = 'PatchLevel' }).sValue
 
+            # Port TCP de l'instance. Indispensable pour les instances NOMMEES :
+            # elles n'ecoutent pas sur 1433, et sans ce port l'inventaire ne peut
+            # pas les prendre en collecte. Meme acces StdRegProv que ci-dessus,
+            # donc aucun droit supplementaire.
+            $tcpKey = "$($root.Base)\$internalId\MSSQLServer\SuperSocketNetLib\Tcp\IPAll"
+
+            $tcpStatic = (Invoke-CimMethod @reg -MethodName GetStringValue -Arguments @{
+                hDefKey = $HKLM; sSubKeyName = $tcpKey; sValueName = 'TcpPort' }).sValue
+            $tcpDynamic = (Invoke-CimMethod @reg -MethodName GetStringValue -Arguments @{
+                hDefKey = $HKLM; sSubKeyName = $tcpKey; sValueName = 'TcpDynamicPorts' }).sValue
+
             [pscustomobject]@{
                 Instance    = $instance
                 InternalId  = $internalId
@@ -118,6 +129,7 @@ function Get-SqlServerInstances {
                 Version     = $version
                 PatchLevel  = $patch
                 Bitness     = $root.Bitness
+                TcpPort     = Resolve-TcpPort -Static $tcpStatic -Dynamic $tcpDynamic
             }
         }
     }
@@ -127,6 +139,24 @@ function Resolve-ServiceName {
     <# Deduit le nom du service Windows a partir du nom d'instance. #>
     param([string]$InstanceName)
     if ($InstanceName -eq 'MSSQLSERVER') { 'MSSQLSERVER' } else { "MSSQL`$$InstanceName" }
+}
+
+function Resolve-TcpPort {
+    <#
+        Choisit le port a retenir entre configuration statique et dynamique.
+        TcpPort peut contenir plusieurs ports separes par des virgules ; on garde
+        le premier. Quand il est vide, l'instance est en ports dynamiques et le
+        port courant se lit dans TcpDynamicPorts ('0' signifiant "dynamique mais
+        pas encore attribue", donc inutilisable).
+    #>
+    param([string]$Static, [string]$Dynamic)
+
+    foreach ($candidate in @($Static, $Dynamic)) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+        $first = ($candidate -split ',')[0].Trim()
+        if ($first -match '^\d+$' -and [int]$first -gt 0) { return [int]$first }
+    }
+    return $null
 }
 
 function Test-TcpPort {
@@ -293,6 +323,7 @@ foreach ($computer in $ComputerName) {
                 Bitness         = $inst.Bitness
                 EditionGratuite = [bool]$isFree
                 PortSQL         = $sqlPortOpen
+                TcpPort         = $inst.TcpPort
                 AccesWMI        = 'OK'
                 Protocole       = $usedProto
                 Statut          = 'Detecte (acces complet)'
@@ -323,6 +354,7 @@ foreach ($computer in $ComputerName) {
             Bitness         = $null
             EditionGratuite = $null
             PortSQL         = $true
+            TcpPort         = $openPort
             AccesWMI        = $accLabel
             Protocole       = $null
             Statut          = $statut
@@ -402,7 +434,7 @@ if ($detected.Count -gt 0) {
     Write-Host "--- Detail des instances identifiees ---" -ForegroundColor Cyan
     $detected |
         Sort-Object @{ Expression = 'EditionGratuite'; Descending = $true }, Serveur, Instance |
-        Format-Table Serveur, Instance, Edition, Version, EtatService, EditionGratuite -AutoSize
+        Format-Table Serveur, Instance, Edition, Version, TcpPort, EtatService, EditionGratuite -AutoSize
 }
 
 if ($free.Count -gt 0) {

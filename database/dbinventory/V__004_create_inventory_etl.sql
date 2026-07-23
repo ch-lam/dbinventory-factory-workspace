@@ -156,10 +156,18 @@ create or replace package body pkg_dbinv_inventory as
          values ( s.host_id, s.platform, s.instance_name, s.engine_version, s.edition );
 
       -- MSSQL instance (instance_name = hostname in this collection)
+      -- The port comes from the perimeter, not from the collection: mssql_hosts
+      -- carries no port. It is only meaningful when the machine has a single
+      -- active perimeter entry. As soon as a named instance is promoted next to
+      -- a default one, several entries share the collect_target and there is
+      -- nothing in the collected data to tell which port belongs to which
+      -- instance - so the port is left null rather than guessed.
       merge into dim_instance di
       using ( select ds.host_id, 'MSSQL' platform, h.hostname instance_name,
                      max(h.mssql_product_version) engine_version, max(h.mssql_edition) edition,
-                     max(h.collation) collation, max(cl.port) port, max(h.install_date) install_date
+                     max(h.collation) collation,
+                     case when count(distinct cl.port) = 1 then max(cl.port) end port,
+                     max(h.install_date) install_date
                 from mssql_hosts h
                 join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = h.collect_target
                 left join mssql_collect_list cl on cl.hostname = h.collect_target and cl.active = 1

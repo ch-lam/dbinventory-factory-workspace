@@ -1,0 +1,407 @@
+page 40 (
+    name: DB Inv. - Discovery
+    alias: DB-INV-DISCOVERY
+    title: DB Inv. - Discovery
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region page-title (
+        name: DB Inv. - Discovery
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region discovery-filter (
+        name: Filter
+        type: staticContent
+        layout {
+            sequence: 5
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region discovery-findings (
+        name: Discovered Engines
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select v.platform,
+                       v.hostname,
+                       v.instance_name,
+                       v.port,
+                       v.edition,
+                       v.engine_version,
+                       v.effective_status,
+                       to_char(v.first_seen_date, 'YYYY-MM-DD') first_seen,
+                       to_char(v.last_seen_date, 'YYYY-MM-DD') last_seen,
+                       v.days_since_last_seen,
+                       case v.is_free_edition when 1 then 'Yes' end free_edition,
+                       v.triage_note,
+                       v.level_name,
+                       v.entity_id
+                  from v_discovery_status v
+                 where ( :P40_PLATFORM is null
+                          or v.platform = :P40_PLATFORM )
+                   and ( :P40_STATUS is null
+                          or v.effective_status = :P40_STATUS )
+                 order by case v.effective_status
+                             when 'NEW' then 1
+                             when 'NOT_SEEN' then 2
+                             when 'COLLECTED' then 3
+                             else 4
+                          end,
+                          v.hostname,
+                          v.instance_name
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No discovery run has been loaded yet.
+        }
+
+        column PLATFORM (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Platform
+            }
+            layout {
+                sequence: 10
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column HOSTNAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Host
+            }
+            layout {
+                sequence: 20
+            }
+            link {
+                target: {
+                    page: 41
+                    items: {
+                        P41_LEVEL_NAME: #LEVEL_NAME#
+                        P41_ENTITY_ID: #ENTITY_ID#
+                    }
+                    clearCache: 41
+                }
+                linkText: #HOSTNAME#
+            }
+            sorting {
+                sortable: false
+            }
+            comments {
+                comments: Opens the triage dialog for this discovered entity.
+            }
+        )
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 30
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column PORT (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Port
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column EDITION (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Edition
+            }
+            layout {
+                sequence: 50
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column ENGINE_VERSION (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 60
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column EFFECTIVE_STATUS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+            comments {
+                comments: NEW = discovered and outside the collection perimeter. COLLECTED = in the active perimeter. IGNORED = deliberately out of scope. NOT_SEEN = in the perimeter but absent from every discovery run.
+            }
+        )
+
+        column FIRST_SEEN (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: First Seen
+                alignment: center
+            }
+            layout {
+                sequence: 80
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column LAST_SEEN (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Last Seen
+                alignment: center
+            }
+            layout {
+                sequence: 90
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column DAYS_SINCE_LAST_SEEN (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Days Since
+                alignment: center
+            }
+            layout {
+                sequence: 100
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+            comments {
+                comments: Ageing only. A host that stops being discovered may have been decommissioned, or may simply have been down on the day of the run.
+            }
+        )
+
+        column FREE_EDITION (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Free Edition
+                alignment: center
+            }
+            layout {
+                sequence: 110
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column TRIAGE_NOTE (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            heading {
+                heading: Note
+            }
+            layout {
+                sequence: 120
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column LEVEL_NAME (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 130
+            }
+        )
+
+        column ENTITY_ID (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 140
+            }
+        )
+
+    )
+
+    pageItem P40_PLATFORM (
+        type: selectList
+        label {
+            label: Platform
+            alignment: left
+        }
+        lov {
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select distinct platform,
+                       platform
+                  from disc_host
+                 order by 1
+                ```
+            displayNullValue: true
+            nullDisplayValue: - All -
+        }
+        layout {
+            sequence: 10
+            region: @discovery-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Restrict the list to a single database platform.
+        }
+    )
+
+    pageItem P40_STATUS (
+        type: selectList
+        label {
+            label: Status
+            alignment: left
+        }
+        lov {
+            type: staticValues
+            staticValues: STATIC:New;NEW,Collected;COLLECTED,Ignored;IGNORED,Not Seen;NOT_SEEN
+            displayNullValue: true
+            nullDisplayValue: - All -
+        }
+        layout {
+            sequence: 20
+            region: @discovery-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: NEW is what needs a decision: discovered on the estate but outside the collection perimeter.
+        }
+    )
+
+    dynamicAction refresh-discovery-findings (
+        name: Refresh Discovery Findings
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P40_PLATFORM,P40_STATUS
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @discovery-findings
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+    )
+
+)

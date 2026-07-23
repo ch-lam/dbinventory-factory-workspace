@@ -18,41 +18,41 @@ while IFS=';' read -r env license server; do
     host="${server%%:*}"
     port="${server##*:}"
     target="${host},${port}"
-    log "Connexion : ${host} [${env}/${license}]"
+    log "Connexion : ${target} [${env}/${license}]"
 
-    status_check "${host}" || { log_err "${host}"; continue; }
+    status_check "${target}" || { log_err "${target}"; continue; }
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getinstanceinfo.sql" \
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getinstanceinfo.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_hosts_temp.csv" || log_err "${host}"
+        >> "${LIST_DIR}/mssql_hosts_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getdbinfo.sql" \
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getdbinfo.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_databases_temp.csv" || log_err "${host}"
+        >> "${LIST_DIR}/mssql_databases_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getbackupinfo.sql" \
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getbackupinfo.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_backup_temp.csv" || log_err "${host}"
+        >> "${LIST_DIR}/mssql_backup_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getfileinfo.sql" \
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getfileinfo.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_files_temp.csv" || log_err "${host}"
+        >> "${LIST_DIR}/mssql_files_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getloginsinfo.sql" \
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getloginsinfo.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_logins_temp.csv" || log_err "${host}"
+        >> "${LIST_DIR}/mssql_logins_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getuserinfo.sql" \
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getuserinfo.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_users_temp.csv" || log_err "${host}"
+        >> "${LIST_DIR}/mssql_users_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_loginwithoutperm.sql" \
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_loginwithoutperm.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_loginwoperm_temp.csv" || log_err "${host}"
+        >> "${LIST_DIR}/mssql_loginwoperm_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_validatelogin.sql" \
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_validatelogin.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_validatelogin_temp.csv" || log_err "${host}"
+        >> "${LIST_DIR}/mssql_validatelogin_temp.csv" || log_err "${target}"
 
 done < <(grep -v '^\s*#' "${LIST_FILE}" | grep -v '^\s*$' | sort -u)
 

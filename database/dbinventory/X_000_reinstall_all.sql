@@ -3,3 +3,5 @@
 @V__003_app_model_reference_data.sql
 @V__004_create_inventory_etl.sql
 @V__005_create_scoring_etl.sql
+@V__006_create_discovery.sql
+@V__007_create_discovery_etl.sql

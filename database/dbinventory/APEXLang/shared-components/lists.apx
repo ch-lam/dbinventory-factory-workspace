@@ -415,6 +415,21 @@ list navigation-menu (
         }
     )
 
+    entry discovery (
+        label: Discovery
+        icon {
+            imageIconCssClasses: fa-search-plus
+        }
+        layout {
+            sequence: 70
+        }
+        link {
+            target: {
+                page: 40
+            }
+        }
+    )
+
     entry mongodb (
         label: MongoDB
         icon {

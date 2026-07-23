@@ -72,7 +72,8 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_BACKUP_FRESHNESS', 'MSSQL', 'BACKUP', 'backup_freshness', 'DATABASE', 'Backup freshness vs SLA', 'HIGH' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
-   values ( 'ORACLE_BACKUP_FRESHNESS', 'ORACLE', 'BACKUP', 'backup_freshness', 'DATABASE', 'Backup freshness vs SLA', 'HIGH' );
+   -- INSTANCE, not DATABASE: RMAN backs up the whole container (see fact_instance_backup).
+   values ( 'ORACLE_BACKUP_FRESHNESS', 'ORACLE', 'BACKUP', 'backup_freshness', 'INSTANCE', 'Backup freshness vs SLA', 'HIGH' );
 
 -- Capacity saturation controls (score_domain = CAPACITY)
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )

@@ -284,25 +284,37 @@ create or replace package body pkg_dbinv_scoring as
    end load_compliance_capacity;
 
    -- ===============================================================
-   -- Backup freshness compliance (per database, threshold-based)
+   -- Backup freshness compliance (threshold-based)
    -- ===============================================================
+   -- Two grains, because the backups themselves have two grains: MSSQL backs up a
+   -- database (entity DATABASE, from fact_backup), Oracle RMAN backs up a container
+   -- (entity INSTANCE, from fact_instance_backup). load_scoring rolls both up to the
+   -- instance, so a single BACKUP score comes out either way.
    procedure load_compliance_backup ( p_snapshot_date in date ) is
    begin
       merge into fact_compliance f
       using (
-         select case dd.platform when 'ORACLE' then 'ORACLE_BACKUP_FRESHNESS'
-                                  else 'MSSQL_BACKUP_FRESHNESS' end control_code,
+         select 'MSSQL_BACKUP_FRESHNESS' control_code,
                 'DATABASE' entity_type, b.database_id entity_id, p_snapshot_date snapshot_date,
                 case when b.hours_since_backup > t.crit_value then 0 else 1 end is_compliant,
                 0 has_exception,
                 to_char(b.hours_since_backup) observed_value, to_char(t.crit_value) expected_value
          from fact_backup b
-         join dim_database dd on dd.database_id = b.database_id
-         join ref_threshold t on t.control_code = case dd.platform when 'ORACLE' then 'ORACLE_BACKUP_FRESHNESS'
-                                                                   else 'MSSQL_BACKUP_FRESHNESS' end
-              and t.metric = case dd.platform when 'ORACLE' then 'hours_since_backup' else 'hours_since_full' end
-              and t.environment = '*'
+         join dim_database dd on dd.database_id = b.database_id and dd.platform = 'MSSQL'
+         join ref_threshold t on t.control_code = 'MSSQL_BACKUP_FRESHNESS'
+              and t.metric = 'hours_since_full' and t.environment = '*'
          where b.snapshot_date = p_snapshot_date and b.hours_since_backup is not null
+         union all
+         select 'ORACLE_BACKUP_FRESHNESS' control_code,
+                'INSTANCE' entity_type, ib.instance_id entity_id, p_snapshot_date snapshot_date,
+                case when ib.hours_since_backup > t.crit_value then 0 else 1 end is_compliant,
+                0 has_exception,
+                to_char(ib.hours_since_backup) observed_value, to_char(t.crit_value) expected_value
+         from fact_instance_backup ib
+         join dim_instance di on di.instance_id = ib.instance_id and di.platform = 'ORACLE'
+         join ref_threshold t on t.control_code = 'ORACLE_BACKUP_FRESHNESS'
+              and t.metric = 'hours_since_backup' and t.environment = '*'
+         where ib.snapshot_date = p_snapshot_date and ib.hours_since_backup is not null
       ) s
       on ( f.control_code = s.control_code and f.entity_type = s.entity_type
            and f.entity_id = s.entity_id and f.snapshot_date = s.snapshot_date )

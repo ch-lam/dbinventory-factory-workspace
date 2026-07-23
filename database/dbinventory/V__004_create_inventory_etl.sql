@@ -27,6 +27,8 @@
 --     resolves uniformly. is_pdb=0 (ext_oracle_database) keeps the non-PDB distinction.
 --   * oracle_metrics_cpu_memory only carries pdb_name; matched on
 --     dim_database.db_name = pdb_name (unique per instance after the refuge fix).
+--   * oracle_backup carries the container db_name (v$database.name), so it resolves
+--     to an instance through oracle_databases and lands in fact_instance_backup.
 -- ============================================================================
 
 create or replace package pkg_dbinv_inventory as
@@ -496,8 +498,8 @@ create or replace package body pkg_dbinv_inventory as
 
    procedure load_fact_backup ( p_snapshot_date in date ) is
    begin
-      -- MSSQL backup freshness from mssql_databases.last_backup_* (Oracle backup LOAD is
-      -- currently disabled upstream; fed later once re-enabled).
+      -- MSSQL backup freshness from mssql_databases.last_backup_*. Oracle is NOT here:
+      -- RMAN backs up the whole container, so it feeds fact_instance_backup instead.
       merge into fact_backup f
       using ( select dd.database_id, p_snapshot_date snapshot_date,
                      max(pkg_dbinv_inventory.safe_to_date(d.last_backup_date)) last_full_date,
@@ -535,6 +537,50 @@ create or replace package body pkg_dbinv_inventory as
          insert ( database_id, snapshot_date, last_full_date, last_diff_date, last_log_date, hours_since_backup, backup_size_mb, status )
          values ( s.database_id, s.snapshot_date, s.last_full_date, s.last_diff_date, s.last_log_date, s.hours_since_backup, s.backup_size_mb, s.status );
    end load_fact_backup;
+
+   procedure load_fact_instance_backup ( p_snapshot_date in date ) is
+   begin
+      -- Oracle RMAN jobs (oracle_backup), rolled up to the container they cover.
+      -- v$rman_backup_job_details.input_type distinguishes the backup kind; a job is
+      -- counted as successful only when it COMPLETED (with warnings at worst) -
+      -- 'COMPLETED WITH ERRORS' is treated as a failure, not as a backup you can restore.
+      merge into fact_instance_backup f
+      using ( select instance_id, p_snapshot_date snapshot_date,
+                     max(case when kind = 'FULL' and is_ok = 1 then start_dt end) last_full_date,
+                     max(case when kind = 'INCR' and is_ok = 1 then start_dt end) last_incr_date,
+                     max(case when kind = 'LOG'  and is_ok = 1 then start_dt end) last_log_date,
+                     round( ( cast(p_snapshot_date as date)
+                              - max(case when kind in ('FULL', 'INCR') and is_ok = 1 then start_dt end)
+                            ) * 24, 2 ) hours_since_backup,
+                     sum(case when is_ok = 0 then 1 else 0 end) failed_count,
+                     -- Outcome of the most recent full/incremental job. NULLS FIRST puts the
+                     -- archivelog/controlfile rows (null sort key) in the first group, so the
+                     -- last group is the newest DB backup - or nothing at all if none exists.
+                     max(case when kind in ('FULL', 'INCR') then status end)
+                        keep ( dense_rank last
+                               order by case when kind in ('FULL', 'INCR') then start_dt end nulls first ) status
+                from ( select di.instance_id,
+                              case when b.backup_type in ('DB FULL', 'DATAFILE FULL') then 'FULL'
+                                   when b.backup_type in ('DB INCR', 'DATAFILE INCR') then 'INCR'
+                                   when b.backup_type = 'ARCHIVELOG' then 'LOG' end kind,
+                              case when b.status in ('COMPLETED', 'COMPLETED WITH WARNINGS') then 1 else 0 end is_ok,
+                              cast(b.start_time as date) start_dt,
+                              b.status
+                         from oracle_backup b
+                         join oracle_databases od on od.db_name = b.db_name
+                         join dim_host dh on dh.platform = 'ORACLE' and dh.hostname = od.hostname
+                         join dim_instance di on di.host_id = dh.host_id and di.instance_name = od.instance_name )
+               group by instance_id ) s
+      on ( f.instance_id = s.instance_id and f.snapshot_date = s.snapshot_date )
+      when matched then update set f.last_full_date = s.last_full_date, f.last_incr_date = s.last_incr_date,
+         f.last_log_date = s.last_log_date, f.hours_since_backup = s.hours_since_backup,
+         f.failed_count = s.failed_count, f.status = s.status
+      when not matched then
+         insert ( instance_id, snapshot_date, last_full_date, last_incr_date, last_log_date,
+                  hours_since_backup, failed_count, status )
+         values ( s.instance_id, s.snapshot_date, s.last_full_date, s.last_incr_date, s.last_log_date,
+                  s.hours_since_backup, s.failed_count, s.status );
+   end load_fact_instance_backup;
 
    procedure load_fact_config_parameter ( p_snapshot_date in date ) is
    begin
@@ -592,6 +638,7 @@ create or replace package body pkg_dbinv_inventory as
       load_fact_storage_capacity(p_snapshot_date);
       load_fact_db_resource(p_snapshot_date);
       load_fact_backup(p_snapshot_date);
+      load_fact_instance_backup(p_snapshot_date);
       load_fact_config_parameter(p_snapshot_date);
    end load_facts;
 

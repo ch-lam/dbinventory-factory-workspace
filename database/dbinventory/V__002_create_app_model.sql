@@ -28,7 +28,8 @@
 --   oracle_pdbs / oracle_databases / mssql_databases-> dim_database (+ ext_oracle_database / ext_mssql_database)
 --   oracle_size_usage(+_seg) / mssql_files          -> dim_storage_unit + fact_storage_capacity
 --   oracle_metrics_cpu_memory                       -> fact_db_resource
---   mssql_databases.last_backup_* / *_backup        -> fact_backup
+--   mssql_databases.last_backup_* / mssql_backup    -> fact_backup
+--   oracle_backup (RMAN, container-wide)            -> fact_instance_backup
 --   oracle_security_parameter / mssql_security_configoptions / _registryinfo
 --                                                   -> dim_parameter + fact_config_parameter
 --   oracle_users / mssql_logins / mssql_users       -> dim_account
@@ -445,6 +446,38 @@ comment on column fact_backup.last_log_date is 'Timestamp of the last transactio
 comment on column fact_backup.hours_since_backup is 'Number of hours elapsed since the last relevant backup.';
 comment on column fact_backup.backup_size_mb is 'Size of the last backup, in megabytes.';
 comment on column fact_backup.status is 'Outcome of the last backup (e.g. COMPLETED, FAILED).';
+
+
+-- ============================================================
+-- fact_instance_backup  (grain: instance x day)
+-- ============================================================
+-- Backup measured at the container level, where the backup job covers the whole
+-- instance rather than one database: Oracle RMAN backs up the CDB (all its PDBs
+-- at once), so attributing a backup to a single dim_database row would be a
+-- fabrication. MSSQL backups are per database and stay in fact_backup.
+create table fact_instance_backup (
+   instance_id        number not null,
+   snapshot_date      date not null,
+   last_full_date     date,
+   last_incr_date     date,
+   last_log_date      date,
+   hours_since_backup number(10,2),
+   failed_count       number(10),
+   status             varchar2(30 char),
+   constraint fact_instance_backup_pk primary key ( instance_id, snapshot_date ),
+   constraint fact_instance_backup_inst_fk foreign key ( instance_id )
+      references dim_instance ( instance_id )
+);
+
+comment on table fact_instance_backup is 'Dated backup freshness/outcome measures for backups taken at instance (container) level, e.g. Oracle RMAN on a CDB.';
+comment on column fact_instance_backup.instance_id is 'Instance measured (FK to dim_instance).';
+comment on column fact_instance_backup.snapshot_date is 'Day the measure was collected.';
+comment on column fact_instance_backup.last_full_date is 'Start time of the last successful full backup.';
+comment on column fact_instance_backup.last_incr_date is 'Start time of the last successful incremental backup.';
+comment on column fact_instance_backup.last_log_date is 'Start time of the last successful archivelog/transaction log backup.';
+comment on column fact_instance_backup.hours_since_backup is 'Number of hours elapsed since the last successful full or incremental backup.';
+comment on column fact_instance_backup.failed_count is 'Number of backup jobs that did not complete, over the collected history window.';
+comment on column fact_instance_backup.status is 'Outcome of the most recent full/incremental backup job (e.g. COMPLETED, FAILED).';
 
 
 -- ============================================================

@@ -119,6 +119,11 @@ SET LOAD SCAN_ROWS 0
 SET LOAD ERRORS UNLIMITED
 SET LOAD BATCHES_PER_COMMIT 0
 SET LOAD COMMIT OFF
+-- oracle_backup.start_time/end_time sont des TIMESTAMP : sans ce format, SQLcl
+-- retombe sur NLS_TIMESTAMP_FORMAT (…SS.FF) et rejette les valeurs sans fraction
+-- de seconde (GDK-05040). Aucune autre table Oracle ne charge de timestamp
+-- depuis le CSV (leur date_value est en dernière position, avec un DEFAULT).
+SET LOAD TIMESTAMP_FORMAT YYYY-MM-DD HH24:MI:SS
 
 -- ===========================================================================
 -- ORACLE – Inventaire
@@ -142,9 +147,8 @@ PROMPT -- LOADING: ../collect/oracle_lms.csv
 LOAD oracle_lms ../collect/oracle_lms.csv
 PROMPT -- LOADING: ../collect/oracle_client_version.csv
 LOAD oracle_client_version ../collect/oracle_client_version.csv
--- oracle_backup : désactivé (données non disponibles)
--- PROMPT -- LOADING: ../collect/oracle_backup.csv
--- LOAD oracle_backup ../collect/oracle_backup.csv
+PROMPT -- LOADING: ../collect/oracle_backup.csv
+LOAD oracle_backup ../collect/oracle_backup.csv
 
 -- ===========================================================================
 -- ORACLE – Sécurité

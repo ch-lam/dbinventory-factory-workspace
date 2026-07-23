@@ -14,22 +14,15 @@ page 3 (
         formAutoComplete: false
     }
 
-    region breadcrumb-nav (
+    region page-title (
         name: DB Inv. - MSSQL
-        type: breadcrumb
-        source {
-            breadcrumb: @breadcrumb
-        }
+        type: staticContent
         layout {
             sequence: 1
             slot: body
         }
         appearance {
             template: @/title-bar
-            templateOptions: #DEFAULT#
-        }
-        componentAppearance {
-            breadcrumbTemplate: @/breadcrumb
             templateOptions: #DEFAULT#
         }
     )
@@ -53,7 +46,8 @@ page 3 (
                        xh.activenodename,
                        h.num_cpus,
                        h.memory_gb,
-                       xi.service_account
+                       xi.service_account,
+                       h.host_id
                   from dim_instance i
                   join dim_host h on h.host_id = i.host_id
                   left join ext_mssql_host xh on xh.host_id = h.host_id
@@ -129,14 +123,34 @@ page 3 (
             }
         )
 
+        column HOST_ID (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+        )
+
         column HOSTNAME (
             reportColumnQueryId: 1
             derivedColumn: N
+            type: link
             heading {
                 heading: Hostname
             }
             layout {
                 sequence: 10
+            }
+            link {
+                target: {
+                    page: 31
+                    items: {
+                        P31_HOST_ID: #HOST_ID#
+                    }
+                    clearCache: 31
+                }
+                linkText: #HOSTNAME#
             }
             sorting {
                 sortable: false

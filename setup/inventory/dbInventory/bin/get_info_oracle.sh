@@ -142,13 +142,19 @@ SQL
     fi
 
     # -- Backup + PSU (tous primaires) ----------------------------------------
+    # backup : colonnes dans l'ordre de la table oracle_backup (db_name, environment,
+    # backup_type, status, start_time, end_time, elapsed_time). Les jobs en cours sont
+    # exclus (end_time NULL annulerait toute la ligne, et la colonne est NOT NULL).
     sql_run "${db}" <<SQL >> /dev/null
 SPOOL ${LIST_DIR}/backup_temp.csv APPEND
-SELECT '"'||dbs.name||'","'||rma.input_type||'","'||rma.status||'","'||
-       TO_CHAR(rma.start_time,'YYYY-MM-DD HH24:MI')||'","'||
-       TO_CHAR(rma.end_time,'YYYY-MM-DD HH24:MI')||'","'||ROUND(rma.elapsed_seconds/60)||'"'
+SELECT '"'||dbs.name||'","${db_env}","'||rma.input_type||'","'||rma.status||'","'||
+       TO_CHAR(rma.start_time,'YYYY-MM-DD HH24:MI:SS')||'","'||
+       TO_CHAR(rma.end_time,'YYYY-MM-DD HH24:MI:SS')||'","'||
+       NVL(TO_CHAR(ROUND(rma.elapsed_seconds/60)),'0')||'"'
 FROM   v\$rman_backup_job_details rma, v\$database dbs
-WHERE  rma.start_time > SYSDATE-31 ORDER BY rma.start_time;
+WHERE  rma.start_time > SYSDATE-31
+  AND  rma.status NOT LIKE 'RUNNING%'
+ORDER BY rma.start_time;
 SPOOL OFF
 SPOOL ${LIST_DIR}/psu_temp.csv APPEND
 SELECT '"'||dbs.name||'","'||(SELECT version FROM v\$instance)||'","'||REPLACE(p.description,'"','')||'"'

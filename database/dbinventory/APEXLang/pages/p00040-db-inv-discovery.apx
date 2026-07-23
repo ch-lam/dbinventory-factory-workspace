@@ -328,17 +328,8 @@ page 40 (
             alignment: left
         }
         lov {
-            type: sqlQuery
-            sqlQuery:
-                ```sql
-                select d, r
-                  from ( select '- All -' d, cast(null as varchar2(10)) r, 0 ord
-                           from dual
-                          union all
-                         select distinct platform d, platform r, 1 ord
-                           from disc_host )
-                 order by ord, d
-                ```
+            type: sharedComponent
+            lov: @discovery-platform
             displayNullValue: false
         }
         layout {
@@ -363,17 +354,8 @@ page 40 (
             alignment: left
         }
         lov {
-            type: sqlQuery
-            sqlQuery:
-                ```sql
-                select d, r
-                  from ( select '- All -'   d, cast(null as varchar2(10)) r, 0 ord from dual
-                          union all select 'New',       'NEW',       1 from dual
-                          union all select 'Collected', 'COLLECTED', 2 from dual
-                          union all select 'Ignored',   'IGNORED',   3 from dual
-                          union all select 'Not Seen',  'NOT_SEEN',  4 from dual )
-                 order by ord
-                ```
+            type: sharedComponent
+            lov: @discovery-status
             displayNullValue: false
         }
         layout {

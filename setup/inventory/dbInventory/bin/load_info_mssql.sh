@@ -130,7 +130,7 @@ LOAD mssql_loginwoperm ../collect/mssql_loginwoperm.csv
 PROMPT -- LOADING: ../collect/mssql_validatelogin.csv
 LOAD mssql_validatelogin ../collect/mssql_validatelogin.csv
 PROMPT -- LOADING: ../collect/mssql_backup.csv
--- LOAD mssql_backup ../collect/mssql_backup.csv
+LOAD mssql_backup ../collect/mssql_backup.csv
 
 -- ===========================================================================
 -- MSSQL – Sécurité

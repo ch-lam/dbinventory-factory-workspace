@@ -120,35 +120,41 @@ SQL
     else
         sql_run "${db}" <<SQL >> /dev/null
 SPOOL ${LIST_DIR}/services_temp.csv APPEND
-SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","NA","'||svc.name||'"'
-FROM   v\$active_services svc, v\$instance inst
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","'||dbs.name||'","'||svc.name||'"'
+FROM   v\$active_services svc, v\$instance inst, v\$database dbs
 WHERE  svc.name NOT LIKE 'SYS%' ORDER BY 1;
 SPOOL OFF
 SPOOL ${LIST_DIR}/users_temp.csv APPEND
-SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||dbs.name||'","'||inst.instance_name||'","NON_CONTAINER","'||
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||dbs.name||'","'||inst.instance_name||'","'||dbs.name||'","'||
        usr.username||'","'||usr.account_status||'"'
 FROM   dba_users usr, v\$instance inst, v\$database dbs
 WHERE  usr.account_status = 'OPEN' ORDER BY 1;
 SPOOL OFF
 SPOOL ${LIST_DIR}/size_usage_temp.csv APPEND
-SELECT '"'||dbs.name||'","NON_CONTAINER","'||dbf.tablespace_name||'","'||ROUND(SUM(dbf.bytes/1024/1024))||'"'
+SELECT '"'||dbs.name||'","'||dbs.name||'","'||dbf.tablespace_name||'","'||ROUND(SUM(dbf.bytes/1024/1024))||'"'
 FROM   v\$database dbs, dba_data_files dbf GROUP BY dbs.name, dbf.tablespace_name;
 SPOOL OFF
 SPOOL ${LIST_DIR}/size_usage_seg_temp.csv APPEND
-SELECT '"'||dbs.name||'","NON_CONTAINER","'||seg.tablespace_name||'","'||ROUND(SUM(seg.bytes/1024/1024))||'"'
+SELECT '"'||dbs.name||'","'||dbs.name||'","'||seg.tablespace_name||'","'||ROUND(SUM(seg.bytes/1024/1024))||'"'
 FROM   v\$database dbs, dba_segments seg GROUP BY dbs.name, seg.tablespace_name;
 SPOOL OFF
 SQL
     fi
 
     # -- Backup + PSU (tous primaires) ----------------------------------------
+    # backup : colonnes dans l'ordre de la table oracle_backup (db_name, environment,
+    # backup_type, status, start_time, end_time, elapsed_time). Les jobs en cours sont
+    # exclus (end_time NULL annulerait toute la ligne, et la colonne est NOT NULL).
     sql_run "${db}" <<SQL >> /dev/null
 SPOOL ${LIST_DIR}/backup_temp.csv APPEND
-SELECT '"'||dbs.name||'","'||rma.input_type||'","'||rma.status||'","'||
-       TO_CHAR(rma.start_time,'YYYY-MM-DD HH24:MI')||'","'||
-       TO_CHAR(rma.end_time,'YYYY-MM-DD HH24:MI')||'","'||ROUND(rma.elapsed_seconds/60)||'"'
+SELECT '"'||dbs.name||'","${db_env}","'||rma.input_type||'","'||rma.status||'","'||
+       TO_CHAR(rma.start_time,'YYYY-MM-DD HH24:MI:SS')||'","'||
+       TO_CHAR(rma.end_time,'YYYY-MM-DD HH24:MI:SS')||'","'||
+       NVL(TO_CHAR(ROUND(rma.elapsed_seconds/60)),'0')||'"'
 FROM   v\$rman_backup_job_details rma, v\$database dbs
-WHERE  rma.start_time > SYSDATE-31 ORDER BY rma.start_time;
+WHERE  rma.start_time > SYSDATE-31
+  AND  rma.status NOT LIKE 'RUNNING%'
+ORDER BY rma.start_time;
 SPOOL OFF
 SPOOL ${LIST_DIR}/psu_temp.csv APPEND
 SELECT '"'||dbs.name||'","'||(SELECT version FROM v\$instance)||'","'||REPLACE(p.description,'"','')||'"'

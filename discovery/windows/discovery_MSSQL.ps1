@@ -20,13 +20,13 @@
       - Le pare-feu des cibles doit autoriser au moins un de ces canaux.
 
 .EXAMPLE
-    .\Get-MSSQLInventory.ps1 -Verbose
+    .\discovery_MSSQL.ps1 -Verbose
 
 .EXAMPLE
-    .\Get-MSSQLInventory.ps1 -SearchBase "OU=Serveurs,DC=chl,DC=lu" -OperatingSystemFilter "*Server*"
+    .\discovery_MSSQL.ps1 -SearchBase "OU=Serveurs,DC=chl,DC=lu" -OperatingSystemFilter "*Server*"
 
 .EXAMPLE
-    .\Get-MSSQLInventory.ps1 -ComputerName SRV01,SRV02 -Credential (Get-Credential)
+    .\discovery_MSSQL.ps1 -ComputerName SRV01,SRV02 -Credential (Get-Credential)
 #>
 
 #Requires -Version 5.1

@@ -396,4 +396,28 @@ page 40 (
         )
     )
 
+    dynamicAction refresh-after-triage-dialog (
+        name: Refresh After Triage Dialog
+        execution {
+            sequence: 20
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @discovery-findings
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @discovery-findings
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+    )
+
 )

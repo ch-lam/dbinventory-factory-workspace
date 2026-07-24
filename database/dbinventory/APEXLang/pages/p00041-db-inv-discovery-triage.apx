@@ -240,6 +240,7 @@ page 41 (
             sequence: 10
         }
         when {
+            event: click
             selectionType: button
             button: @cancel
         }
@@ -248,6 +249,7 @@ page 41 (
             action: cancelDialog
             execution {
                 sequence: 10
+                fireOnInit: false
             }
         )
     )

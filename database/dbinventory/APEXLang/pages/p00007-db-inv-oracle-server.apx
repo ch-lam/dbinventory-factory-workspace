@@ -14,19 +14,6 @@ page 7 (
         formAutoComplete: false
     }
 
-    region page-title (
-        name: DB Inv. - Oracle Server
-        type: staticContent
-        layout {
-            sequence: 1
-            slot: body
-        }
-        appearance {
-            template: @/title-bar
-            templateOptions: #DEFAULT#
-        }
-    )
-
     region oracle-server-identity (
         name: Server Identity Card
         type: classicReport
@@ -109,6 +96,19 @@ page 7 (
 
     )
 
+    region page-title (
+        name: DB Inv. - Oracle Server
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
     region server-filter (
         name: Server Selection
         type: staticContent
@@ -132,9 +132,10 @@ page 7 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select hostname,
-                       hostname
-                  from oracle_hosts
+                select hostname d,
+                       hostname r
+                  from dim_host
+                 where platform = 'ORACLE'
                  order by hostname
                 ```
             displayNullValue: false
@@ -148,6 +149,9 @@ page 7 (
         appearance {
             template: @/optional-floating
             templateOptions: #DEFAULT#
+        }
+        advanced {
+            warnOnUnsavedChanges: ignore
         }
         help {
             helpText: Select the Oracle host whose identity card is displayed below.

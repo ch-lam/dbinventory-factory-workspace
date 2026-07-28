@@ -32,21 +32,38 @@ page 41 (
         }
     )
 
-    pageItem P41_LEVEL_NAME (
-        type: hidden
-        layout {
-            sequence: 10
-            region: @triage
-            slot: regionBody
-        }
-    )
-
     pageItem P41_ENTITY_ID (
         type: hidden
         layout {
             sequence: 20
             region: @triage
             slot: regionBody
+        }
+    )
+
+    pageItem P41_ENVIRONMENT (
+        type: selectList
+        label {
+            label: Environment
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @discovery-environment
+            displayNullValue: false
+        }
+        layout {
+            sequence: 60
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Values in use in the collection perimeter. Required to promote.
         }
     )
 
@@ -86,50 +103,12 @@ page 41 (
         }
     )
 
-    pageItem P41_PORT (
-        type: displayOnly
-        label {
-            label: TCP Port
-            alignment: right
-        }
+    pageItem P41_LEVEL_NAME (
+        type: hidden
         layout {
-            sequence: 50
+            sequence: 10
             region: @triage
             slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
-        }
-        help {
-            helpText: Read from the instance registry key by the Windows discovery. Without it the instance cannot be collected, because a named instance does not listen on 1433.
-        }
-    )
-
-    pageItem P41_ENVIRONMENT (
-        type: selectList
-        label {
-            label: Environment
-            alignment: right
-        }
-        lov {
-            type: sharedComponent
-            lov: @discovery-environment
-            displayNullValue: false
-        }
-        layout {
-            sequence: 60
-            region: @triage
-            slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
-        }
-        help {
-            helpText: Values in use in the collection perimeter. Required to promote.
         }
     )
 
@@ -156,6 +135,27 @@ page 41 (
         }
         help {
             helpText: Values in use in the collection perimeter. Required to promote.
+        }
+    )
+
+    pageItem P41_PORT (
+        type: displayOnly
+        label {
+            label: TCP Port
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Read from the instance registry key by the Windows discovery. Without it the instance cannot be collected, because a named instance does not listen on 1433.
         }
     )
 
@@ -210,7 +210,6 @@ page 41 (
             templateOptions: #DEFAULT#
         }
         behavior {
-            action: submitPage
             warnOnUnsavedChanges: doNotCheck
         }
     )
@@ -229,7 +228,6 @@ page 41 (
             templateOptions: #DEFAULT#
         }
         behavior {
-            action: submitPage
             warnOnUnsavedChanges: doNotCheck
         }
     )
@@ -252,6 +250,18 @@ page 41 (
                 fireOnInit: false
             }
         )
+
+    )
+
+    process close-triage-dialog (
+        name: Close Triage Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+        advanced {
+            executionMappingIdentifier: 5233180509539222
+        }
     )
 
     process load-context (
@@ -278,25 +288,8 @@ page 41 (
             sequence: 10
             point: beforeHeader
         }
-    )
-
-    process promote-to-collection (
-        name: Promote To Collection
-        type: executeCode
-        source {
-            plsqlCode:
-                ```plsql
-                pkg_dbinv_discovery.promote_instance(
-                    p_disc_instance_id => :P41_ENTITY_ID,
-                    p_environment      => :P41_ENVIRONMENT,
-                    p_license_type     => :P41_LICENSE_TYPE );
-                ```
-        }
-        execution {
-            sequence: 10
-        }
-        serverSideCondition {
-            whenButtonPressed: @promote
+        advanced {
+            executionMappingIdentifier: 5232841904539222
         }
     )
 
@@ -316,17 +309,36 @@ page 41 (
         execution {
             sequence: 20
         }
+        advanced {
+            executionMappingIdentifier: 5233044649539222
+        }
         serverSideCondition {
             whenButtonPressed: @ignore
         }
     )
 
-    process close-triage-dialog (
-        name: Close Triage Dialog
-        type: closeDialog
+    process promote-to-collection (
+        name: Promote To Collection
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_discovery.promote_instance(
+                    p_disc_instance_id => :P41_ENTITY_ID,
+                    p_environment      => :P41_ENVIRONMENT,
+                    p_license_type     => :P41_LICENSE_TYPE );
+                ```
+        }
         execution {
-            sequence: 90
+            sequence: 10
+        }
+        advanced {
+            executionMappingIdentifier: 5232918492539222
+        }
+        serverSideCondition {
+            whenButtonPressed: @promote
         }
     )
 
 )
+

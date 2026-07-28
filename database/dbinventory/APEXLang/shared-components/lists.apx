@@ -447,6 +447,9 @@ list navigation-menu (
                 page: 6
             }
         }
+        serverSideCondition {
+            type: never
+        }
     )
 
     entry ms-patching (

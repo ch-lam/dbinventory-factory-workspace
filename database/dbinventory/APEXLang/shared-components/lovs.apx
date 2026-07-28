@@ -1,3 +1,39 @@
+lov discovery-environment (
+    name: DISCOVERY_ENVIRONMENT
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select distinct environment d,
+                   environment r
+              from mssql_collect_list
+             order by 1
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov discovery-license (
+    name: DISCOVERY_LICENSE
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select distinct license_type d,
+                   license_type r
+              from mssql_collect_list
+             order by 1
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
 lov discovery-platform (
     name: DISCOVERY_PLATFORM
     source {
@@ -32,42 +68,6 @@ lov discovery-status (
                       union all select 'Ignored',   'IGNORED',   3 from dual
                       union all select 'Not Seen',  'NOT_SEEN',  4 from dual )
              order by ord
-            ```
-    }
-    columnMapping {
-        return: R
-        display: D
-    }
-)
-
-lov discovery-environment (
-    name: DISCOVERY_ENVIRONMENT
-    source {
-        type: sqlQuery
-        sqlQuery:
-            ```sql
-            select distinct environment d,
-                   environment r
-              from mssql_collect_list
-             order by 1
-            ```
-    }
-    columnMapping {
-        return: R
-        display: D
-    }
-)
-
-lov discovery-license (
-    name: DISCOVERY_LICENSE
-    source {
-        type: sqlQuery
-        sqlQuery:
-            ```sql
-            select distinct license_type d,
-                   license_type r
-              from mssql_collect_list
-             order by 1
             ```
     }
     columnMapping {

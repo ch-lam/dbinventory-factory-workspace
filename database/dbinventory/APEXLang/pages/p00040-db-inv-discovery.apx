@@ -14,19 +14,6 @@ page 40 (
         formAutoComplete: false
     }
 
-    region page-title (
-        name: DB Inv. - Discovery
-        type: staticContent
-        layout {
-            sequence: 1
-            slot: body
-        }
-        appearance {
-            template: @/title-bar
-            templateOptions: #DEFAULT#
-        }
-    )
-
     region discovery-filter (
         name: Filter
         type: staticContent
@@ -100,14 +87,107 @@ page 40 (
             whenNoDataFound: No discovery run has been loaded yet.
         }
 
-        column PLATFORM (
-            reportColumnQueryId: 1
+        column DAYS_SINCE_LAST_SEEN (
+            reportColumnQueryId: 10
             derivedColumn: N
             heading {
-                heading: Platform
+                heading: Days Since
+                alignment: center
             }
             layout {
-                sequence: 10
+                sequence: 100
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+            comments {
+                comments: Ageing only. A host that stops being discovered may have been decommissioned, or may simply have been down on the day of the run.
+            }
+        )
+
+        column EDITION (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Edition
+            }
+            layout {
+                sequence: 50
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column EFFECTIVE_STATUS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+            comments {
+                comments: NEW = discovered and outside the collection perimeter. COLLECTED = in the active perimeter. IGNORED = deliberately out of scope. NOT_SEEN = in the perimeter but absent from every discovery run.
+            }
+        )
+
+        column ENGINE_VERSION (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 60
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column ENTITY_ID (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 140
+            }
+        )
+
+        column FIRST_SEEN (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: First Seen
+                alignment: center
+            }
+            layout {
+                sequence: 80
+                columnAlignment: center
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column FREE_EDITION (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Free Edition
+                alignment: center
+            }
+            layout {
+                sequence: 110
+                columnAlignment: center
             }
             sorting {
                 sortable: false
@@ -157,85 +237,6 @@ page 40 (
             }
         )
 
-        column PORT (
-            reportColumnQueryId: 4
-            derivedColumn: N
-            heading {
-                heading: Port
-                alignment: center
-            }
-            layout {
-                sequence: 40
-                columnAlignment: center
-            }
-            sorting {
-                sortable: false
-            }
-        )
-
-        column EDITION (
-            reportColumnQueryId: 5
-            derivedColumn: N
-            heading {
-                heading: Edition
-            }
-            layout {
-                sequence: 50
-            }
-            sorting {
-                sortable: false
-            }
-        )
-
-        column ENGINE_VERSION (
-            reportColumnQueryId: 6
-            derivedColumn: N
-            heading {
-                heading: Version
-            }
-            layout {
-                sequence: 60
-            }
-            sorting {
-                sortable: false
-            }
-        )
-
-        column EFFECTIVE_STATUS (
-            reportColumnQueryId: 7
-            derivedColumn: N
-            heading {
-                heading: Status
-                alignment: center
-            }
-            layout {
-                sequence: 70
-                columnAlignment: center
-            }
-            sorting {
-                sortable: false
-            }
-            comments {
-                comments: NEW = discovered and outside the collection perimeter. COLLECTED = in the active perimeter. IGNORED = deliberately out of scope. NOT_SEEN = in the perimeter but absent from every discovery run.
-            }
-        )
-
-        column FIRST_SEEN (
-            reportColumnQueryId: 8
-            derivedColumn: N
-            heading {
-                heading: First Seen
-                alignment: center
-            }
-            layout {
-                sequence: 80
-                columnAlignment: center
-            }
-            sorting {
-                sortable: false
-            }
-        )
-
         column LAST_SEEN (
             reportColumnQueryId: 9
             derivedColumn: N
@@ -252,34 +253,38 @@ page 40 (
             }
         )
 
-        column DAYS_SINCE_LAST_SEEN (
-            reportColumnQueryId: 10
+        column LEVEL_NAME (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 130
+            }
+        )
+
+        column PLATFORM (
+            reportColumnQueryId: 1
             derivedColumn: N
             heading {
-                heading: Days Since
-                alignment: center
+                heading: Platform
             }
             layout {
-                sequence: 100
-                columnAlignment: center
+                sequence: 10
             }
             sorting {
                 sortable: false
             }
-            comments {
-                comments: Ageing only. A host that stops being discovered may have been decommissioned, or may simply have been down on the day of the run.
-            }
         )
 
-        column FREE_EDITION (
-            reportColumnQueryId: 11
+        column PORT (
+            reportColumnQueryId: 4
             derivedColumn: N
             heading {
-                heading: Free Edition
+                heading: Port
                 alignment: center
             }
             layout {
-                sequence: 110
+                sequence: 40
                 columnAlignment: center
             }
             sorting {
@@ -301,24 +306,19 @@ page 40 (
             }
         )
 
-        column LEVEL_NAME (
-            reportColumnQueryId: 13
-            derivedColumn: N
-            type: hidden
-            layout {
-                sequence: 130
-            }
-        )
+    )
 
-        column ENTITY_ID (
-            reportColumnQueryId: 14
-            derivedColumn: N
-            type: hidden
-            layout {
-                sequence: 140
-            }
-        )
-
+    region page-title (
+        name: DB Inv. - Discovery
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
     )
 
     pageItem P40_PLATFORM (
@@ -373,29 +373,6 @@ page 40 (
         }
     )
 
-    dynamicAction refresh-discovery-findings (
-        name: Refresh Discovery Findings
-        execution {
-            sequence: 10
-        }
-        when {
-            selectionType: items
-            items: P40_PLATFORM,P40_STATUS
-        }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @discovery-findings
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-    )
-
     dynamicAction refresh-after-triage-dialog (
         name: Refresh After Triage Dialog
         execution {
@@ -418,6 +395,35 @@ page 40 (
                 fireOnInit: false
             }
         )
+
+    )
+
+    dynamicAction refresh-discovery-findings (
+        name: Refresh Discovery Findings
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: [
+                P40_PLATFORM
+                P40_STATUS
+            ]
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @discovery-findings
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
     )
 
 )
+

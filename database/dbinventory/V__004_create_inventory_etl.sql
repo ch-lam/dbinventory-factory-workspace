@@ -17,8 +17,12 @@
 --     mssql_hosts.hostname = @@SERVERNAME = instance identity (e.g. MACHINE/INSTANCE).
 --     dim_host is keyed on collect_target (a machine hosting several instances
 --     shares one host); dim_instance.instance_name = hostname.
---   * MSSQL environment/license come from mssql_collect_list, joined on
---     collect_target (= the FQDN) with active = 1.
+--   * MSSQL environment/license/port are carried by the collection itself
+--     (mssql_hosts, mssql_databases), prepended from the perimeter .lst by
+--     get_info_mssql.sh - exactly as oracle_hosts/oracle_databases do. They are
+--     deliberately NOT re-read from mssql_collect_list at load time: that table is
+--     the current perimeter, not the state of the run, so a host removed from or
+--     never promoted into the perimeter would silently lose its environment.
 -- Oracle join notes:
 --   * Oracle storage/metrics/parameter link to a database through
 --     oracle_databases (db_name) -> (hostname, instance_name) -> database (pdb_name).
@@ -106,18 +110,22 @@ create or replace package body pkg_dbinv_inventory as
          insert ( platform, hostname, os_type, num_cpus, memory_gb, environment, license_type )
          values ( s.platform, s.hostname, s.os_type, s.num_cpus, s.memory_gb, s.environment, s.license_type );
 
-      -- MSSQL: host = collect_target (FQDN); env/license from mssql_collect_list joined on collect_target
+      -- MSSQL: host = collect_target (FQDN); env/license carried directly by mssql_hosts
       merge into dim_host d
       using ( select 'MSSQL' platform, h.collect_target hostname,
                      max(h.os_type) os_type, max(h.num_cpus) num_cpus, max(h.memory_gb) memory_gb,
-                     max(cl.environment) environment, max(cl.license_type) license_type
+                     max(h.environment) environment, max(h.license_type) license_type
                 from mssql_hosts h
-                left join mssql_collect_list cl on cl.hostname = h.collect_target and cl.active = 1
                group by h.collect_target ) s
       on ( d.platform = s.platform and d.hostname = s.hostname )
       when matched then update set
          d.os_type = s.os_type, d.num_cpus = s.num_cpus, d.memory_gb = s.memory_gb,
-         d.environment = s.environment, d.license_type = s.license_type
+         -- nvl guard: environment/license are new staging columns, so a CSV produced
+         -- by an older get_info_mssql.sh carries them empty. Keeping the known value
+         -- rather than overwriting it with null means a legacy or partial collect
+         -- degrades to "no news" instead of silently erasing the perimeter data.
+         d.environment = nvl(s.environment, d.environment),
+         d.license_type = nvl(s.license_type, d.license_type)
       when not matched then
          insert ( platform, hostname, os_type, num_cpus, memory_gb, environment, license_type )
          values ( s.platform, s.hostname, s.os_type, s.num_cpus, s.memory_gb, s.environment, s.license_type );
@@ -156,26 +164,24 @@ create or replace package body pkg_dbinv_inventory as
          values ( s.host_id, s.platform, s.instance_name, s.engine_version, s.edition );
 
       -- MSSQL instance (instance_name = hostname in this collection)
-      -- The port comes from the perimeter, not from the collection: mssql_hosts
-      -- carries no port. It is only meaningful when the machine has a single
-      -- active perimeter entry. As soon as a named instance is promoted next to
-      -- a default one, several entries share the collect_target and there is
-      -- nothing in the collected data to tell which port belongs to which
-      -- instance - so the port is left null rather than guessed.
+      -- The port is the one actually used to reach this instance: collect_port is
+      -- written per collected row by get_info_mssql.sh. A machine hosting a named
+      -- instance next to a default one produces one row per instance, each with its
+      -- own port - which the previous join on the perimeter could not disambiguate.
       merge into dim_instance di
       using ( select ds.host_id, 'MSSQL' platform, h.hostname instance_name,
                      max(h.mssql_product_version) engine_version, max(h.mssql_edition) edition,
                      max(h.collation) collation,
-                     case when count(distinct cl.port) = 1 then max(cl.port) end port,
+                     max(h.collect_port) port,
                      max(h.install_date) install_date
                 from mssql_hosts h
                 join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = h.collect_target
-                left join mssql_collect_list cl on cl.hostname = h.collect_target and cl.active = 1
                group by ds.host_id, h.hostname ) s
       on ( di.host_id = s.host_id and di.instance_name = s.instance_name )
       when matched then update set
          di.engine_version = s.engine_version, di.edition = s.edition, di.collation = s.collation,
-         di.port = s.port, di.install_date = s.install_date
+         di.port = nvl(s.port, di.port),   -- nvl guard: see load_dim_host
+         di.install_date = s.install_date
       when not matched then
          insert ( host_id, platform, instance_name, engine_version, edition, collation, port, install_date )
          values ( s.host_id, s.platform, s.instance_name, s.engine_version, s.edition, s.collation, s.port, s.install_date );
@@ -256,15 +262,15 @@ create or replace package body pkg_dbinv_inventory as
       merge into dim_database dd
       using ( select di.instance_id, 'MSSQL' platform, d.database_name db_name,
                      max(d.database_state) db_state, max(d.create_date) create_date,
-                     max(d.owner) owner, max(cl.environment) environment
+                     max(d.owner) owner, max(d.environment) environment
                 from mssql_databases d
                 join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = d.collect_target
                 join dim_instance di on di.host_id = ds.host_id and di.instance_name = d.hostname
-                left join mssql_collect_list cl on cl.hostname = d.collect_target and cl.active = 1
                group by di.instance_id, d.database_name ) s
       on ( dd.instance_id = s.instance_id and dd.db_name = s.db_name )
       when matched then update set dd.db_state = s.db_state, dd.create_date = s.create_date,
-         dd.owner = s.owner, dd.environment = s.environment
+         dd.owner = s.owner,
+         dd.environment = nvl(s.environment, dd.environment)   -- nvl guard: see load_dim_host
       when not matched then
          insert ( instance_id, platform, db_name, db_state, create_date, owner, environment )
          values ( s.instance_id, s.platform, s.db_name, s.db_state, s.create_date, s.owner, s.environment );

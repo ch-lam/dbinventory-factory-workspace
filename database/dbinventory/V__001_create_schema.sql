@@ -121,6 +121,9 @@ comment on column mssql_backup_temp.backup_size is 'Size of the backup, in bytes
 create table mssql_databases (
    collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
+   collect_port          number(5),
+   environment           varchar2(20 char),
+   license_type          varchar2(50 char),
    hostname              varchar2(100 char),
    database_id           number(5),
    database_name         varchar2(100 char),
@@ -141,6 +144,9 @@ create table mssql_databases (
 comment on table mssql_databases is 'Inventory of MSSQL databases and their configuration, collected per instance.';
 comment on column mssql_databases.collect_id is 'Identifier for the collect run that produced this row';
 comment on column mssql_databases.collect_target is 'Target of the collection.';
+comment on column mssql_databases.collect_port is 'TCP port the collected instance listens on, as declared in the collect perimeter.';
+comment on column mssql_databases.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST), as declared in the collect perimeter.';
+comment on column mssql_databases.license_type is 'Licensing type applied to this host/instance, as declared in the collect perimeter.';
 comment on column mssql_databases.hostname is 'Host name of the database server or instance.';
 comment on column mssql_databases.database_id is 'Database ID as reported by sys.databases.';
 comment on column mssql_databases.database_name is 'Name of the database.';
@@ -196,6 +202,9 @@ comment on column mssql_files.max_size is 'Maximum size the file is allowed to g
 create table mssql_hosts (
    collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
+   collect_port          number(5),
+   environment           varchar2(20 char),
+   license_type          varchar2(50 char),
    hostname              varchar2(100 char),
    mssql_edition         varchar2(100 char),
    mssql_product_version varchar2(100 char),
@@ -219,6 +228,9 @@ create table mssql_hosts (
 comment on table mssql_hosts is 'Inventory of MSSQL instances/hosts and their engine, cluster and resource configuration.';
 comment on column mssql_hosts.collect_id is 'Identifier for the collect run that produced this row';
 comment on column mssql_hosts.collect_target is 'Target of the collection.';
+comment on column mssql_hosts.collect_port is 'TCP port the collected instance listens on, as declared in the collect perimeter.';
+comment on column mssql_hosts.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST), as declared in the collect perimeter.';
+comment on column mssql_hosts.license_type is 'Licensing type applied to this host/instance, as declared in the collect perimeter.';
 comment on column mssql_hosts.hostname is 'Host name of the database server or instance.';
 comment on column mssql_hosts.mssql_edition is 'SQL Server edition (e.g. Enterprise, Standard).';
 comment on column mssql_hosts.mssql_product_version is 'SQL Server product version.';

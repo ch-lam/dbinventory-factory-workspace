@@ -25,22 +25,33 @@ page 31 (
                 ```sql
                 select i.instance_name,
                        rc.category,
-                       rc.title,
-                       rc.severity,
-                       fc.entity_type scope,
-                       fc.observed_value
-                  from fact_compliance fc
+                       r.title,
+                       nvl( r.severity, rc.severity ) severity,
+                       f.entity_type scope,
+                       f.observed_value,
+                       d.db_name,
+                       f.item_key,
+                       f.expected_value,
+                       case when f.exception_id is not null then 'Granted derogation'
+                            when f.is_norm_exception = 1 then 'Accepted by the norm'
+                            else 'Open'
+                       end exception_status,
+                       e.justification
+                  from fact_control_finding f
+                  join ref_control_rule r
+                    on r.rule_code = f.rule_code
+                   and r.active = 1
                   join ref_control rc
-                    on rc.control_code = fc.control_code
+                    on rc.control_code = r.control_code
                    and rc.score_domain = 'SECURITY'
                    and rc.active = 1
-                  left join dim_database dd on fc.entity_type = 'DATABASE' and dd.database_id = fc.entity_id
-                  left join ( select su.storage_unit_id, d2.instance_id from dim_storage_unit su join dim_database d2 on d2.database_id = su.database_id ) dsu on fc.entity_type = 'STORAGE' and dsu.storage_unit_id = fc.entity_id
-                  left join ( select a.account_id, d3.instance_id from dim_account a join dim_database d3 on d3.database_id = a.database_id ) dac on fc.entity_type = 'ACCOUNT' and dac.account_id = fc.entity_id
-                  join dim_instance i
-                    on i.instance_id = case fc.entity_type when 'INSTANCE' then fc.entity_id when 'DATABASE' then dd.instance_id when 'STORAGE' then dsu.instance_id when 'ACCOUNT' then dac.instance_id end
+                  join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+                  join dim_instance i on i.instance_id = a.instance_id
+                  left join dim_database d on d.database_id = a.database_id
+                  left join ref_exception e on e.exception_id = f.exception_id
                  where i.platform = 'MSSQL'
-                   and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                   and f.is_compliant = 0
+                   and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
                 ```
         }
         layout {
@@ -131,6 +142,61 @@ page 31 (
             }
             layout {
                 sequence: 70
+            }
+        )
+
+        column DB_NAME (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 65
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 68
+            }
+        )
+
+        column EXPECTED_VALUE (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Expected Value
+            }
+            layout {
+                sequence: 75
+            }
+        )
+
+        column EXCEPTION_STATUS (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Exception
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column JUSTIFICATION (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Derogation Justification
+            }
+            layout {
+                sequence: 90
             }
         )
 
@@ -228,9 +294,9 @@ page 31 (
 
     )
 
-    region mysql-versions (
-        name: MSSQL: Non Compliance Levels
-        title: MSSQL: Non Compliance Levels
+    region mssql-open-noncompliance (
+        name: MSSQL : Open Non Compliance
+        title: MSSQL : Open Non Compliance
         type: chart
         layout {
             sequence: 90
@@ -262,8 +328,8 @@ page 31 (
             position: bottom
         }
 
-        series mysql-versions (
-            name: MSSQL Compliance Levels
+        series mssql-open-noncompliance (
+            name: MSSQL Open Non Compliance by Severity
             execution {
                 sequence: 10
             }
@@ -271,27 +337,24 @@ page 31 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    With COMP_ISSUES As 
-                    (select i.instance_name,
-                           rc.category,
-                           rc.title,
-                           rc.severity,
-                           fc.entity_type scope,
-                           case fc.has_exception when 1 then 'Yes' when 0 then 'No' end has_exception,
-                           fc.observed_value
-                      from fact_compliance fc
-                      join ref_control rc
-                        on rc.control_code = fc.control_code
-                       and rc.score_domain = 'SECURITY'
-                       and rc.active = 1
-                      left join dim_database dd on fc.entity_type = 'DATABASE' and dd.database_id = fc.entity_id
-                      left join ( select su.storage_unit_id, d2.instance_id from dim_storage_unit su join dim_database d2 on d2.database_id = su.database_id ) dsu on fc.entity_type = 'STORAGE' and dsu.storage_unit_id = fc.entity_id
-                      left join ( select a.account_id, d3.instance_id from dim_account a join dim_database d3 on d3.database_id = a.database_id ) dac on fc.entity_type = 'ACCOUNT' and dac.account_id = fc.entity_id
-                      join dim_instance i
-                        on i.instance_id = case fc.entity_type when 'INSTANCE' then fc.entity_id when 'DATABASE' then dd.instance_id when 'STORAGE' then dsu.instance_id when 'ACCOUNT' then dac.instance_id end
-                     where i.platform = 'MSSQL'
-                       and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 ))
-                    Select COUNT(*) value, InitCAP(SEVERITY) label From COMP_ISSUES Group By InitCAP(SEVERITY);
+                    With COMP_ISSUES As
+                    ( select nvl( r.severity, rc.severity ) severity
+                        from fact_control_finding f
+                        join ref_control_rule r
+                          on r.rule_code = f.rule_code
+                         and r.active = 1
+                        join ref_control rc
+                          on rc.control_code = r.control_code
+                         and rc.score_domain = 'SECURITY'
+                         and rc.active = 1
+                        join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+                        join dim_instance i on i.instance_id = a.instance_id
+                       where i.platform = 'MSSQL'
+                         and f.is_compliant = 0
+                         and f.exception_id is null
+                         and f.is_norm_exception = 0
+                         and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) )
+                    Select COUNT(*) value, InitCAP(SEVERITY) label From COMP_ISSUES Group By InitCAP(SEVERITY)
                     ```
             }
             columnMapping {
@@ -390,6 +453,44 @@ page 31 (
             }
             layout {
                 sequence: 10
+            }
+        )
+
+        facet P31_EXCEPTION_STATUS (
+            type: checkboxGroup
+            label {
+                label: Exception
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 45
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: EXCEPTION_STATUS
+            }
+        )
+
+        facet P31_DB_NAME (
+            type: checkboxGroup
+            label {
+                label: Database
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 65
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: DB_NAME
             }
         )
 
@@ -494,6 +595,241 @@ page 31 (
             columnMapping {
                 label: LABEL
                 value: VALUE
+            }
+        )
+
+    )
+
+    region granted-exceptions (
+        name: Granted Exceptions
+        title: Granted Exceptions
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select e.exception_id,
+                       case when e.active = 0 then 'Disabled'
+                            when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
+                            when e.start_date > trunc(sysdate) then 'Not started'
+                            when nvl( ( select count(*) from fact_control_finding f where f.exception_id = e.exception_id and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ), 0 ) = 0 then 'Active, covers nothing'
+                            else 'Active'
+                       end status,
+                       r.title rule_title,
+                       e.entity_type scope,
+                       nvl( nvl( i.instance_name, d.db_name ), h.hostname ) scope_name,
+                       e.item_key,
+                       e.observed_value,
+                       ( select count(*) from fact_control_finding f where f.exception_id = e.exception_id and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) covered_today,
+                       e.start_date,
+                       e.end_date,
+                       e.review_due_date,
+                       e.approved_by,
+                       e.document_ref,
+                       e.justification
+                  from ref_exception e
+                  join ref_control_rule r on r.rule_code = e.rule_code
+                  join ref_control rc on rc.control_code = r.control_code and rc.platform = 'MSSQL'
+                  left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
+                  left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
+                  left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id
+                 order by e.exception_id
+                ```
+        }
+        layout {
+            sequence: 120
+            slot: body
+            startNewRow: true
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        reportLayout {
+            numberOfRows: 30
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+                t-Report--rowHighlight
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+            displayPosition: topAndBottomRight
+        }
+        messages {
+            whenNoDataFound: No documented derogation has been granted on MSSQL yet
+        }
+        printing {
+            enabled: true
+        }
+        output {
+            linkText: Print
+            format: pdf
+        }
+        pageHeader {
+            pageHeaderText: Granted Exceptions
+        }
+
+        column EXCEPTION_ID (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Id
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column STATUS (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Status
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column RULE_TITLE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Derogated Rule
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column SCOPE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Granted At
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column SCOPE_NAME (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Entity
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Pinned Value
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column COVERED_TODAY (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Findings Covered
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column START_DATE (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Valid From
+            }
+            layout {
+                sequence: 90
+            }
+        )
+
+        column END_DATE (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Valid Until
+            }
+            layout {
+                sequence: 100
+            }
+        )
+
+        column REVIEW_DUE_DATE (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Review Due
+            }
+            layout {
+                sequence: 110
+            }
+        )
+
+        column APPROVED_BY (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            heading {
+                heading: Approved By
+            }
+            layout {
+                sequence: 120
+            }
+        )
+
+        column DOCUMENT_REF (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            heading {
+                heading: Document
+            }
+            layout {
+                sequence: 130
+            }
+        )
+
+        column JUSTIFICATION (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            heading {
+                heading: Justification
+            }
+            layout {
+                sequence: 140
             }
         )
 

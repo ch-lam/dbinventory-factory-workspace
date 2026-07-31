@@ -538,6 +538,60 @@ create index fact_compliance_entity_ix
 
 
 -- ============================================================
+-- fact_control_finding  (grain: rule x entity x item x day)
+-- ------------------------------------------------------------
+-- The per-item evidence behind fact_compliance. fact_compliance is the roll-up
+-- that feeds the scoring; this is the level an auditor works at.
+--
+-- is_compliant holds the RAW verdict of the norm and is never rewritten by an
+-- exception: a granted derogation sets exception_id and leaves the deviation
+-- visible. That is what makes the periodic review possible -- an exception whose
+-- finding is compliant again is an exception that can be revoked.
+--
+-- item_key = natural key of the object evaluated INSIDE the entity (login name,
+-- TDE key name, Windows group name...), or '*' when the rule is evaluated once
+-- for the entity as a whole (sp_configure options, registry keys).
+-- ============================================================
+create table fact_control_finding (
+   rule_code      varchar2(50 char) not null,
+   entity_type    varchar2(20 char) not null,
+   entity_id      number not null,
+   item_key       varchar2(200 char) default '*' not null,
+   snapshot_date  date not null,
+   is_compliant   number(1) default 0 not null,
+   observed_value varchar2(400 char),
+   expected_value varchar2(400 char),
+   exception_id   number,
+   is_norm_exception number(1) default 0 not null,
+   is_covered     number(1) generated always as
+                     ( case when is_compliant = 1 or exception_id is not null then 1 else 0 end ) virtual,
+   constraint fact_control_finding_pk primary key ( rule_code, entity_type, entity_id, item_key, snapshot_date )
+   -- fact_ctl_finding_rule_fk / fact_ctl_finding_exc_fk added via ALTER at end of
+   -- script (ref_control_rule and ref_exception are created later)
+);
+
+comment on table fact_control_finding is 'Dated per-item verdict of each rule, and the documented exception covering it when there is one; aggregated into fact_compliance.';
+comment on column fact_control_finding.rule_code is 'Rule being evaluated (FK to ref_control_rule).';
+comment on column fact_control_finding.entity_type is 'Type of entity the rule was evaluated against (HOST, INSTANCE, DATABASE, STORAGE, ACCOUNT, PARAMETER).';
+comment on column fact_control_finding.entity_id is 'Technical id of the evaluated entity within the dimension matching entity_type (polymorphic reference, not a hard FK).';
+comment on column fact_control_finding.item_key is 'Natural key of the object evaluated inside the entity, or ''*'' when the rule is evaluated once for the whole entity.';
+comment on column fact_control_finding.snapshot_date is 'Day the rule was evaluated.';
+comment on column fact_control_finding.is_compliant is 'Raw verdict of the norm (1 = compliant), never rewritten by an exception.';
+comment on column fact_control_finding.observed_value is 'Observed value that drove the verdict.';
+comment on column fact_control_finding.expected_value is 'Expected/compliant value for the rule.';
+comment on column fact_control_finding.exception_id is 'Documented exception covering this deviation (FK to ref_exception), NULL when none applies.';
+comment on column fact_control_finding.is_norm_exception is 'Set by the norm itself, not by the SSI team: 1 when the rule accepts the situation under a documented vendor condition (today: engine surviving on extended support/ESU). Distinct from exception_id, which is a granted derogation; both feed fact_compliance.has_exception.';
+comment on column fact_control_finding.is_covered is 'Derived: 1 when the item is compliant OR covered by an exception; this is what the roll-up scores.';
+
+create index fact_ctl_finding_entity_ix
+   on fact_control_finding ( entity_type, entity_id, snapshot_date );
+
+-- Drives the RSSI review: which exceptions were actually used, and when.
+create index fact_ctl_finding_exc_ix
+   on fact_control_finding ( exception_id, snapshot_date );
+
+
+-- ============================================================
 -- fact_scoring  (grain: platform x environment x category x entity x day)
 -- entity_id = 0 when entity_type = ENVIRONMENT (fleet-level aggregate).
 -- ============================================================
@@ -587,11 +641,138 @@ comment on column ref_control.control_code is 'Unique code of the control.';
 comment on column ref_control.platform is 'Database platform the control applies to (ORACLE, MSSQL, POSTGRES, MYSQL).';
 comment on column ref_control.score_domain is 'Scoring domain the control contributes to (SECURITY, LICENSING, CAPACITY, BACKUP, LIFECYCLE).';
 comment on column ref_control.category is 'Check category the control belongs to (e.g. configoptions, logins, high_sys_privs).';
-comment on column ref_control.entity_type is 'Type of entity the control is evaluated against (HOST, INSTANCE, DATABASE, STORAGE, ACCOUNT, PARAMETER).';
+comment on column ref_control.entity_type is 'Grain at which the control is rolled up into fact_compliance (HOST, INSTANCE, DATABASE, STORAGE, ACCOUNT, PARAMETER). The finer grain at which its rules are actually evaluated is ref_control_rule.entity_type.';
 comment on column ref_control.title is 'Short human-readable title of the control.';
 comment on column ref_control.description is 'Detailed description of what the control checks.';
 comment on column ref_control.severity is 'Severity of a non-compliant result (LOW, MEDIUM, HIGH, CRITICAL).';
 comment on column ref_control.active is 'Indicates whether the control is active (1) or disabled (0).';
+
+
+-- ============================================================
+-- ref_control_rule  (catalog of the individual rules behind a control)
+-- ------------------------------------------------------------
+-- A control is a family (MSSQL_CONFIGOPTIONS covers 11 sp_configure options);
+-- a rule is a single norm ("clr enabled must be 0"). Rules exist as data so an
+-- exception can designate exactly what it derogates from.
+--
+-- This is a CATALOG, not a rule engine: pkg_dbinv_scoring emits the rule_code
+-- alongside each evaluated row and the predicate stays in PL/SQL. Adding a rule
+-- means one row here plus one branch in load_findings; the exception side is
+-- entirely data-driven.
+--
+-- Scope conditions belong to the RULE, not to an exception: system databases
+-- exempt from encryption, Express/Developer editions exempt from TDE,
+-- sa/monitoring exempt from the login policy check. Modelling those as
+-- exceptions would flood the list the RSSI team has to review.
+-- ============================================================
+create table ref_control_rule (
+   rule_code      varchar2(50 char) not null,
+   control_code   varchar2(40 char) not null,
+   entity_type    varchar2(20 char) not null,
+   item_key_label varchar2(100 char),
+   title          varchar2(200 char) not null,
+   description    varchar2(1000 char),
+   severity       varchar2(10 char),
+   active         number(1) default 1 not null,
+   constraint ref_control_rule_pk primary key ( rule_code ),
+   constraint ref_control_rule_ctl_fk foreign key ( control_code )
+      references ref_control ( control_code )
+);
+
+comment on table ref_control_rule is 'Catalog of the individual rules making up a control; an exception is always granted against a rule, never against a whole control.';
+comment on column ref_control_rule.rule_code is 'Unique code of the rule.';
+comment on column ref_control_rule.control_code is 'Control the rule belongs to (FK to ref_control).';
+comment on column ref_control_rule.entity_type is 'Grain at which the rule is evaluated into fact_control_finding, which may be finer than the roll-up grain of its control.';
+comment on column ref_control_rule.item_key_label is 'What fact_control_finding.item_key holds for this rule (e.g. ''login name''), or ''*'' when the rule is evaluated once per entity.';
+comment on column ref_control_rule.title is 'Short human-readable statement of the norm.';
+comment on column ref_control_rule.description is 'Detailed description of what the rule checks, including its scope conditions.';
+comment on column ref_control_rule.severity is 'Severity of a non-compliant result (LOW, MEDIUM, HIGH, CRITICAL).';
+comment on column ref_control_rule.active is 'Indicates whether the rule is active (1) or disabled (0).';
+
+create index ref_control_rule_ctl_ix
+   on ref_control_rule ( control_code );
+
+
+-- ============================================================
+-- ref_exception  (documented derogations granted against a rule)
+-- ------------------------------------------------------------
+-- Human-entered reference data, NOT collected: a signed derogation stating that
+-- a known deviation is accepted (e.g. an application that cannot run without CLR
+-- enabled, accepted by the SSI manager and the software vendor).
+--
+-- Resolution semantics (see pkg_dbinv_scoring.apply_exceptions):
+--   * '*' in item_key / observed_value means "any", consistent with the '*'
+--     convention already used by ref_scoring_weight and ref_threshold. Using a
+--     sentinel rather than NULL keeps the unique key enforceable.
+--   * observed_value pins the derogation to the value that was accepted: the
+--     legacy rules compared the excepted row value, so a setting drifting to
+--     another value silently loses its cover. Kept, but optional.
+--   * the exception cascades DOWN: granted on a host it covers its instances,
+--     their databases and their storage units.
+--   * validity is evaluated against the snapshot date, never sysdate, so
+--     replaying an old snapshot does not apply today's derogations to it.
+--   * active = 0 neutralises the exception whatever the dates: it is the
+--     operational kill switch, while the dates carry the formal validity.
+--
+-- No SCD: the current state of a derogation lives here, its effect over time is
+-- readable from the dated fact_control_finding rows that reference it.
+-- ============================================================
+create table ref_exception (
+   exception_id     number generated by default on null as identity,
+   rule_code        varchar2(50 char) not null,
+   entity_type      varchar2(20 char) not null,
+   entity_id        number not null,
+   item_key         varchar2(200 char) default '*' not null,
+   observed_value   varchar2(200 char) default '*' not null,
+   start_date       date not null,
+   end_date         date,
+   active           number(1) default 1 not null,
+   justification    varchar2(1000 char) not null,
+   document_ref     varchar2(200 char),
+   approved_by      varchar2(200 char),
+   approval_date    date,
+   review_due_date  date,
+   last_review_date date,
+   created_by       varchar2(100 char) default on null user not null,
+   created_date     date default on null sysdate not null,
+   updated_by       varchar2(100 char),
+   updated_date     date,
+   constraint ref_exception_pk primary key ( exception_id ),
+   -- start_date is part of the key so a derogation can be renewed over a new period
+   constraint ref_exception_uk unique ( rule_code, entity_type, entity_id, item_key, observed_value, start_date ),
+   constraint ref_exception_rule_fk foreign key ( rule_code )
+      references ref_control_rule ( rule_code ),
+   constraint ref_exception_dates_ck check ( end_date is null or end_date >= start_date ),
+   constraint ref_exception_active_ck check ( active in ( 0, 1 ) ),
+   constraint ref_exception_entity_ck check ( entity_type in ( 'HOST', 'INSTANCE', 'DATABASE', 'STORAGE' ) )
+);
+
+comment on table ref_exception is 'Documented derogations accepted against a rule for a given entity/item; human-entered, reviewed periodically by the RSSI team.';
+comment on column ref_exception.exception_id is 'Technical primary key of the exception.';
+comment on column ref_exception.rule_code is 'Rule the derogation applies to (FK to ref_control_rule).';
+comment on column ref_exception.entity_type is 'Level the exception is granted at (HOST, INSTANCE, DATABASE, STORAGE); it cascades down to the levels below.';
+comment on column ref_exception.entity_id is 'Technical id of the entity within the dimension matching entity_type (polymorphic reference, not a hard FK).';
+comment on column ref_exception.item_key is 'Item covered inside the entity, or ''*'' for every item evaluated by the rule.';
+comment on column ref_exception.observed_value is 'Observed value the derogation was granted for, or ''*'' to cover any value.';
+comment on column ref_exception.start_date is 'First day the exception applies (compared against the snapshot date).';
+comment on column ref_exception.end_date is 'Last day the exception applies; NULL for an open-ended derogation.';
+comment on column ref_exception.active is 'Operational kill switch: 0 neutralises the exception whatever the dates.';
+comment on column ref_exception.justification is 'Why the deviation is accepted (functional or technical reason).';
+comment on column ref_exception.document_ref is 'Reference of the signed document formalising the derogation.';
+comment on column ref_exception.approved_by is 'Who approved the derogation (e.g. SSI manager and software vendor).';
+comment on column ref_exception.approval_date is 'Date the derogation was formally approved.';
+comment on column ref_exception.review_due_date is 'Date by which the derogation must be reviewed again.';
+comment on column ref_exception.last_review_date is 'Date of the last periodic review of the derogation.';
+comment on column ref_exception.created_by is 'User who created the row.';
+comment on column ref_exception.created_date is 'Date the row was created.';
+comment on column ref_exception.updated_by is 'User who last updated the row.';
+comment on column ref_exception.updated_date is 'Date the row was last updated.';
+
+create index ref_exception_rule_ix
+   on ref_exception ( rule_code, active );
+
+create index ref_exception_entity_ix
+   on ref_exception ( entity_type, entity_id );
 
 
 -- ============================================================
@@ -644,3 +825,46 @@ comment on column ref_threshold.crit_value is 'Value at or beyond which the metr
 alter table fact_compliance
    add constraint fact_compliance_control_fk foreign key ( control_code )
       references ref_control ( control_code );
+
+alter table fact_control_finding
+   add constraint fact_ctl_finding_rule_fk foreign key ( rule_code )
+      references ref_control_rule ( rule_code );
+
+alter table fact_control_finding
+   add constraint fact_ctl_finding_exc_fk foreign key ( exception_id )
+      references ref_exception ( exception_id );
+
+
+-- ============================================================
+-- v_entity_ancestry
+-- ------------------------------------------------------------
+-- Resolves any polymorphic (entity_type, entity_id) pair to the whole chain it
+-- belongs to: host > instance > database > storage unit, the entity itself
+-- included. Defined once because two very different consumers need exactly the
+-- same walk:
+--   * pkg_dbinv_scoring.apply_exceptions, to cascade an exception granted at a
+--     high level down to the findings below it;
+--   * pkg_dbinv_scoring.load_compliance, to roll findings up to the grain their
+--     control is scored at (ref_control.entity_type).
+-- ============================================================
+create or replace view v_entity_ancestry as
+   select 'HOST' entity_type, h.host_id entity_id,
+          h.host_id,
+          cast(null as number) instance_id,
+          cast(null as number) database_id,
+          cast(null as number) storage_unit_id
+     from dim_host h
+   union all
+   select 'INSTANCE', i.instance_id, i.host_id, i.instance_id, null, null
+     from dim_instance i
+   union all
+   select 'DATABASE', d.database_id, i.host_id, d.instance_id, d.database_id, null
+     from dim_database d
+     join dim_instance i on i.instance_id = d.instance_id
+   union all
+   select 'STORAGE', s.storage_unit_id, i.host_id, d.instance_id, s.database_id, s.storage_unit_id
+     from dim_storage_unit s
+     join dim_database d on d.database_id = s.database_id
+     join dim_instance i on i.instance_id = d.instance_id;
+
+comment on table v_entity_ancestry is 'Host/instance/database/storage chain of any polymorphic entity reference; used to cascade exceptions downwards and to roll findings up to their control grain.';

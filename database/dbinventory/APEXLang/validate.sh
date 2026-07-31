@@ -72,7 +72,7 @@ node tools/apexctl.mjs apexlang compiler-truth audit \
    --app-path "$APP_DIR" --verify-component-attributes 2>&1 | tail -20
 
 echo
-echo "Note: apex validate is the authoritative gate. The offline audit counts"
-echo "parentheses line-by-line without skipping \`\`\`sql fences, so it reports"
-echo "false positives on multi-line SQL; cross-check anything it flags."
+echo "Note: apex validate is the authoritative gate. The offline audit now skips"
+echo "\`\`\`sql/\`\`\`plsql fences, so multi-line SQL no longer produces phantom"
+echo "properties; treat anything it flags as real and cross-check it."
 exit "$live_rc"

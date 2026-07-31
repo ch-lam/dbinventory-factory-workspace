@@ -30,19 +30,19 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_SQLSERVERAUDIT', 'MSSQL', 'SECURITY', 'sqlserveraudit', 'INSTANCE', 'SQL Server Audit specifications', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
-   values ( 'MSSQL_DBPROPERTIES', 'MSSQL', 'SECURITY', 'dbproperties', 'DATABASE', 'Database properties (AUTO_CLOSE, TRUSTWORTHY)', 'MEDIUM' );
+   values ( 'MSSQL_DBPROPERTIES', 'MSSQL', 'SECURITY', 'dbproperties', 'INSTANCE', 'Database properties (AUTO_CLOSE, TRUSTWORTHY)', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_AUDITLEVEL', 'MSSQL', 'SECURITY', 'auditlevel', 'INSTANCE', 'Server audit level', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
-   values ( 'MSSQL_ENCRYPTION', 'MSSQL', 'SECURITY', 'encryption', 'DATABASE', 'Transparent Data Encryption keys', 'MEDIUM' );
+   values ( 'MSSQL_ENCRYPTION', 'MSSQL', 'SECURITY', 'encryption', 'INSTANCE', 'Transparent Data Encryption keys', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_GROUPS', 'MSSQL', 'SECURITY', 'groups', 'INSTANCE', 'Local Windows group permissions', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
-   values ( 'MSSQL_GUESTCONNECT', 'MSSQL', 'SECURITY', 'guestconnect', 'DATABASE', 'Guest CONNECT permission', 'MEDIUM' );
+   values ( 'MSSQL_GUESTCONNECT', 'MSSQL', 'SECURITY', 'guestconnect', 'INSTANCE', 'Guest CONNECT permission', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
-   values ( 'MSSQL_ORPHANEDUSERS', 'MSSQL', 'SECURITY', 'orphanedusers', 'DATABASE', 'Orphaned database users', 'LOW' );
+   values ( 'MSSQL_ORPHANEDUSERS', 'MSSQL', 'SECURITY', 'orphanedusers', 'INSTANCE', 'Orphaned database users', 'LOW' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
-   values ( 'MSSQL_PUBLICPERMISSION', 'MSSQL', 'SECURITY', 'publicpermission', 'DATABASE', 'Public role permissions', 'MEDIUM' );
+   values ( 'MSSQL_PUBLICPERMISSION', 'MSSQL', 'SECURITY', 'publicpermission', 'INSTANCE', 'Public role permissions', 'MEDIUM' );
 
 -- Oracle security controls (score_domain = SECURITY)
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
@@ -92,6 +92,136 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
    values ( 'ORACLE_LICENSING_LMS', 'ORACLE', 'LICENSING', 'licensing', 'INSTANCE', 'Oracle feature usage (LMS) licensing', 'HIGH' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_LICENSING', 'MSSQL', 'LICENSING', 'licensing', 'INSTANCE', 'MSSQL edition/licensing', 'MEDIUM' );
+
+
+-- ============================================================
+-- ref_control_rule
+-- ------------------------------------------------------------
+-- One row per individual norm, so that a documented exception can designate
+-- exactly what it derogates from. Predicates are transcribed verbatim from the
+-- expressions of pkg_dbinv_scoring.load_findings, which itself transcribes the
+-- legacy mssql_scoring_data.sql.
+--
+-- entity_type here is the EVALUATION grain (what fact_control_finding rows key
+-- on); the roll-up grain into fact_compliance stays ref_control.entity_type.
+--
+-- Scope conditions stated in `description` are part of the norm and are NOT
+-- exceptions: they must not appear in the list the RSSI team reviews.
+-- ============================================================
+
+-- MSSQL configoptions: one rule per sp_configure option collected by
+-- mssql_getconfigoptions.sql (the collect query whitelists exactly these names).
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_ADHOC_DIST_QUERIES', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'Ad Hoc Distributed Queries must be disabled', 'sp_configure ''Ad Hoc Distributed Queries'' run_value must be 0.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_CLR_ENABLED', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'CLR integration must be disabled', 'sp_configure ''clr enabled'' run_value must be 0.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_CROSS_DB_CHAINING', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'Cross DB ownership chaining must be disabled', 'sp_configure ''cross db ownership chaining'' run_value must be 0.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_DATABASE_MAIL_XPS', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'Database Mail XPs must be disabled', 'sp_configure ''Database Mail XPs'' run_value must be 0.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_OLE_AUTOMATION', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'OLE Automation Procedures must be disabled', 'sp_configure ''Ole Automation Procedures'' run_value must be 0.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_REMOTE_ACCESS', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'Remote access must be disabled', 'sp_configure ''remote access'' run_value must be 0.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_REMOTE_ADMIN_CONN', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'Remote admin connections must be disabled', 'sp_configure ''remote admin connections'' run_value must be 0. Only collected on non-clustered instances.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_SCAN_STARTUP_PROCS', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'Scan for startup procs must be disabled', 'sp_configure ''scan for startup procs'' run_value must be 0.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_XP_CMDSHELL', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'xp_cmdshell must be disabled', 'sp_configure ''xp_cmdshell'' run_value must be 0.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_DEFAULT_TRACE', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'Default trace must be enabled', 'sp_configure ''default trace enabled'' run_value must be 1.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_CFG_CLR_STRICT_SECURITY', 'MSSQL_CONFIGOPTIONS', 'INSTANCE', '*',
+            'CLR strict security must be enabled', 'sp_configure ''clr strict security'' run_value must be 1.', 'HIGH' );
+
+-- MSSQL registryinfo: one rule per registry value collected by mssql_getregistryinfo.sql.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_REG_HIDE_INSTANCE', 'MSSQL_REGISTRYINFO', 'INSTANCE', '*',
+            'Instance must be hidden', 'Registry HideInstance must be 1.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_REG_FORCE_ENCRYPTION', 'MSSQL_REGISTRYINFO', 'INSTANCE', '*',
+            'Connection encryption must be forced', 'Registry ForceEncryption must be 1.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_REG_NUM_ERRORLOG_FILES', 'MSSQL_REGISTRYINFO', 'INSTANCE', '*',
+            'Enough error log files must be retained', 'Registry NumErrorLogs must be greater than 12.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_REG_TCP_PORT', 'MSSQL_REGISTRYINFO', 'INSTANCE', '*',
+            'Instance must listen on the standard TCP port', 'Registry TcpPort must be 1433.', 'MEDIUM' );
+
+-- MSSQL database properties (evaluated per database, rolled up to the instance).
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_DBPROP_AUTO_CLOSE_OFF', 'MSSQL_DBPROPERTIES', 'DATABASE', '*',
+            'AUTO_CLOSE must be off', 'is_auto_close_on must be 0.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_DBPROP_TRUSTWORTHY_OFF', 'MSSQL_DBPROPERTIES', 'DATABASE', '*',
+            'TRUSTWORTHY must be off', 'is_trustworthy_on must be 0. Scope: msdb is exempt, it requires TRUSTWORTHY for Database Mail and SQL Agent.', 'MEDIUM' );
+
+-- MSSQL logins. The two rules partition the population on is_sysadmin so that
+-- together they reproduce the legacy ordered CASE exactly: a sysadmin login is
+-- judged on password expiration only, a regular login on password policy only.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_LOGIN_SYSADMIN_EXPIRATION', 'MSSQL_LOGINS', 'INSTANCE', 'login name',
+            'Sysadmin logins must have password expiration checked', 'is_expiration_checked must be 1 for sysadmin logins. Scope: sysadmin logins only; sa and monitoring are exempt (service accounts of the inventory itself).', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_LOGIN_POLICY_CHECKED', 'MSSQL_LOGINS', 'INSTANCE', 'login name',
+            'Logins must have password policy checked', 'is_policy_checked must be 1. Scope: non-sysadmin logins only; sa and monitoring are exempt.', 'HIGH' );
+
+-- MSSQL audit level / SQL Server Audit.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_AUDIT_LEVEL_LOGIN_FAILURES', 'MSSQL_AUDITLEVEL', 'INSTANCE', '*',
+            'Login auditing must record at least failures', 'Server audit level must be All or Failed.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_SRVAUDIT_ACTION_GROUP_ON', 'MSSQL_SQLSERVERAUDIT', 'INSTANCE', 'audit action group',
+            'Expected audit action groups must be enabled', 'The audit action group must be one of AUDIT_CHANGE_GROUP, FAILED_LOGIN_GROUP, SUCCESSFUL_LOGIN_GROUP, with both the audit and its specification enabled.', 'MEDIUM' );
+
+-- MSSQL encryption (evaluated per database, rolled up to the instance).
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_ENC_STRONG_ALGORITHM', 'MSSQL_ENCRYPTION', 'DATABASE', 'key name',
+            'Encryption keys must use a strong algorithm', 'algorithm_desc must be TRIPLE_DES, AES_128, AES_192 or AES_256. Scope: system databases (master, model, msdb, tempdb) and Express/Developer editions are exempt.', 'MEDIUM' );
+
+-- MSSQL local Windows groups, guest access, orphaned users, public role.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_GROUP_NO_LOCAL_PERMISSION', 'MSSQL_GROUPS', 'INSTANCE', 'local group name',
+            'No local Windows group must hold server permissions', 'Compliant only when the collect reports the ''nogroup'' sentinel, i.e. no local group holds a permission.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_GUEST_NO_CONNECT', 'MSSQL_GUESTCONNECT', 'DATABASE', 'permission name',
+            'Guest must not hold CONNECT', 'Compliant only when the collect reports the ''no_permission'' sentinel for both permission and state.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_NO_ORPHANED_USER', 'MSSQL_ORPHANEDUSERS', 'DATABASE', 'user name',
+            'No orphaned database user must exist', 'Compliant only when the collect reports the ''NoOrphanedUser'' sentinel.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_PUBLIC_DEFAULT_PERMISSION', 'MSSQL_PUBLICPERMISSION', 'DATABASE', 'user name / permission',
+            'Public role must keep only its default permissions', 'Compliant only when the collect reports the ''OnlyDefaultPermission'' sentinel for both permission and state.', 'MEDIUM' );
+
+-- Threshold-based and lifecycle controls: a single rule each, evaluated once per
+-- entity. They get a rule so that a derogation is expressible there too (e.g. a
+-- tablespace allowed to run above its threshold).
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_STORAGE_PCT_USED', 'MSSQL_CAPACITY_SATURATION', 'STORAGE', '*',
+            'Storage usage must stay below its threshold', 'pct_used must stay below ref_threshold.crit_value for metric pct_used.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_STORAGE_PCT_USED', 'ORACLE_CAPACITY_SATURATION', 'STORAGE', '*',
+            'Tablespace usage must stay below its threshold', 'pct_used must stay below ref_threshold.crit_value for metric pct_used.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_BACKUP_FRESHNESS_SLA', 'MSSQL_BACKUP_FRESHNESS', 'DATABASE', '*',
+            'Last full backup must be within the SLA', 'hours_since_backup must not exceed ref_threshold.crit_value for metric hours_since_full.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_BACKUP_FRESHNESS_SLA', 'ORACLE_BACKUP_FRESHNESS', 'INSTANCE', '*',
+            'Last backup must be within the SLA', 'hours_since_backup must not exceed ref_threshold.crit_value for metric hours_since_backup.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_ENGINE_SUPPORTED', 'MSSQL_OUT_OF_SUPPORT', 'INSTANCE', '*',
+            'Engine version must still be supported', 'The major version must not be past its end of support. Extended support (ESU) keeps the instance compliant but is flagged as an exception on the compliance row.', 'HIGH' );
 
 
 -- ============================================================

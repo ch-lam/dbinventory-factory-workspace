@@ -1,0 +1,503 @@
+page 31 (
+    name: DB Inv. - MSSQL Compliance and Security
+    alias: DB-INV-MSSQL-COMPLIANCE-AND-SECURITY
+    title: DB Inv. - MSSQL Compliance and Security
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region employees_1 (
+        name: Non Compliance Issues
+        title: Non Compliance Issues
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select i.instance_name,
+                       rc.category,
+                       rc.title,
+                       rc.severity,
+                       fc.entity_type scope,
+                       fc.observed_value
+                  from fact_compliance fc
+                  join ref_control rc
+                    on rc.control_code = fc.control_code
+                   and rc.score_domain = 'SECURITY'
+                   and rc.active = 1
+                  left join dim_database dd on fc.entity_type = 'DATABASE' and dd.database_id = fc.entity_id
+                  left join ( select su.storage_unit_id, d2.instance_id from dim_storage_unit su join dim_database d2 on d2.database_id = su.database_id ) dsu on fc.entity_type = 'STORAGE' and dsu.storage_unit_id = fc.entity_id
+                  left join ( select a.account_id, d3.instance_id from dim_account a join dim_database d3 on d3.database_id = a.database_id ) dac on fc.entity_type = 'ACCOUNT' and dac.account_id = fc.entity_id
+                  join dim_instance i
+                    on i.instance_id = case fc.entity_type when 'INSTANCE' then fc.entity_id when 'DATABASE' then dd.instance_id when 'STORAGE' then dsu.instance_id when 'ACCOUNT' then dac.instance_id end
+                 where i.platform = 'MSSQL'
+                   and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                ```
+        }
+        layout {
+            sequence: 110
+            slot: body
+            startNewRow: false
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--removeHeader js-removeLandmark
+                t-Region--scrollBody
+            ]
+        }
+        reportLayout {
+            numberOfRows: 60
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+                t-Report--rowHighlight
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+            displayPosition: topAndBottomRight
+        }
+        messages {
+            whenNoDataFound: No Compliance Issues matches your criterias
+            whenMoreDataFound: Too much issues matches your criteria, please add some filtering to see less than 2000 rows.
+        }
+        printing {
+            enabled: true
+        }
+        output {
+            linkText: Print
+            format: pdf
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+        pageHeader {
+            pageHeaderText: Non Compliance Issues
+        }
+
+        column CATEGORY (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Category
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Instance Name
+            }
+            layout {
+                sequence: 60
+            }
+            link {
+                target: {
+                    page: 35
+                    items: {
+                        P35_HOSTNAME: #INSTANCE_NAME#
+                    }
+                }
+                linkText: #INSTANCE_NAME#
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Observed Value
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column SCOPE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Scope
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column SEVERITY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Severity
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column TITLE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Title
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+    )
+
+    region mssql-versions_1 (
+        name: MSSQL : Versions
+        title: MSSQL : Versions
+        type: chart
+        layout {
+            sequence: 70
+            slot: body
+            columnSpan: 4
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--noPadding
+                i-h320
+                t-Region--scrollBody
+            ]
+        }
+        chart {
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
+        }
+        legend {
+            position: bottom
+        }
+
+        series mssql-versions (
+            name: MSSQL Versions
+            execution {
+                sequence: 10
+            }
+            source {
+                type: sqlQuery
+                sqlQuery:
+                    ```sql
+                    With SQL_VERSIONS As
+                      ( select decode( substr( engine_version, 1, instr( engine_version, '.')-1), 10, 'SQL 2008/2008 R2', 11, 'SQL 2012', 12, 'SQL 2014', 13, 'SQL 2016', 14, 'SQL 2017', 15, 'SQL 2019', 16, 'SQL 2022', 17, 'SQL 2025', 'Unknown Yet') SQL_VERSION
+                         from dim_instance where platform = 'MSSQL' )
+                    select SQL_VERSION as label,
+                           count(*) as value
+                      from SQL_VERSIONS
+                     group by SQL_VERSION order by value desc
+                    ```
+            }
+            columnMapping {
+                label: LABEL
+                value: VALUE
+            }
+        )
+
+    )
+
+    region mysql-versions (
+        name: MSSQL: Non Compliance Levels
+        title: MSSQL: Non Compliance Levels
+        type: chart
+        layout {
+            sequence: 90
+            slot: body
+            startNewRow: false
+            columnSpan: 4
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--noPadding
+                i-h320
+                t-Region--scrollBody
+            ]
+        }
+        chart {
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
+        }
+        legend {
+            position: bottom
+        }
+
+        series mysql-versions (
+            name: MSSQL Compliance Levels
+            execution {
+                sequence: 10
+            }
+            source {
+                type: sqlQuery
+                sqlQuery:
+                    ```sql
+                    With COMP_ISSUES As 
+                    (select i.instance_name,
+                           rc.category,
+                           rc.title,
+                           rc.severity,
+                           fc.entity_type scope,
+                           case fc.has_exception when 1 then 'Yes' when 0 then 'No' end has_exception,
+                           fc.observed_value
+                      from fact_compliance fc
+                      join ref_control rc
+                        on rc.control_code = fc.control_code
+                       and rc.score_domain = 'SECURITY'
+                       and rc.active = 1
+                      left join dim_database dd on fc.entity_type = 'DATABASE' and dd.database_id = fc.entity_id
+                      left join ( select su.storage_unit_id, d2.instance_id from dim_storage_unit su join dim_database d2 on d2.database_id = su.database_id ) dsu on fc.entity_type = 'STORAGE' and dsu.storage_unit_id = fc.entity_id
+                      left join ( select a.account_id, d3.instance_id from dim_account a join dim_database d3 on d3.database_id = a.database_id ) dac on fc.entity_type = 'ACCOUNT' and dac.account_id = fc.entity_id
+                      join dim_instance i
+                        on i.instance_id = case fc.entity_type when 'INSTANCE' then fc.entity_id when 'DATABASE' then dd.instance_id when 'STORAGE' then dsu.instance_id when 'ACCOUNT' then dac.instance_id end
+                     where i.platform = 'MSSQL'
+                       and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 ))
+                    Select COUNT(*) value, InitCAP(SEVERITY) label From COMP_ISSUES Group By InitCAP(SEVERITY);
+                    ```
+            }
+            columnMapping {
+                label: LABEL
+                value: VALUE
+            }
+        )
+
+    )
+
+    region new (
+        name: Non Compliance Criterias
+        title: Non Compliance Criterias
+        type: facetedSearch
+        source {
+            filteredRegion: @employees_1
+        }
+        layout {
+            sequence: 100
+            slot: body
+            columnSpan: 2
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        settings {
+            compactNosThreshold: 10000
+            displayChartForTopNValues: 10
+        }
+
+        facet P31_CATEGORY (
+            type: checkboxGroup
+            label {
+                label: Category
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 30
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: CATEGORY
+            }
+        )
+
+        facet P31_INSTANCE_NAME (
+            type: checkboxGroup
+            label {
+                label: Instance Name
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 60
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: INSTANCE_NAME
+            }
+        )
+
+        facet P31_SCOPE (
+            type: checkboxGroup
+            label {
+                label: Scope
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 20
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: SCOPE
+            }
+        )
+
+        facet P31_SEARCH (
+            type: search
+            label {
+                label: Search
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        facet P31_SEVERITY (
+            type: checkboxGroup
+            label {
+                label: Severity
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 50
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: SEVERITY
+            }
+        )
+
+        facet P31_TITLE (
+            type: checkboxGroup
+            label {
+                label: Title
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 40
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: TITLE
+            }
+        )
+
+    )
+
+    region postgres-versions (
+        name: MSSQL : Support Status
+        title: MSSQL : Support Status
+        type: chart
+        layout {
+            sequence: 80
+            slot: body
+            startNewRow: false
+            columnSpan: 4
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--noPadding
+                i-h320
+                t-Region--scrollBody
+            ]
+        }
+        chart {
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
+        }
+        legend {
+            position: bottom
+        }
+
+        series mssql-versions (
+            name: MSSQL Support Status
+            execution {
+                sequence: 10
+            }
+            source {
+                type: sqlQuery
+                sqlQuery:
+                    ```sql
+                    With SUP As ( select instance_name, case when fc.control_code is null then null
+                                              when fc.is_compliant = 0 then 'Out of support'
+                                              when fc.has_exception = 1 then 'Extended (ESU)'
+                                              else 'Supported'
+                                              end support_status
+                                         from dim_instance i
+                                         left join fact_compliance fc
+                                           on fc.entity_type = 'INSTANCE'
+                                          and fc.entity_id = i.instance_id
+                                          and fc.control_code = 'MSSQL_OUT_OF_SUPPORT'
+                                          and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                                        where i.platform = 'MSSQL' )
+                    Select Count(distinct instance_name) Value, support_status label from SUP group by support_status;
+                    ```
+            }
+            columnMapping {
+                label: LABEL
+                value: VALUE
+            }
+        )
+
+    )
+
+)
+

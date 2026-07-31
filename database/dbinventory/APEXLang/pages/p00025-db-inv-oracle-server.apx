@@ -1,4 +1,4 @@
-page 7 (
+page 25 (
     name: DB Inv. - Oracle Server
     alias: DB-INV-ORACLE-SERVER
     title: DB Inv. - Oracle Server
@@ -22,20 +22,20 @@ page 7 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select 10 as seq, 'Hostname' as attribute, h.hostname as attr_value from oracle_hosts h where h.hostname = :P7_HOSTNAME
+                select 10 as seq, 'Hostname' as attribute, h.hostname as attr_value from oracle_hosts h where h.hostname = :P25_HOSTNAME
                 union all
-                select 20 as seq, 'Environment' as attribute, h.environment as attr_value from oracle_hosts h where h.hostname = :P7_HOSTNAME
+                select 20 as seq, 'Environment' as attribute, h.environment as attr_value from oracle_hosts h where h.hostname = :P25_HOSTNAME
                 union all
-                select 30 as seq, 'License Type' as attribute, h.license_type as attr_value from oracle_hosts h where h.hostname = :P7_HOSTNAME
+                select 30 as seq, 'License Type' as attribute, h.license_type as attr_value from oracle_hosts h where h.hostname = :P25_HOSTNAME
                 union all
-                select 40 as seq, 'OS Type' as attribute, h.os_type as attr_value from oracle_hosts h where h.hostname = :P7_HOSTNAME
+                select 40 as seq, 'OS Type' as attribute, h.os_type as attr_value from oracle_hosts h where h.hostname = :P25_HOSTNAME
                 union all
-                select 50 as seq, 'CPUs' as attribute, to_char(h.num_cpus) as attr_value from oracle_hosts h where h.hostname = :P7_HOSTNAME
+                select 50 as seq, 'CPUs' as attribute, to_char(h.num_cpus) as attr_value from oracle_hosts h where h.hostname = :P25_HOSTNAME
                 union all
-                select 60 as seq, 'Memory (GB)' as attribute, to_char(h.memory_gb) as attr_value from oracle_hosts h where h.hostname = :P7_HOSTNAME
+                select 60 as seq, 'Memory (GB)' as attribute, to_char(h.memory_gb) as attr_value from oracle_hosts h where h.hostname = :P25_HOSTNAME
                  order by 1
                 ```
-            pageItemsToSubmit: P7_HOSTNAME
+            pageItemsToSubmit: P25_HOSTNAME
         }
         layout {
             sequence: 10
@@ -122,7 +122,7 @@ page 7 (
         }
     )
 
-    pageItem P7_HOSTNAME (
+    pageItem P25_HOSTNAME (
         type: selectList
         label {
             label: Server
@@ -165,7 +165,7 @@ page 7 (
         }
         when {
             selectionType: items
-            items: P7_HOSTNAME
+            items: P25_HOSTNAME
         }
 
         action native-refresh (

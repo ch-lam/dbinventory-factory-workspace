@@ -1,4 +1,4 @@
-page 4 (
+page 40 (
     name: DB Inv. - Postgres
     alias: DB-INV-POSTGRES
     title: DB Inv. - Postgres
@@ -13,19 +13,6 @@ page 4 (
         pageAccessProtection: argumentsMustHaveChecksum
         formAutoComplete: false
     }
-
-    region page-title (
-        name: DB Inv. - Postgres
-        type: staticContent
-        layout {
-            sequence: 1
-            slot: body
-        }
-        appearance {
-            template: @/title-bar
-            templateOptions: #DEFAULT#
-        }
-    )
 
     region postgres-hosts (
         name: PostgreSQL Hosts

@@ -40,7 +40,7 @@ SPOOL ${LIST_DIR}/oracle_databases_temp.csv APPEND
 SELECT '"${db_env}","${lic}","'||
        (SELECT host_name FROM v\$instance)||'","'||
        (SELECT instance_name FROM v\$instance)||'","'||
-       (SELECT version FROM v\$instance)||'","'||
+       (SELECT version_full FROM v\$instance)||'","'||
        (SELECT name FROM v\$database)||'","'||
        (SELECT log_mode FROM v\$database)||'","'||
        (SELECT database_role FROM v\$database)||'","'||

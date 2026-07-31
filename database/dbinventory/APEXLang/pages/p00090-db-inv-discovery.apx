@@ -1,4 +1,4 @@
-page 40 (
+page 90 (
     name: DB Inv. - Discovery
     alias: DB-INV-DISCOVERY
     title: DB Inv. - Discovery
@@ -50,10 +50,10 @@ page 40 (
                        v.level_name,
                        v.entity_id
                   from v_discovery_status v
-                 where ( :P40_PLATFORM is null
-                          or v.platform = :P40_PLATFORM )
-                   and ( :P40_STATUS is null
-                          or v.effective_status = :P40_STATUS )
+                 where ( :P90_PLATFORM is null
+                          or v.platform = :P90_PLATFORM )
+                   and ( :P90_STATUS is null
+                          or v.effective_status = :P90_STATUS )
                  order by case v.effective_status
                              when 'NEW' then 1
                              when 'NOT_SEEN' then 2
@@ -206,10 +206,10 @@ page 40 (
             }
             link {
                 target: {
-                    page: 41
+                    page: 91
                     items: {
-                        P41_LEVEL_NAME: #LEVEL_NAME#
-                        P41_ENTITY_ID: #ENTITY_ID#
+                        P91_LEVEL_NAME: #LEVEL_NAME#
+                        P91_ENTITY_ID: #ENTITY_ID#
                     }
                     clearCache: 41
                 }
@@ -321,7 +321,7 @@ page 40 (
         }
     )
 
-    pageItem P40_PLATFORM (
+    pageItem P90_PLATFORM (
         type: selectList
         label {
             label: Platform
@@ -347,7 +347,7 @@ page 40 (
         }
     )
 
-    pageItem P40_STATUS (
+    pageItem P90_STATUS (
         type: selectList
         label {
             label: Status
@@ -406,8 +406,8 @@ page 40 (
         when {
             selectionType: items
             items: [
-                P40_PLATFORM
-                P40_STATUS
+                P90_PLATFORM
+                P90_STATUS
             ]
         }
 

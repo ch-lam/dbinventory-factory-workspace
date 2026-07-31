@@ -251,7 +251,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -267,7 +267,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -283,7 +283,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -299,7 +299,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -315,7 +315,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -331,7 +331,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 31
             }
         }
     )
@@ -347,7 +347,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -363,7 +363,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -394,7 +394,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -410,7 +410,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -421,11 +421,11 @@ list navigation-menu (
             imageIconCssClasses: fa-search-plus
         }
         layout {
-            sequence: 70
+            sequence: 90
         }
         link {
             target: {
-                page: 40
+                page: 90
             }
         }
     )
@@ -440,11 +440,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 6
+            pages: [
+                6
+                60
+            ]
         }
         link {
             target: {
-                page: 6
+                page: 60
             }
         }
         serverSideCondition {
@@ -463,7 +466,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -478,11 +481,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 3
+            pages: [
+                3
+                30
+            ]
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -497,11 +503,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 5
+            pages: [
+                5
+                50
+            ]
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -517,7 +526,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -533,7 +542,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -548,11 +557,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 2
+            pages: [
+                2
+                20
+            ]
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -568,23 +580,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
-            }
-        }
-    )
-
-    entry oracle-server-identity (
-        label: Server Identity
-        icon {
-            imageIconCssClasses: fa-database-application
-        }
-        layout {
-            sequence: 24
-            parentEntry: @oracle
-        }
-        link {
-            target: {
-                page: 7
+                page: 20
             }
         }
     )
@@ -600,7 +596,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -616,7 +612,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -632,7 +628,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -647,11 +643,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 4
+            pages: [
+                4
+                40
+            ]
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -667,7 +666,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -678,12 +677,12 @@ list navigation-menu (
             imageIconCssClasses: fa-accessor-more
         }
         layout {
-            sequence: 23
+            sequence: 24
             parentEntry: @oracle
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )

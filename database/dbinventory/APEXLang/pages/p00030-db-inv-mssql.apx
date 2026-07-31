@@ -1,4 +1,4 @@
-page 3 (
+page 30 (
     name: DB Inv. - MSSQL
     alias: DB-INV-MSSQL
     title: DB Inv. - MSSQL
@@ -34,8 +34,7 @@ page 3 (
                        h.num_cpus,
                        h.memory_gb,
                        xi.service_account,
-                       h.host_id,
-                       h.license_type
+                       h.host_id
                   from dim_instance i
                   join dim_host h on h.host_id = i.host_id
                   left join ext_mssql_host xh on xh.host_id = h.host_id
@@ -126,9 +125,9 @@ page 3 (
             }
             link {
                 target: {
-                    page: 31
+                    page: 35
                     items: {
-                        P31_HOST_ID: #HOST_ID#
+                        P35_HOST_ID: #HOST_ID#
                     }
                     clearCache: 31
                 }
@@ -175,20 +174,6 @@ page 3 (
             layout {
                 sequence: 80
                 columnAlignment: center
-            }
-            sorting {
-                sortable: false
-            }
-        )
-
-        column LICENSE_TYPE (
-            reportColumnQueryId: 14
-            derivedColumn: N
-            heading {
-                heading: License
-            }
-            layout {
-                sequence: 35
             }
             sorting {
                 sortable: false

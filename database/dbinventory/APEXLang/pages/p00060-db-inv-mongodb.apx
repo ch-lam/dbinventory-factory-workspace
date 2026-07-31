@@ -1,7 +1,7 @@
-page 5 (
-    name: DB Inv. - MySQL
-    alias: DB-INV-MYSQL
-    title: DB Inv. - MySQL
+page 60 (
+    name: DB Inv. - MongoDB
+    alias: DB-INV-MONGODB
+    title: DB Inv. - MongoDB
     appearance {
         pageTemplate: @/standard
         templateOptions: #DEFAULT#
@@ -15,7 +15,7 @@ page 5 (
     }
 
     region page-title (
-        name: DB Inv. - MySQL
+        name: DB Inv. - MongoDB
         type: staticContent
         layout {
             sequence: 1

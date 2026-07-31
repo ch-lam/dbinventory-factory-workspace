@@ -1,4 +1,4 @@
-page 31 (
+page 35 (
     name: DB Inv. - MSSQL Server
     alias: DB-INV-MSSQL-SERVER
     title: DB Inv. - MSSQL Server
@@ -49,11 +49,11 @@ page 31 (
                   left join fact_backup fb
                     on fb.database_id = d.database_id
                    and fb.snapshot_date = ( select max(b.snapshot_date) from fact_backup b )
-                 where i.host_id = :P31_HOST_ID
+                 where i.host_id = :P35_HOST_ID
                    and d.platform = 'MSSQL'
                  order by i.instance_name, d.db_name
                 ```
-            pageItemsToSubmit: P31_HOST_ID
+            pageItemsToSubmit: P35_HOST_ID
         }
         layout {
             sequence: 70
@@ -77,36 +77,6 @@ page 31 (
         messages {
             whenNoDataFound: No database found on this server.
         }
-
-        column AGNAME (
-            reportColumnQueryId: 7
-            derivedColumn: N
-            heading {
-                heading: Availability Group
-            }
-            layout {
-                sequence: 70
-            }
-            sorting {
-                sortable: false
-            }
-        )
-
-        column AGTYPE (
-            reportColumnQueryId: 8
-            derivedColumn: N
-            heading {
-                heading: AG Type
-                alignment: center
-            }
-            layout {
-                sequence: 80
-                columnAlignment: center
-            }
-            sorting {
-                sortable: false
-            }
-        )
 
         column COLLATION (
             reportColumnQueryId: 6
@@ -212,6 +182,9 @@ page 31 (
                 sequence: 100
                 columnAlignment: center
             }
+            appearance {
+                formatMask: dd/mm/yyyy
+            }
             sorting {
                 sortable: false
             }
@@ -273,9 +246,9 @@ page 31 (
                        ( select count(*) from dim_database d join dim_instance i2 on i2.instance_id = d.instance_id where i2.host_id = h.host_id ) database_count
                   from dim_host h
                   left join ext_mssql_host xh on xh.host_id = h.host_id
-                 where h.host_id = :P31_HOST_ID
+                 where h.host_id = :P35_HOST_ID
                 ```
-            pageItemsToSubmit: P31_HOST_ID
+            pageItemsToSubmit: P35_HOST_ID
         }
         layout {
             sequence: 10
@@ -502,11 +475,11 @@ page 31 (
                        xi.service_account
                   from dim_instance i
                   left join ext_mssql_instance xi on xi.instance_id = i.instance_id
-                 where i.host_id = :P31_HOST_ID
+                 where i.host_id = :P35_HOST_ID
                    and i.platform = 'MSSQL'
                  order by i.instance_name
                 ```
-            pageItemsToSubmit: P31_HOST_ID
+            pageItemsToSubmit: P35_HOST_ID
         }
         layout {
             sequence: 30
@@ -661,11 +634,11 @@ page 31 (
                   from fact_config_parameter fcp
                   join dim_instance i on i.instance_id = fcp.instance_id
                   join dim_parameter p on p.parameter_id = fcp.parameter_id
-                 where i.host_id = :P31_HOST_ID
+                 where i.host_id = :P35_HOST_ID
                    and fcp.snapshot_date = ( select max(f2.snapshot_date) from fact_config_parameter f2 )
                  order by i.instance_name, p.source, p.parameter_name
                 ```
-            pageItemsToSubmit: P31_HOST_ID
+            pageItemsToSubmit: P35_HOST_ID
         }
         layout {
             sequence: 40
@@ -789,7 +762,8 @@ page 31 (
     )
 
     region instance-security (
-        name: Security Score
+        name: Compliance Score
+        title: Compliance Score
         type: classicReport
         source {
             location: localDatabase
@@ -807,11 +781,11 @@ page 31 (
                    and sc.entity_id = i.instance_id
                    and sc.score_domain = 'SECURITY'
                    and sc.snapshot_date = ( select max(s2.snapshot_date) from fact_scoring s2 )
-                 where i.host_id = :P31_HOST_ID
+                 where i.host_id = :P35_HOST_ID
                    and i.platform = 'MSSQL'
                  order by i.instance_name
                 ```
-            pageItemsToSubmit: P31_HOST_ID
+            pageItemsToSubmit: P35_HOST_ID
         }
         layout {
             sequence: 50
@@ -949,11 +923,11 @@ page 31 (
                    and fc.entity_id = i.instance_id
                    and fc.control_code = 'MSSQL_OUT_OF_SUPPORT'
                    and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
-                 where i.host_id = :P31_HOST_ID
+                 where i.host_id = :P35_HOST_ID
                    and i.platform = 'MSSQL'
                  order by i.instance_name
                 ```
-            pageItemsToSubmit: P31_HOST_ID
+            pageItemsToSubmit: P35_HOST_ID
         }
         layout {
             sequence: 20
@@ -1102,7 +1076,7 @@ page 31 (
     )
 
     region page-title (
-        name: &P31_HOSTNAME.
+        name: &P35_HOSTNAME.
         type: staticContent
         layout {
             sequence: 1
@@ -1115,7 +1089,8 @@ page 31 (
     )
 
     region security-controls (
-        name: Security Controls
+        name: Compliance Controls
+        title: Compliance Score
         type: classicReport
         source {
             location: localDatabase
@@ -1140,12 +1115,12 @@ page 31 (
                   left join ( select a.account_id, d3.instance_id from dim_account a join dim_database d3 on d3.database_id = a.database_id ) dac on fc.entity_type = 'ACCOUNT' and dac.account_id = fc.entity_id
                   join dim_instance i
                     on i.instance_id = case fc.entity_type when 'INSTANCE' then fc.entity_id when 'DATABASE' then dd.instance_id when 'STORAGE' then dsu.instance_id when 'ACCOUNT' then dac.instance_id end
-                 where i.host_id = :P31_HOST_ID
+                 where i.host_id = :P35_HOST_ID
                    and i.platform = 'MSSQL'
                    and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
                  order by i.instance_name, fc.is_compliant, rc.category
                 ```
-            pageItemsToSubmit: P31_HOST_ID
+            pageItemsToSubmit: P35_HOST_ID
         }
         layout {
             sequence: 60
@@ -1295,7 +1270,7 @@ page 31 (
 
     )
 
-    pageItem P31_HOSTNAME (
+    pageItem P35_HOSTNAME (
         type: hidden
         layout {
             sequence: 20
@@ -1308,13 +1283,13 @@ page 31 (
                 ```sql
                 select h.hostname
                   from dim_host h
-                 where h.host_id = :P31_HOST_ID
+                 where h.host_id = :P35_HOST_ID
                 ```
             used: always
         }
     )
 
-    pageItem P31_HOST_ID (
+    pageItem P35_HOST_ID (
         type: hidden
         layout {
             sequence: 10

@@ -1,4 +1,4 @@
-page 2 (
+page 20 (
     name: DB Inv. - Oracle
     alias: DB-INV-ORACLE
     title: DB Inv. - Oracle
@@ -130,20 +130,6 @@ page 2 (
             }
         )
 
-        column DB_UNIQUE_NAME (
-            reportColumnQueryId: 10
-            derivedColumn: N
-            heading {
-                heading: DB Unique Name
-            }
-            layout {
-                sequence: 130
-            }
-            sorting {
-                sortable: false
-            }
-        )
-
         column DB_VERSION (
             reportColumnQueryId: 5
             derivedColumn: N
@@ -152,6 +138,7 @@ page 2 (
             }
             layout {
                 sequence: 60
+                columnAlignment: center
             }
             sorting {
                 sortable: false
@@ -163,7 +150,6 @@ page 2 (
             derivedColumn: N
             heading {
                 heading: Environment
-                alignment: center
             }
             layout {
                 sequence: 40
@@ -186,9 +172,9 @@ page 2 (
             }
             link {
                 target: {
-                    page: 7
+                    page: 25
                     items: {
-                        P7_HOSTNAME: #HOSTNAME#
+                        P25_HOSTNAME: #HOSTNAME#
                     }
                 }
                 linkText: #HOSTNAME#
@@ -223,6 +209,7 @@ page 2 (
             }
             layout {
                 sequence: 50
+                columnAlignment: center
             }
             sorting {
                 sortable: false
@@ -269,22 +256,6 @@ page 2 (
             }
             layout {
                 sequence: 150
-            }
-            sorting {
-                sortable: false
-            }
-        )
-
-        column RAC_STATE (
-            reportColumnQueryId: 9
-            derivedColumn: N
-            heading {
-                heading: RAC
-                alignment: center
-            }
-            layout {
-                sequence: 120
-                columnAlignment: center
             }
             sorting {
                 sortable: false

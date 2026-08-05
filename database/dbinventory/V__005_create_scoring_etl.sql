@@ -239,6 +239,21 @@ create or replace package body pkg_dbinv_scoring as
             from mssql_security_logins l
             where l.is_sysadmin <> 1
             union all
+            -- ---------- built-in sysadmin account ----------
+            -- Keyed on the sid by the collect, not on the name, so the rule keeps
+            -- working once the account has been renamed as it asks.
+            select 'MSSQL_SA_RENAMED', sa.servername, cast(null as varchar2(50 char)), '*',
+                   case when lower(sa.login_name) <> 'sa' then 1 else 0 end,
+                   'sid 0x01 is named ' || sa.login_name,
+                   'a name other than sa'
+            from mssql_security_sa sa
+            union all
+            select 'MSSQL_SA_DISABLED', sa.servername, cast(null as varchar2(50 char)), '*',
+                   case when sa.is_disabled = 1 then 1 else 0 end,
+                   sa.login_name || ' (is_disabled=' || nvl(to_char(sa.is_disabled), 'null') || ')',
+                   'is_disabled=1'
+            from mssql_security_sa sa
+            union all
             -- ---------- orphanedusers (per database) ----------
             select 'MSSQL_NO_ORPHANED_USER', o.servername, o.db_name, o.user_name,
                    case when o.user_name = 'NoOrphanedUser' then 1 else 0 end,
@@ -767,6 +782,57 @@ create or replace package body pkg_dbinv_scoring as
                   is_compliant, is_norm_exception, observed_value, expected_value )
          values ( s.rule_code, s.entity_type, s.entity_id, s.item_key, s.snapshot_date,
                   s.is_compliant, s.is_norm_exception, s.observed_value, s.expected_value );
+
+      -- Patch level, against the same reference table. The major.minor pair is
+      -- already fixed by the join, so the verdict rests on the build and revision
+      -- numbers, compared as numbers: '15.0.900.1' sorts after '15.0.4470.1' as a
+      -- string and would read as up to date.
+      --
+      -- An instance is judged only when its major version has a published patch
+      -- level, and only when both builds parse into four parts; anything else
+      -- produces no row rather than a fabricated verdict, consistent with the
+      -- end-of-support rule above.
+      merge into fact_control_finding f
+      using (
+         select 'MSSQL_ENGINE_PATCH_CURRENT' rule_code,
+                'INSTANCE' entity_type,
+                di.instance_id entity_id,
+                '*' item_key,
+                p_snapshot_date snapshot_date,
+                case when to_number(regexp_substr(di.engine_version, '\d+', 1, 3))
+                          > to_number(regexp_substr(ps.current_patch_level, '\d+', 1, 3))
+                        then 1
+                     when to_number(regexp_substr(di.engine_version, '\d+', 1, 3))
+                          = to_number(regexp_substr(ps.current_patch_level, '\d+', 1, 3))
+                      and to_number(regexp_substr(di.engine_version, '\d+', 1, 4))
+                          >= to_number(regexp_substr(ps.current_patch_level, '\d+', 1, 4))
+                        then 1
+                     else 0 end is_compliant,
+                substr( ps.display_name || ' (' || di.engine_version || '), latest '
+                        || ps.current_patch_name || ' = ' || ps.current_patch_level
+                      , 1, 400 ) observed_value,
+                substr( 'build at or above ' || ps.current_patch_level, 1, 400 ) expected_value
+         from dim_instance di
+         join product_support ps
+           on ps.product_company = 'MICROSOFT'
+          and ps.product_type = 'MSSQL'
+          and ps.product_version = substr( di.engine_version, 1, instr(di.engine_version, '.', 1, 2) - 1 )
+         where di.platform = 'MSSQL'
+           and instr(di.engine_version, '.', 1, 2) > 0
+           and regexp_count(di.engine_version, '\d+') >= 4
+           and regexp_count(ps.current_patch_level, '\d+') >= 4
+      ) s
+      on ( f.rule_code = s.rule_code and f.entity_type = s.entity_type
+           and f.entity_id = s.entity_id and f.item_key = s.item_key
+           and f.snapshot_date = s.snapshot_date )
+      when matched then update set
+         f.is_compliant = s.is_compliant,
+         f.observed_value = s.observed_value, f.expected_value = s.expected_value
+      when not matched then
+         insert ( rule_code, entity_type, entity_id, item_key, snapshot_date,
+                  is_compliant, observed_value, expected_value )
+         values ( s.rule_code, s.entity_type, s.entity_id, s.item_key, s.snapshot_date,
+                  s.is_compliant, s.observed_value, s.expected_value );
    end load_findings_lifecycle;
 
 

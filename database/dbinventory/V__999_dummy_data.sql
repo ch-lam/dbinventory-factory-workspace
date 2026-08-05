@@ -5007,6 +5007,26 @@ insert into mssql_databases (
 
 
 -- ============================================================
+-- mssql_security_sa
+-- ------------------------------------------------------------
+-- Driven off the instances already present in mssql_security_configoptions, so
+-- the sa rows cover exactly the fleet the other security checks cover. The mix
+-- leans non-compliant on purpose: leaving the account named 'sa' and enabled is
+-- what the fleet actually looks like before the control is enforced.
+-- ============================================================
+begin
+   for i in ( select distinct collect_id, collect_target, servername
+                from mssql_security_configoptions ) loop
+      insert into mssql_security_sa ( collect_id, collect_target, servername, login_name, is_disabled )
+         values ( i.collect_id, i.collect_target, i.servername,
+                  case when mod(ora_hash(i.servername), 4) = 0 then 'sa_admin_local' else 'sa' end,
+                  case when mod(ora_hash(i.servername), 3) = 0 then 1 else 0 end );
+   end loop;
+end;
+/
+
+
+-- ============================================================
 -- Oracle security staging (12 tables)
 -- ------------------------------------------------------------
 -- Generated rather than written out: 12 tables x 32 databases is well past the

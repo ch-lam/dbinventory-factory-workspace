@@ -609,6 +609,34 @@ comment on column mssql_security_registryinfo.date_value is 'Timestamp at which 
 
 
 -- ============================================================
+-- mssql_security_sa
+-- ------------------------------------------------------------
+-- Landing table for mssql_getsainfo.sql, which reads the principal holding
+-- sid 0x01 -- the built-in sysadmin account, whatever it has been renamed to.
+-- One row per instance, carrying both CIS answers at once: whether the account
+-- still bears its default name, and whether it is disabled.
+-- ============================================================
+create table mssql_security_sa (
+   collect_id       varchar2(16) not null,
+   collect_target   varchar2(50 char) not null,
+   servername       varchar2(50 char) not null,
+   login_name       varchar2(128 char) not null,
+   is_disabled      number(1),
+   compliance_score number(3) default 0,
+   date_value       timestamp default on null systimestamp not null
+);
+
+comment on table mssql_security_sa is 'MSSQL built-in sysadmin account (sid 0x01): current name and enabled state.';
+comment on column mssql_security_sa.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_sa.collect_target is 'Target of the collection.';
+comment on column mssql_security_sa.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_security_sa.login_name is 'Current name of the sid 0x01 principal; ''sa'' means it was never renamed.';
+comment on column mssql_security_sa.is_disabled is 'Whether the account is disabled (1) or usable (0).';
+comment on column mssql_security_sa.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
+comment on column mssql_security_sa.date_value is 'Timestamp at which this row was collected or computed.';
+
+
+-- ============================================================
 -- mssql_security_scoring
 -- ============================================================
 create table mssql_security_scoring (

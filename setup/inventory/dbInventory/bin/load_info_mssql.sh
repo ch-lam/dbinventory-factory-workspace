@@ -97,6 +97,7 @@ TRUNCATE TABLE mssql_security_logins;
 TRUNCATE TABLE mssql_security_orphanedusers;
 TRUNCATE TABLE mssql_sec_pubperm;
 TRUNCATE TABLE mssql_security_registryinfo;
+TRUNCATE TABLE mssql_security_sa;
 TRUNCATE TABLE mssql_security_sqlserveraudit;
 
 -- ===========================================================================
@@ -156,6 +157,8 @@ PROMPT -- LOADING: ../collect/mssql_sec_pubperm.csv
 LOAD mssql_sec_pubperm ../collect/mssql_sec_pubperm.csv
 PROMPT -- LOADING: ../collect/mssql_security_registryinfo.csv
 LOAD mssql_security_registryinfo ../collect/mssql_security_registryinfo.csv
+PROMPT -- LOADING: ../collect/mssql_security_sa.csv
+LOAD mssql_security_sa ../collect/mssql_security_sa.csv
 PROMPT -- LOADING: ../collect/mssql_security_sqlserveraudit.csv
 LOAD mssql_security_sqlserveraudit ../collect/mssql_security_sqlserveraudit.csv
 

@@ -95,6 +95,12 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
 -- Lifecycle / out-of-support controls (score_domain = LIFECYCLE)
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_OUT_OF_SUPPORT', 'MSSQL', 'LIFECYCLE', 'out_of_support', 'INSTANCE', 'Engine version end-of-support', 'HIGH' );
+-- Its own control rather than a second rule under MSSQL_OUT_OF_SUPPORT: for a
+-- non-SECURITY domain load_compliance reports min(observed_value) across the
+-- control's rules, so two rules sharing one control would report one verdict and
+-- hide the other.
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'MSSQL_PATCH_LEVEL', 'MSSQL', 'LIFECYCLE', 'patch_level', 'INSTANCE', 'Engine cumulative update level', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'ORACLE_OUT_OF_SUPPORT', 'ORACLE', 'LIFECYCLE', 'out_of_support', 'INSTANCE', 'Engine version end-of-support', 'HIGH' );
 
@@ -187,6 +193,18 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_LOGIN_POLICY_CHECKED', 'MSSQL_LOGINS', 'INSTANCE', 'login name',
             'Logins must have password policy checked', 'is_policy_checked must be 1. Scope: non-sysadmin logins only; sa and monitoring are exempt.', 'HIGH' );
+-- The built-in sysadmin account, identified by its sid (0x01) rather than by its
+-- name, so the check survives the rename it is asking for. Attached to
+-- MSSQL_LOGINS rather than given its own control: it is a login rule, and a
+-- SECURITY control reports a deviation count, so several rules coexist under one
+-- control without hiding each other. Reusing the category also leaves the eleven
+-- MSSQL SECURITY weights summing to 100 untouched.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_SA_RENAMED', 'MSSQL_LOGINS', 'INSTANCE', '*',
+            'The built-in sysadmin account must be renamed', 'The principal holding sid 0x01 must no longer be named ''sa'': the default name is half of a guessable credential.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_SA_DISABLED', 'MSSQL_LOGINS', 'INSTANCE', '*',
+            'The built-in sysadmin account must be disabled', 'The principal holding sid 0x01 must have is_disabled = 1. Applies whatever the account was renamed to.', 'HIGH' );
 
 -- MSSQL audit level / SQL Server Audit.
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
@@ -378,6 +396,9 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_ENGINE_SUPPORTED', 'MSSQL_OUT_OF_SUPPORT', 'INSTANCE', '*',
             'Engine version must still be supported', 'The major version must not be past its end of support. Extended support (ESU) keeps the instance compliant but is flagged as an exception on the compliance row.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_ENGINE_PATCH_CURRENT', 'MSSQL_PATCH_LEVEL', 'INSTANCE', '*',
+            'Engine build must be at the latest published patch level', 'dim_instance.engine_version must be at or above product_support.current_patch_level for its major version, compared on the build and revision numbers. Note: an instance kept on the GDR-only branch reads as behind, because the reference tracks the cumulative-update train.', 'MEDIUM' );
 
 
 -- ============================================================
@@ -415,7 +436,12 @@ insert into ref_scoring_weight ( platform, score_domain, category, weight ) valu
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'BACKUP', 'backup_freshness', 100 );
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'MSSQL', 'CAPACITY', 'capacity_saturation', 100 );
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'CAPACITY', 'capacity_saturation', 100 );
-insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'MSSQL', 'LIFECYCLE', 'out_of_support', 100 );
+-- MSSQL LIFECYCLE now carries two categories: running a version that is out of
+-- support is a heavier failure than lagging a cumulative update on a supported
+-- one, hence 70/30 rather than an even split. ORACLE keeps 100 on out_of_support
+-- for want of an Oracle patch reference in product_support.
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'MSSQL', 'LIFECYCLE', 'out_of_support', 70 );
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'MSSQL', 'LIFECYCLE', 'patch_level', 30 );
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'LIFECYCLE', 'out_of_support', 100 );
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'MSSQL', 'LICENSING', 'licensing', 100 );
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'LICENSING', 'licensing', 100 );

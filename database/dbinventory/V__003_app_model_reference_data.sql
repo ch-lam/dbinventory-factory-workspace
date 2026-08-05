@@ -51,8 +51,13 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
    values ( 'ORACLE_AUDIT_ENABLE', 'ORACLE', 'SECURITY', 'audit_enable', 'DATABASE', 'Audit policy activation', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'ORACLE_DEFAULT_PROFILE', 'ORACLE', 'SECURITY', 'default_profile', 'DATABASE', 'Users on DEFAULT profile', 'LOW' );
+-- INSTANCE, not DATABASE: in CDB mode the collect emits the literal 'CONTAINER'
+-- instead of the PDB name (get_info_oracle_security.sh:151), so the finding can
+-- only be keyed at instance grain. A DATABASE roll-up grain would silently drop
+-- every finding of this control, since load_compliance discards the rows whose
+-- entity resolves to NULL at the control's grain.
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
-   values ( 'ORACLE_DEFAULT_USER_PWD', 'ORACLE', 'SECURITY', 'default_user_pwd', 'DATABASE', 'Accounts with default passwords', 'HIGH' );
+   values ( 'ORACLE_DEFAULT_USER_PWD', 'ORACLE', 'SECURITY', 'default_user_pwd', 'INSTANCE', 'Accounts with default passwords', 'HIGH' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'ORACLE_HIGH_ROLE_PRIVS', 'ORACLE', 'SECURITY', 'high_role_privs', 'DATABASE', 'High-privilege roles granted', 'HIGH' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
@@ -67,6 +72,12 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
    values ( 'ORACLE_ENCRYPTED_TABLESPACE', 'ORACLE', 'SECURITY', 'encrypted_tablespace', 'DATABASE', 'Tablespace encryption', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'ORACLE_NETWORK_ENCRYPTION', 'ORACLE', 'SECURITY', 'network_encryption', 'INSTANCE', 'SQL*Net network encryption', 'MEDIUM' );
+-- The twelfth collected security table (oracle_sec_usermig_tbl_exist) had no control
+-- at all. It shares the default_user_pwd category on purpose: both judge the strength
+-- of stored credentials, and reusing the category keeps ORACLE SECURITY summing to 100
+-- without re-tuning the ten weights already agreed.
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'ORACLE_USERMIG_TABLE', 'ORACLE', 'SECURITY', 'default_user_pwd', 'DATABASE', 'Residual SYS.USER$MIG password hashes', 'HIGH' );
 
 -- Backup freshness controls (score_domain = BACKUP)
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
@@ -203,6 +214,151 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_PUBLIC_DEFAULT_PERMISSION', 'MSSQL_PUBLICPERMISSION', 'DATABASE', 'user name / permission',
             'Public role must keep only its default permissions', 'Compliant only when the collect reports the ''OnlyDefaultPermission'' sentinel for both permission and state.', 'MEDIUM' );
+
+-- ------------------------------------------------------------
+-- ORACLE security rules
+-- ------------------------------------------------------------
+-- Expected values are those of the CIS Oracle Database Benchmark section 2
+-- (initialisation parameters) and section 3 (profiles). They are transcribed
+-- here rather than in ref_threshold: ref_threshold carries measured metrics
+-- that drift (pct_used, hours_since_backup), whereas these are fixed norms,
+-- exactly like the MSSQL sp_configure expected values above.
+--
+-- Two scope conditions run through the whole block and are part of the NORM,
+-- not derogations:
+--   * Oracle-maintained accounts (oracle_maintained = 'Y' in
+--     oracle_sec_default_profile) are out of scope of the privilege and profile
+--     rules: SYS, SYSTEM, DBSNMP et al. hold those privileges by construction,
+--     and listing them would bury the real deviations.
+--   * a profile limit collected as 'DEFAULT' is inherited from the DEFAULT
+--     profile, which is itself evaluated; judging it twice would double-count.
+
+-- Initialisation parameters: one rule per parameter collected by
+-- get_info_oracle_security.sh, which whitelists exactly these names.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_O7_DICT_ACCESS', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'O7_DICTIONARY_ACCESSIBILITY must be FALSE', 'Setting it TRUE grants SELECT ANY TABLE access to the data dictionary.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_REMOTE_OS_AUTHENT', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'REMOTE_OS_AUTHENT must be FALSE', 'Allows a remote client to assert its own OS identity to authenticate.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_REMOTE_OS_ROLES', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'REMOTE_OS_ROLES must be FALSE', 'Lets a remote OS grant roles, bypassing database role management.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_UTL_FILE_DIR', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'UTL_FILE_DIR must be empty', 'A non-empty value exposes server file systems through UTL_FILE.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_OS_ROLES', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'OS_ROLES must be FALSE', 'Delegates role management to the operating system.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_AUDIT_TRAIL', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'AUDIT_TRAIL must not be NONE', 'Any destination (DB, DB,EXTENDED, OS, XML) is accepted; NONE disables traditional auditing entirely.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_AUDIT_SYS_OPERATIONS', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'AUDIT_SYS_OPERATIONS must be TRUE', 'Without it, actions performed as SYSDBA are not audited.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_UNIFIED_AUDITING', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'Unified Auditing must be enabled', 'v$option ''Unified Auditing'' must be TRUE; it is the prerequisite for the ORA_CIS_RECOMMENDATIONS policy.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_RESOURCE_LIMIT', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'RESOURCE_LIMIT must be TRUE', 'When FALSE, every profile resource limit is silently ignored, which voids the profile rules below.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_SEC_CASE_SENSITIVE', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'SEC_CASE_SENSITIVE_LOGON must be TRUE', 'FALSE forces the weak 10g password verifier. Deprecated from 21c, where the parameter is no longer collected.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_SEC_MAX_FAILED_LOGIN', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'SEC_MAX_FAILED_LOGIN_ATTEMPTS must be at most 3', 'Caps failed authentication attempts per connection before the server drops it.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_SEC_BANNER', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'SEC_RETURN_SERVER_RELEASE_BANNER must be FALSE', 'TRUE discloses the exact server version to unauthenticated clients.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_SEC_PROTO_ERR_TRACE', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'SEC_PROTOCOL_ERROR_TRACE_ACTION must be LOG or TRACE', 'NONE leaves malformed-packet attacks untraced.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_SEC_PROTO_ERR_FURTHER', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'SEC_PROTOCOL_ERROR_FURTHER_ACTION must not be CONTINUE', 'CONTINUE keeps serving a client sending malformed packets; DROP or DELAY is expected.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRM_SYS_LOGON_DELAY', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            '_SYS_LOGON_DELAY must be 4', 'Delay inserted after a failed SYS logon; the collect normalises it to 4 (set) or 0 (not set).', 'LOW' );
+-- Collected, deliberately not scored: no authoritative norm exists for
+-- PDB_OS_CREDENTIAL, and fabricating one here would be indistinguishable from a
+-- real CIS requirement. Catalogued at active = 0 so the gap is visible rather
+-- than silent, and can be turned on the day the policy is settled.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity, active )
+   values ( 'ORACLE_PRM_PDB_OS_CREDENTIAL', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'PDB_OS_CREDENTIAL norm not settled', 'Parameter collected but not judged: the expected value depends on whether PDB OS operations are delegated, which the inventory does not know.', 'LOW', 0 );
+
+-- Profile resource limits: one rule per resource_name of the CIS section 3.
+-- Limits collected as 'DEFAULT' are inherited and skipped (see scope above).
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_FAILED_LOGIN_ATTEMPTS', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'FAILED_LOGIN_ATTEMPTS must be at most 5', 'UNLIMITED is non-compliant: it disables account lockout after repeated failures.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_PASSWORD_LIFE_TIME', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'PASSWORD_LIFE_TIME must be at most 90 days', 'UNLIMITED is non-compliant: the password never expires.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_PASSWORD_LOCK_TIME', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'PASSWORD_LOCK_TIME must be at least 1 day', 'UNLIMITED is compliant: the account stays locked until an administrator releases it.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_PASSWORD_GRACE_TIME', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'PASSWORD_GRACE_TIME must be at most 5 days', 'UNLIMITED is non-compliant: an expired password can be used indefinitely.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_PASSWORD_REUSE_MAX', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'PASSWORD_REUSE_MAX must be at least 20', 'UNLIMITED is compliant: a password can never be reused.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_PASSWORD_REUSE_TIME', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'PASSWORD_REUSE_TIME must be at least 365 days', 'UNLIMITED is compliant: a password can never be reused.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_PASSWORD_VERIFY_FUNCTION', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'PASSWORD_VERIFY_FUNCTION must be set', 'NULL means no complexity check is applied when a password is set.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_SESSIONS_PER_USER', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'SESSIONS_PER_USER must be at most 10', 'UNLIMITED is non-compliant: a single account can exhaust the session pool.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_PRF_INACTIVE_ACCOUNT_TIME', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
+            'INACTIVE_ACCOUNT_TIME must be at most 120 days', 'UNLIMITED is non-compliant: a dormant account is never locked automatically.', 'LOW' );
+
+-- Privilege families: one rule each rather than one per privilege. item_key
+-- already carries the grantee and the privilege, so a derogation stays as
+-- precise as a per-privilege rule would make it, without a 60-row catalog.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_HIGH_SYS_PRIVS_GRANT', 'ORACLE_HIGH_SYS_PRIVS', 'DATABASE', 'grantee / privilege',
+            'No account may hold a high-privilege system privilege', 'Covers the CIS list collected by get_info_oracle_security.sh (SELECT ANY DICTIONARY, BECOME USER, GRANT ANY ROLE, CREATE EXTERNAL JOB and the rest). Scope: Oracle-maintained accounts are exempt.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_HIGH_ROLE_PRIVS_GRANT', 'ORACLE_HIGH_ROLE_PRIVS', 'DATABASE', 'grantee / role',
+            'No account may hold DBA or a catalog role', 'Covers DBA, SELECT_CATALOG_ROLE, DELETE_CATALOG_ROLE and EXECUTE_CATALOG_ROLE. Scope: Oracle-maintained accounts are exempt.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_HIGH_TAB_PRIVS_PUBLIC', 'ORACLE_HIGH_TAB_PRIVS', 'DATABASE', 'grantee / package',
+            'PUBLIC must not hold EXECUTE on sensitive packages', 'Covers the CIS package list (UTL_FILE, UTL_SMTP, UTL_HTTP, DBMS_SYS_SQL, DBMS_FILE_TRANSFER and the rest) plus INHERIT PRIVILEGES granted to PUBLIC. No account exemption applies: the grantee is PUBLIC by construction.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_ADMIN_PWFILE_SYS_ONLY', 'ORACLE_ADMIN_HIGH_PRIVS', 'INSTANCE', 'username',
+            'Only SYS may appear in the password file', 'Every other v$pwfile_users entry can connect AS SYSDBA remotely and bypass database authentication.', 'HIGH' );
+
+-- Accounts and credentials.
+-- INSTANCE grain, not DATABASE: in CDB mode the collect emits the literal
+-- 'CONTAINER' instead of the real PDB name (get_info_oracle_security.sh:151),
+-- so the finer grain is not resolvable until the collect is fixed.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_NO_DEFAULT_PASSWORD', 'ORACLE_DEFAULT_USER_PWD', 'INSTANCE', 'username',
+            'No account may keep its default password', 'Any DBA_USERS_WITH_DEFPWD entry is a deviation, Oracle-maintained or not: a default password is guessable whoever owns the account.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_NO_DEFAULT_PROFILE', 'ORACLE_DEFAULT_PROFILE', 'DATABASE', 'username',
+            'No account may sit on the DEFAULT profile', 'Application accounts must use a profile carrying explicit password and resource limits. Scope: Oracle-maintained accounts are exempt.', 'LOW' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_NO_USERMIG_TABLE', 'ORACLE_USERMIG_TABLE', 'DATABASE', '*',
+            'SYS.USER$MIG must not exist', 'A leftover migration table holding legacy 10g DES password hashes, brute-forceable in parallel with the modern verifier.', 'HIGH' );
+
+-- Audit, encryption at rest and in transit.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_AUDIT_CIS_POLICY_ON', 'ORACLE_AUDIT_ENABLE', 'DATABASE', 'policy name',
+            'The CIS audit policy must be enabled', 'ORA_CIS_RECOMMENDATIONS must be enabled from 12c. On 11g the collect falls back to the classic audit options, each judged on the same rule.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_TABLESPACE_ENCRYPTED', 'ORACLE_ENCRYPTED_TABLESPACE', 'DATABASE', 'tablespace name',
+            'User tablespaces must be encrypted', 'Scope: SYSTEM, SYSAUX, temporary and undo tablespaces are engine-managed and exempt.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_NETWORK_ENCRYPTION_ON', 'ORACLE_NETWORK_ENCRYPTION', 'INSTANCE', '*',
+            'SQL*Net traffic must be encrypted', 'The collect only emits a row when the session reports an encryption service adapter; a collected instance with no such row is non-compliant.', 'MEDIUM' );
+
 
 -- Threshold-based and lifecycle controls: a single rule each, evaluated once per
 -- entity. They get a rule so that a derogation is expressible there too (e.g. a

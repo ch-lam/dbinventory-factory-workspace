@@ -42,14 +42,20 @@
 --     and the APEX pages are untouched.
 --
 -- NOT YET IMPLEMENTED (documented gaps, no policy fabricated here):
---   * ORACLE SECURITY rules do not exist anywhere (neither code nor a collected
---     compliance_score); left unpopulated until the per-control policy is
---     defined. The generic aggregation picks them up as soon as rows appear.
 --   * LICENSING scoring: requires LMS logic; deferred.
+--   * PDB_OS_CREDENTIAL is collected but has no settled norm; it is catalogued
+--     in ref_control_rule at active = 0 rather than judged on a made-up value.
 --
 -- Assumptions (validated against real data on the dev database):
 --   * MSSQL security tables key on `servername`, joined to dim_instance on
 --     instance_name. Verified: 0 unmatched instance, 0 unmatched database.
+--   * ORACLE security tables key on `db_name` (v$database.name) and, at database
+--     grain, on `pdb_name` -- 'NON CONTAINER' for a non-CDB, which maps to
+--     dim_database.db_name = the database name itself.
+--   * the ORACLE compliance_score column present on all twelve staging tables is
+--     never populated by get_info_oracle_security.sh: it is a legacy vestige and
+--     carries no verdict. Every Oracle predicate below is evaluated from the raw
+--     collected values.
 -- ============================================================================
 
 create or replace package pkg_dbinv_scoring as
@@ -282,6 +288,345 @@ create or replace package body pkg_dbinv_scoring as
 
 
    -- ===============================================================
+   -- ORACLE security findings
+   -- ===============================================================
+   -- Same shape as the MSSQL procedure, with one structural difference that
+   -- drives most of the code below.
+   --
+   -- The MSSQL collects emit SENTINEL rows ('NoOrphanedUser', 'nogroup',
+   -- 'no_permission'), so every instance yields a row and a compliant verdict
+   -- falls out of the merge. The Oracle collects emit ONLY THE DEVIATIONS:
+   -- oracle_sec_high_sys_privs & co. are empty on a clean database. Merging them
+   -- as they stand would write is_compliant = 0 rows and nothing else, and a
+   -- compliant database would be indistinguishable from one that was never
+   -- collected -- scored on zero item either way.
+   --
+   -- So those rules are driven from the population of COLLECTED entities and
+   -- left-joined to the deviations. The witness of a successful collect is:
+   --   * per instance  - oracle_security_parameter, emitted unconditionally for
+   --     every non-standby database (the _sys_logon_delay branch always returns
+   --     a row, set or not);
+   --   * per database  - oracle_security_profile, emitted unconditionally for
+   --     every PDB (dba_profiles/cdb_profiles always return rows).
+   -- A database missing from its witness produces no finding at all, which is
+   -- the intended behaviour: a failed collect must not be scored as clean.
+   --
+   -- Entity resolution reuses the convention of load_fact_config_parameter:
+   -- oracle_databases on db_name, then dim_host, then dim_instance. The staging
+   -- tables carry 'NON CONTAINER' as pdb_name for non-CDB databases, whereas
+   -- dim_database.db_name holds the PDB name, hence the case below.
+   procedure load_findings_oracle_sec ( p_snapshot_date in date ) is
+   begin
+      merge into fact_control_finding f
+      using (
+         with
+         -- Collected-entity witnesses (see header).
+         w_inst as ( select distinct db_name from oracle_security_parameter ),
+         w_db   as ( select distinct db_name, pdb_name from oracle_security_profile ),
+         -- Accounts Oracle ships and maintains itself: out of scope of the
+         -- privilege and profile rules. This is the norm's own scope, not a
+         -- derogation, so it must never reach the RSSI review list.
+         ora_managed as (
+            select db_name, pdb_name, username
+              from oracle_sec_default_profile
+             where oracle_managed = 'Y'
+         ),
+         -- Per-item deviations of the rules whose collect only reports what is
+         -- wrong. Listed once, used twice: as the non-compliant rows, and as the
+         -- anti-join that decides which entities get their compliant row.
+         dev_db as (
+            select 'ORACLE_HIGH_SYS_PRIVS_GRANT' rule_code, sp.db_name, sp.pdb_name,
+                   sp.username || '/' || sp.privilege item_key,
+                   sp.username || ' holds ' || sp.privilege observed_value
+              from oracle_sec_high_sys_privs sp
+             where not exists ( select 1 from ora_managed m
+                                 where m.db_name = sp.db_name and m.pdb_name = sp.pdb_name
+                                   and m.username = sp.username )
+            union all
+            select 'ORACLE_HIGH_ROLE_PRIVS_GRANT', rp.db_name, rp.pdb_name,
+                   rp.username || '/' || rp.privilege,
+                   rp.username || ' holds ' || rp.privilege
+              from oracle_sec_high_role_privs rp
+             where not exists ( select 1 from ora_managed m
+                                 where m.db_name = rp.db_name and m.pdb_name = rp.pdb_name
+                                   and m.username = rp.username )
+            union all
+            -- No account exemption here: the grantee is PUBLIC by construction.
+            select 'ORACLE_HIGH_TAB_PRIVS_PUBLIC', tp.db_name, tp.pdb_name,
+                   tp.username || '/' || tp.privilege,
+                   tp.username || ' -> ' || tp.privilege
+              from oracle_sec_high_tab_privs tp
+         ),
+         -- Same idea at instance grain. DBA_USERS_WITH_DEFPWD is reported without
+         -- a usable PDB name in CDB mode (the collect emits the literal
+         -- 'CONTAINER'), which is why the rule is catalogued at INSTANCE grain.
+         dev_inst as (
+            select 'ORACLE_NO_DEFAULT_PASSWORD' rule_code, dp.db_name,
+                   dp.username item_key,
+                   dp.username || ' still has its default password' observed_value
+              from oracle_sec_default_user_pwd dp
+         ),
+         -- The rule codes driven by the anti-join, with the wording of their
+         -- compliant row.
+         abs_db_rule as (
+            select 'ORACLE_HIGH_SYS_PRIVS_GRANT' rule_code,
+                   'no high-privilege system privilege granted' ok_value,
+                   'no high-privilege system privilege' expected_value from dual
+            union all
+            select 'ORACLE_HIGH_ROLE_PRIVS_GRANT',
+                   'no DBA or catalog role granted', 'no DBA or catalog role' from dual
+            union all
+            select 'ORACLE_HIGH_TAB_PRIVS_PUBLIC',
+                   'no sensitive package granted to PUBLIC', 'no EXECUTE to PUBLIC on sensitive packages' from dual
+         )
+         select src.rule_code,
+                rr.entity_type,
+                case rr.entity_type when 'DATABASE' then dd.database_id else di.instance_id end entity_id,
+                src.item_key,
+                p_snapshot_date snapshot_date,
+                src.is_ok is_compliant,
+                substr(src.observed_value, 1, 400) observed_value,
+                substr(src.expected_value, 1, 400) expected_value
+         from (
+            -- ---------- initialisation parameters (per instance) ----------
+            -- The collect whitelists exactly these names; an unknown one yields a
+            -- NULL rule_code and is dropped by the join to ref_control_rule
+            -- rather than silently counted as a deviation.
+            select case lower(p.parameter_name)
+                      when 'o7_dictionary_accessibility'       then 'ORACLE_PRM_O7_DICT_ACCESS'
+                      when 'remote_os_authent'                 then 'ORACLE_PRM_REMOTE_OS_AUTHENT'
+                      when 'remote_os_roles'                   then 'ORACLE_PRM_REMOTE_OS_ROLES'
+                      when 'os_roles'                          then 'ORACLE_PRM_OS_ROLES'
+                      when 'utl_file_dir'                      then 'ORACLE_PRM_UTL_FILE_DIR'
+                      when 'audit_trail'                       then 'ORACLE_PRM_AUDIT_TRAIL'
+                      when 'audit_sys_operations'              then 'ORACLE_PRM_AUDIT_SYS_OPERATIONS'
+                      when 'unified auditing'                  then 'ORACLE_PRM_UNIFIED_AUDITING'
+                      when 'resource_limit'                    then 'ORACLE_PRM_RESOURCE_LIMIT'
+                      when 'sec_case_sensitive_logon'          then 'ORACLE_PRM_SEC_CASE_SENSITIVE'
+                      when 'sec_max_failed_login_attempts'     then 'ORACLE_PRM_SEC_MAX_FAILED_LOGIN'
+                      when 'sec_return_server_release_banner'  then 'ORACLE_PRM_SEC_BANNER'
+                      when 'sec_protocol_error_trace_action'   then 'ORACLE_PRM_SEC_PROTO_ERR_TRACE'
+                      when 'sec_protocol_error_further_action' then 'ORACLE_PRM_SEC_PROTO_ERR_FURTHER'
+                      when '_sys_logon_delay'                  then 'ORACLE_PRM_SYS_LOGON_DELAY'
+                      when 'pdb_os_credential'                 then 'ORACLE_PRM_PDB_OS_CREDENTIAL'
+                   end rule_code,
+                   p.db_name,
+                   cast(null as varchar2(200 char)) pdb_name,
+                   '*' item_key,
+                   case lower(p.parameter_name)
+                      when 'utl_file_dir'
+                         then case when trim(p.parameter_value) is null then 1 else 0 end
+                      when 'audit_trail'
+                         then case when upper(nvl(trim(p.parameter_value), 'NONE')) <> 'NONE' then 1 else 0 end
+                      when 'sec_max_failed_login_attempts'
+                         then case when regexp_like(trim(p.parameter_value), '^[0-9]+$')
+                                    and to_number(trim(p.parameter_value)) <= 3 then 1 else 0 end
+                      when 'sec_protocol_error_trace_action'
+                         then case when upper(nvl(trim(p.parameter_value), 'NONE')) in ( 'LOG', 'TRACE' ) then 1 else 0 end
+                      when 'sec_protocol_error_further_action'
+                         then case when upper(nvl(trim(p.parameter_value), 'CONTINUE')) not like 'CONTINUE%' then 1 else 0 end
+                      when '_sys_logon_delay'
+                         then case when trim(p.parameter_value) = '4' then 1 else 0 end
+                      when 'pdb_os_credential'
+                         then 0                       -- catalogued at active = 0, never merged
+                      else
+                         -- the remaining parameters are plain booleans
+                         case when lower(p.parameter_name) in ( 'audit_sys_operations', 'resource_limit',
+                                                                'sec_case_sensitive_logon', 'unified auditing' )
+                                   then case when upper(nvl(trim(p.parameter_value), 'FALSE')) = 'TRUE' then 1 else 0 end
+                              else case when upper(nvl(trim(p.parameter_value), 'FALSE')) = 'FALSE' then 1 else 0 end
+                         end
+                   end is_ok,
+                   p.parameter_name || '=' || nvl(trim(p.parameter_value), '<empty>') observed_value,
+                   case lower(p.parameter_name)
+                      when 'utl_file_dir'                      then 'empty'
+                      when 'audit_trail'                       then 'any value but NONE'
+                      when 'sec_max_failed_login_attempts'     then '<= 3'
+                      when 'sec_protocol_error_trace_action'   then 'LOG or TRACE'
+                      when 'sec_protocol_error_further_action' then 'not CONTINUE'
+                      when '_sys_logon_delay'                  then '4'
+                      when 'audit_sys_operations'              then 'TRUE'
+                      when 'resource_limit'                    then 'TRUE'
+                      when 'sec_case_sensitive_logon'          then 'TRUE'
+                      when 'unified auditing'                  then 'TRUE'
+                      else 'FALSE'
+                   end expected_value
+            from oracle_security_parameter p
+            union all
+            -- ---------- profile resource limits (per database) ----------
+            -- A limit collected as DEFAULT is inherited from the DEFAULT profile,
+            -- which is itself evaluated: judging it here would count it twice.
+            select case upper(pr.resource_name)
+                      when 'FAILED_LOGIN_ATTEMPTS'    then 'ORACLE_PRF_FAILED_LOGIN_ATTEMPTS'
+                      when 'PASSWORD_LIFE_TIME'       then 'ORACLE_PRF_PASSWORD_LIFE_TIME'
+                      when 'PASSWORD_LOCK_TIME'       then 'ORACLE_PRF_PASSWORD_LOCK_TIME'
+                      when 'PASSWORD_GRACE_TIME'      then 'ORACLE_PRF_PASSWORD_GRACE_TIME'
+                      when 'PASSWORD_REUSE_MAX'       then 'ORACLE_PRF_PASSWORD_REUSE_MAX'
+                      when 'PASSWORD_REUSE_TIME'      then 'ORACLE_PRF_PASSWORD_REUSE_TIME'
+                      when 'PASSWORD_VERIFY_FUNCTION' then 'ORACLE_PRF_PASSWORD_VERIFY_FUNCTION'
+                      when 'SESSIONS_PER_USER'        then 'ORACLE_PRF_SESSIONS_PER_USER'
+                      when 'INACTIVE_ACCOUNT_TIME'    then 'ORACLE_PRF_INACTIVE_ACCOUNT_TIME'
+                   end,
+                   pr.db_name, pr.pdb_name,
+                   pr.profile || '/' || pr.resource_name,
+                   case
+                      when upper(pr.resource_name) = 'PASSWORD_VERIFY_FUNCTION'
+                         then case when upper(nvl(trim(pr.limit_value), 'NULL')) = 'NULL' then 0 else 1 end
+                      -- "at least" limits: UNLIMITED satisfies them
+                      when upper(pr.resource_name) in ( 'PASSWORD_LOCK_TIME', 'PASSWORD_REUSE_MAX', 'PASSWORD_REUSE_TIME' )
+                         then case when upper(trim(pr.limit_value)) = 'UNLIMITED' then 1
+                                   when regexp_like(trim(pr.limit_value), '^[0-9]*\.?[0-9]+$')
+                                    and to_number(trim(pr.limit_value)) >= case upper(pr.resource_name)
+                                                                              when 'PASSWORD_LOCK_TIME' then 1
+                                                                              when 'PASSWORD_REUSE_MAX' then 20
+                                                                              else 365
+                                                                           end
+                                   then 1 else 0 end
+                      -- "at most" limits: UNLIMITED breaks them
+                      else case when upper(trim(pr.limit_value)) = 'UNLIMITED' then 0
+                                when regexp_like(trim(pr.limit_value), '^[0-9]*\.?[0-9]+$')
+                                 and to_number(trim(pr.limit_value)) <= case upper(pr.resource_name)
+                                                                           when 'FAILED_LOGIN_ATTEMPTS' then 5
+                                                                           when 'PASSWORD_LIFE_TIME'    then 90
+                                                                           when 'PASSWORD_GRACE_TIME'   then 5
+                                                                           when 'SESSIONS_PER_USER'     then 10
+                                                                           else 120
+                                                                        end
+                                then 1 else 0 end
+                   end,
+                   pr.profile || '/' || pr.resource_name || '=' || nvl(trim(pr.limit_value), 'NULL'),
+                   case upper(pr.resource_name)
+                      when 'FAILED_LOGIN_ATTEMPTS'    then '<= 5'
+                      when 'PASSWORD_LIFE_TIME'       then '<= 90'
+                      when 'PASSWORD_LOCK_TIME'       then '>= 1 or UNLIMITED'
+                      when 'PASSWORD_GRACE_TIME'      then '<= 5'
+                      when 'PASSWORD_REUSE_MAX'       then '>= 20 or UNLIMITED'
+                      when 'PASSWORD_REUSE_TIME'      then '>= 365 or UNLIMITED'
+                      when 'PASSWORD_VERIFY_FUNCTION' then 'a verify function, not NULL'
+                      when 'SESSIONS_PER_USER'        then '<= 10'
+                      when 'INACTIVE_ACCOUNT_TIME'    then '<= 120'
+                   end
+            from oracle_security_profile pr
+            where upper(nvl(trim(pr.limit_value), 'NULL')) <> 'DEFAULT'
+            union all
+            -- ---------- users on the DEFAULT profile (per database) ----------
+            select 'ORACLE_NO_DEFAULT_PROFILE', dp.db_name, dp.pdb_name, dp.username,
+                   case when dp.oracle_managed = 'Y' then 1
+                        when upper(dp.profile) <> 'DEFAULT' then 1
+                        else 0 end,
+                   dp.username || ' on profile ' || dp.profile,
+                   'a profile other than DEFAULT'
+            from oracle_sec_default_profile dp
+            union all
+            -- ---------- audit policy (per database) ----------
+            -- 12c+ reports ORA_CIS_RECOMMENDATIONS; 11g falls back to the classic
+            -- audit options, one row per option, judged on the same rule.
+            select 'ORACLE_AUDIT_CIS_POLICY_ON', a.db_name, a.pdb_name, a.audit_parameter,
+                   case when a.audit_activated >= 1 then 1 else 0 end,
+                   a.audit_parameter || '=' || a.audit_activated,
+                   'enabled'
+            from oracle_security_audit_enable a
+            union all
+            -- ---------- tablespace encryption (per database) ----------
+            -- Scope of the norm: engine-managed tablespaces are exempt.
+            select 'ORACLE_TABLESPACE_ENCRYPTED', ts.db_name, ts.pdb_name, ts.tablespace_name,
+                   case when upper(nvl(ts.encrypted, 'NO')) = 'YES' then 1
+                        when upper(ts.tablespace_name) in ( 'SYSTEM', 'SYSAUX' ) then 1
+                        when upper(ts.tablespace_name) like 'TEMP%' then 1
+                        when upper(ts.tablespace_name) like 'UNDO%' then 1
+                        else 0 end,
+                   ts.tablespace_name || ' (encrypted=' || nvl(ts.encrypted, 'NO') || ')',
+                   'encrypted=YES'
+            from oracle_security_tablespace ts
+            union all
+            -- ---------- password file members (per instance) ----------
+            select 'ORACLE_ADMIN_PWFILE_SYS_ONLY', ap.db_name, cast(null as varchar2(200 char)), ap.username,
+                   case when upper(ap.username) = 'SYS' then 1 else 0 end,
+                   ap.username || ' in the password file',
+                   'SYS only'
+            from oracle_sec_admin_high_privs ap
+            union all
+            -- ---------- SQL*Net encryption (per instance) ----------
+            -- Inverted absence: the collect only emits a row when the session
+            -- reports an encryption service adapter, so a collected instance with
+            -- no row is non-compliant rather than unknown.
+            select 'ORACLE_NETWORK_ENCRYPTION_ON', wi.db_name, cast(null as varchar2(200 char)), '*',
+                   case when ne.db_name is not null then 1 else 0 end,
+                   nvl(ne.sqlnet_encryption, 'no encryption service adapter'),
+                   'an encryption service adapter on the session'
+            from w_inst wi
+            left join oracle_sec_network_encryption ne
+                   on ne.db_name = wi.db_name
+                  and upper(nvl(trim(ne.sqlnet_encryption), 'EMPTY')) <> 'EMPTY'
+            union all
+            -- ---------- residual SYS.USER$MIG (per database) ----------
+            select 'ORACLE_NO_USERMIG_TABLE', wd.db_name, wd.pdb_name, '*',
+                   case when um.db_name is null then 1 else 0 end,
+                   case when um.db_name is null then 'no SYS.USER$MIG table'
+                        else 'SYS.USER$MIG present' end,
+                   'absent'
+            from w_db wd
+            left join oracle_sec_usermig_tbl_exist um
+                   on um.db_name = wd.db_name and um.pdb_name = wd.pdb_name
+            union all
+            -- ---------- deviation-only rules, per database ----------
+            select d.rule_code, d.db_name, d.pdb_name, d.item_key, 0, d.observed_value,
+                   r.expected_value
+            from dev_db d
+            join abs_db_rule r on r.rule_code = d.rule_code
+            union all
+            -- ... and the compliant row for every collected database that has none
+            select r.rule_code, wd.db_name, wd.pdb_name, '*', 1, r.ok_value, r.expected_value
+            from w_db wd
+            cross join abs_db_rule r
+            where not exists ( select 1 from dev_db d
+                                where d.rule_code = r.rule_code
+                                  and d.db_name = wd.db_name
+                                  and d.pdb_name = wd.pdb_name )
+            union all
+            -- ---------- deviation-only rule, per instance ----------
+            select d.rule_code, d.db_name, cast(null as varchar2(200 char)), d.item_key, 0,
+                   d.observed_value, 'no account on its default password'
+            from dev_inst d
+            union all
+            select 'ORACLE_NO_DEFAULT_PASSWORD', wi.db_name, cast(null as varchar2(200 char)), '*', 1,
+                   'no account on its default password', 'no account on its default password'
+            from w_inst wi
+            where not exists ( select 1 from dev_inst d where d.db_name = wi.db_name )
+         ) src
+         join ref_control_rule rr on rr.rule_code = src.rule_code and rr.active = 1
+         -- One instance per database name: a RAC database has several rows in
+         -- oracle_databases and the security config is a property of the database,
+         -- not of the instance that happened to answer.
+         join ( select db_name, hostname, instance_name
+                  from ( select od.db_name, od.hostname, od.instance_name,
+                                row_number() over ( partition by od.db_name
+                                                        order by od.instance_name ) rn
+                           from oracle_databases od )
+                 where rn = 1 ) od on od.db_name = src.db_name
+         join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
+         join dim_instance di on di.host_id = ds.host_id and di.instance_name = od.instance_name
+         left join dim_database dd on rr.entity_type = 'DATABASE'
+              and dd.instance_id = di.instance_id
+              and dd.db_name = case when src.pdb_name = 'NON CONTAINER' then src.db_name else src.pdb_name end
+         where rr.entity_type <> 'DATABASE' or dd.database_id is not null
+      ) s
+      on ( f.rule_code = s.rule_code and f.entity_type = s.entity_type
+           and f.entity_id = s.entity_id and f.item_key = s.item_key
+           and f.snapshot_date = s.snapshot_date )
+      when matched then update set
+         f.is_compliant = s.is_compliant,
+         f.observed_value = s.observed_value,
+         f.expected_value = s.expected_value
+      when not matched then
+         insert ( rule_code, entity_type, entity_id, item_key, snapshot_date,
+                  is_compliant, observed_value, expected_value )
+         values ( s.rule_code, s.entity_type, s.entity_id, s.item_key, s.snapshot_date,
+                  s.is_compliant, s.observed_value, s.expected_value );
+   end load_findings_oracle_sec;
+
+
+   -- ===============================================================
    -- Capacity findings (per storage unit, threshold-based)
    -- ===============================================================
    procedure load_findings_capacity ( p_snapshot_date in date ) is
@@ -428,10 +773,10 @@ create or replace package body pkg_dbinv_scoring as
    procedure load_findings ( p_snapshot_date in date default trunc(sysdate) ) is
    begin
       load_findings_mssql_sec(p_snapshot_date);
+      load_findings_oracle_sec(p_snapshot_date);
       load_findings_capacity(p_snapshot_date);
       load_findings_backup(p_snapshot_date);
       load_findings_lifecycle(p_snapshot_date);
-      -- ORACLE security findings: intentionally not produced (rules undefined).
    end load_findings;
 
 

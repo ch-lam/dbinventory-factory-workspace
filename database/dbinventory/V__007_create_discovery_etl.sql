@@ -412,9 +412,18 @@ create or replace package body pkg_dbinv_discovery as
             || 'Re-run the Windows discovery so it reads the port from the registry.');
       end if;
 
+      -- Matched case-insensitively, although the primary key of the perimeter is
+      -- the raw (hostname, port): the two spellings are the same machine, and a
+      -- case-sensitive match would insert a second row instead of reactivating
+      -- the first, putting the host twice in the generated .lst and collecting
+      -- it twice. The perimeter really does hold mixed case (ora-dev vs ORA-DEV
+      -- in the Oracle list), and v_discovery_status already reconciles with
+      -- lower() - this is the same rule, applied on the write side.
+      -- The existing spelling is kept on update; only a genuinely new host is
+      -- inserted with the spelling discovery reported.
       merge into mssql_collect_list cl
       using ( select l_hostname as hostname, l_port as port from dual ) s
-      on ( cl.hostname = s.hostname
+      on ( lower(cl.hostname) = lower(s.hostname)
            and cl.port = s.port )
       when matched then
          update

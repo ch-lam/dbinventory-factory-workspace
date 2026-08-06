@@ -205,6 +205,13 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_SA_DISABLED', 'MSSQL_LOGINS', 'INSTANCE', '*',
             'The built-in sysadmin account must be disabled', 'The principal holding sid 0x01 must have is_disabled = 1. Applies whatever the account was renamed to.', 'HIGH' );
+-- Authentication mode. Also under MSSQL_LOGINS: it decides whether SQL logins
+-- are an attack surface at all, which is what every other rule of this control
+-- is about. Giving it its own control would mean re-tuning the eleven MSSQL
+-- SECURITY weights, which are transcribed verbatim from the legacy script.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_AUTH_WINDOWS_ONLY', 'MSSQL_LOGINS', 'INSTANCE', '*',
+            'The instance must accept Windows authentication only', 'SERVERPROPERTY(''IsIntegratedSecurityOnly'') must be 1. Mixed mode exposes SQL logins, whose passwords live in the engine and escape Active Directory policy.', 'HIGH' );
 
 -- MSSQL audit level / SQL Server Audit.
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )

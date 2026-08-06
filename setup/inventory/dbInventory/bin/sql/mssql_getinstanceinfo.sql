@@ -13,13 +13,19 @@
 -- partir de parallel_threshold sur une instance SQL2008 et service_account
 -- restait vide. Les 2 branches emettent desormais 2 champs vides.
 --
--- Les 3 branches emettent 18 champs, dans cet ordre :
+-- Les 3 branches emettent 19 champs, dans cet ordre :
 --   hostname, mssql_edition, mssql_product_version, collation, is_clustered,
 --   activenodename, clusternode1, clusternode2, parallel_threshold, max_dop,
 --   min_memory, max_memory, xp_cmdshell_enabled, num_cpus, memory_gb, os_type,
---   install_date, service_account
+--   install_date, service_account, is_integrated_security_only
 -- get_info_mssql.sh les prefixe de 5 champs (collect_id, collect_target,
--- collect_port, environment, license_type) -> 23 colonnes = mssql_hosts.
+-- collect_port, environment, license_type) -> 24 colonnes = mssql_hosts.
+--
+-- is_integrated_security_only est ajoute EN DERNIER, et la colonne correspondante
+-- en fin de mssql_hosts : le chargement etant positionnel, l'inserer au milieu
+-- decalerait toutes les colonnes suivantes. SERVERPROPERTY renvoie 1 pour
+-- l'authentification Windows seule, 0 pour le mode mixte. Disponible sur les 3
+-- branches, y compris SQL2008.
 
 DECLARE @ver nvarchar(128)
 DECLARE @sqlstmt nvarchar(4000)
@@ -56,7 +62,8 @@ EXECUTE master.dbo.xp_instance_regread
           CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
           CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),(SELECT windows_release FROM sys.dm_os_windows_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)')
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsIntegratedSecurityOnly'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)')
 ELSE
 (         select @sqlstmt = '
             DECLARE @ServiceAccount varchar(100)
@@ -84,7 +91,8 @@ EXECUTE master.dbo.xp_instance_regread
           CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_kb/1024/1024 from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
           CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(60),(SELECT windows_release FROM sys.dm_os_windows_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
 	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsIntegratedSecurityOnly'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
           )
 END
 ELSE
@@ -115,6 +123,7 @@ EXECUTE master.dbo.xp_instance_regread
           CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(20),(select physical_memory_in_bytes/1024/1024/1024 from sys.dm_os_sys_info)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
           CHAR(34)+''6.1''+CHAR(34)+'',''+
 	  CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),(SELECT CONVERT(VARCHAR(10), createdate, 112) FROM  sys.syslogins where sid = 0x010100000000000512000000)),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
-          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(100),@ServiceAccount),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)+'',''+
+          CHAR(34)+REPLACE(ISNULL(CONVERT(varchar(10),SERVERPROPERTY(''IsIntegratedSecurityOnly'')),'''') COLLATE DATABASE_DEFAULT,CHAR(34),CHAR(34)+CHAR(34))+CHAR(34)'
 END
 EXEC (@sqlstmt)

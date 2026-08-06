@@ -5007,6 +5007,20 @@ insert into mssql_databases (
 
 
 -- ============================================================
+-- mssql_hosts.is_integrated_security_only
+-- ------------------------------------------------------------
+-- Set by update rather than in the 50 inserts above: the column is appended at
+-- the end of the table, and rewriting every literal insert to carry it would
+-- bury the change. The fleet leans towards mixed mode, which is what the real
+-- one looks like before the control is enforced.
+-- ============================================================
+update mssql_hosts
+   set is_integrated_security_only = case when mod(ora_hash(hostname), 5) = 0 then 1 else 0 end;
+
+commit;
+
+
+-- ============================================================
 -- mssql_security_sa
 -- ------------------------------------------------------------
 -- Driven off the instances already present in mssql_security_configoptions, so

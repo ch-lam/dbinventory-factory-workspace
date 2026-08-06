@@ -239,6 +239,20 @@ create or replace package body pkg_dbinv_scoring as
             from mssql_security_logins l
             where l.is_sysadmin <> 1
             union all
+            -- ---------- authentication mode ----------
+            -- Read from mssql_hosts rather than from a security table: the
+            -- property comes back with the instance inventory, which is where
+            -- the collect already asks for it. An instance collected before the
+            -- property was added reads NULL and is left unjudged rather than
+            -- counted as mixed mode.
+            select 'MSSQL_AUTH_WINDOWS_ONLY', h.hostname, cast(null as varchar2(50 char)), '*',
+                   case when h.is_integrated_security_only = 1 then 1 else 0 end,
+                   case when h.is_integrated_security_only = 1 then 'Windows authentication only'
+                        else 'mixed mode (SQL logins accepted)' end,
+                   'Windows authentication only'
+            from mssql_hosts h
+            where h.is_integrated_security_only is not null
+            union all
             -- ---------- built-in sysadmin account ----------
             -- Keyed on the sid by the collect, not on the name, so the rule keeps
             -- working once the account has been renamed as it asks.

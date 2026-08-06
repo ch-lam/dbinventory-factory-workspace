@@ -222,7 +222,10 @@ create table mssql_hosts (
    memory_gb             number(6),
    os_type               varchar2(100 char),
    install_date          varchar2(10 char),
-   service_account       varchar2(100 char)
+   service_account       varchar2(100 char),
+   -- Appended last on purpose: the CSV load is positional, so inserting a column
+   -- in the middle would shift every column after it.
+   is_integrated_security_only number(1)
 );
 
 comment on table mssql_hosts is 'Inventory of MSSQL instances/hosts and their engine, cluster and resource configuration.';
@@ -249,6 +252,7 @@ comment on column mssql_hosts.memory_gb is 'Amount of memory available on the ho
 comment on column mssql_hosts.os_type is 'Operating system running on the host.';
 comment on column mssql_hosts.install_date is 'Installation date of the instance, as an integer (YYYYMMDD).';
 comment on column mssql_hosts.service_account is 'Windows account the SQL Server service runs as.';
+comment on column mssql_hosts.is_integrated_security_only is 'Authentication mode: 1 = Windows authentication only, 0 = mixed mode (SQL logins accepted).';
 
 -- ============================================================
 -- mssql_logins

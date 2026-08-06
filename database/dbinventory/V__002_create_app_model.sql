@@ -649,6 +649,44 @@ comment on column ref_control.active is 'Indicates whether the control is active
 
 
 -- ============================================================
+-- ref_benchmark  (the external documents the rules are transcribed from)
+-- ------------------------------------------------------------
+-- What turns "our in-house score" into "compliance with benchmark X version Y,
+-- deviations documented". Without it, a rule states a norm but not where the
+-- norm comes from, and an auditor has no way to check the transcription.
+--
+-- `version` is deliberately nullable: the rules were written against the CIS
+-- benchmarks in general, but the exact document retained as the opposable
+-- reference is an organisational decision, not a technical one. Until it is
+-- pinned here, ref_control_rule.benchmark_ref stays empty and
+-- v_benchmark_mapping_gap lists what remains to be mapped.
+--
+-- No SCD: adopting a newer edition means updating version and re-checking the
+-- mapping. What the fleet scored under the previous edition stays readable from
+-- the dated fact_control_finding rows, same as for ref_exception.
+-- ============================================================
+create table ref_benchmark (
+   benchmark_code varchar2(30 char) not null,
+   publisher      varchar2(50 char) not null,
+   title          varchar2(200 char) not null,
+   platform       varchar2(10 char) not null,
+   version        varchar2(30 char),
+   published_date date,
+   document_ref   varchar2(400 char),
+   constraint ref_benchmark_pk primary key ( benchmark_code )
+);
+
+comment on table ref_benchmark is 'External security benchmarks the rules are transcribed from; the version pinned here is what the score claims compliance with.';
+comment on column ref_benchmark.benchmark_code is 'Unique code of the benchmark.';
+comment on column ref_benchmark.publisher is 'Body publishing the benchmark (e.g. CIS).';
+comment on column ref_benchmark.title is 'Title of the document.';
+comment on column ref_benchmark.platform is 'Database platform the benchmark covers (ORACLE, MSSQL, POSTGRES, MYSQL).';
+comment on column ref_benchmark.version is 'Version of the document retained as the opposable reference; NULL until the organisation pins one.';
+comment on column ref_benchmark.published_date is 'Publication date of the retained version.';
+comment on column ref_benchmark.document_ref is 'Where the retained document lives (URL or internal reference).';
+
+
+-- ============================================================
 -- ref_control_rule  (catalog of the individual rules behind a control)
 -- ------------------------------------------------------------
 -- A control is a family (MSSQL_CONFIGOPTIONS covers 11 sp_configure options);
@@ -674,9 +712,25 @@ create table ref_control_rule (
    description    varchar2(1000 char),
    severity       varchar2(10 char),
    active         number(1) default 1 not null,
+   -- Provenance. HOUSE_CONFLICT is not a nuance for its own sake: at least one
+   -- rule states the opposite of the benchmark it sits next to (the TCP port
+   -- standardised on 1433, where CIS asks for the default port to be left
+   -- behind). Scoring it silently alongside the transcribed rules is what makes
+   -- a compliance claim collapse under review.
+   origin         varchar2(20 char) default 'HOUSE' not null,
+   benchmark_code varchar2(30 char),
+   benchmark_ref  varchar2(20 char),
    constraint ref_control_rule_pk primary key ( rule_code ),
    constraint ref_control_rule_ctl_fk foreign key ( control_code )
-      references ref_control ( control_code )
+      references ref_control ( control_code ),
+   constraint ref_control_rule_bmk_fk foreign key ( benchmark_code )
+      references ref_benchmark ( benchmark_code ),
+   constraint ref_control_rule_origin_ck
+      check ( origin in ( 'BENCHMARK', 'HOUSE', 'HOUSE_CONFLICT' ) ),
+   -- a rule that claims a benchmark origin, or contradicts one, must say which
+   constraint ref_control_rule_bmk_ck
+      check ( ( origin = 'HOUSE' and benchmark_code is null )
+           or ( origin <> 'HOUSE' and benchmark_code is not null ) )
 );
 
 comment on table ref_control_rule is 'Catalog of the individual rules making up a control; an exception is always granted against a rule, never against a whole control.';
@@ -688,9 +742,37 @@ comment on column ref_control_rule.title is 'Short human-readable statement of t
 comment on column ref_control_rule.description is 'Detailed description of what the rule checks, including its scope conditions.';
 comment on column ref_control_rule.severity is 'Severity of a non-compliant result (LOW, MEDIUM, HIGH, CRITICAL).';
 comment on column ref_control_rule.active is 'Indicates whether the rule is active (1) or disabled (0).';
+comment on column ref_control_rule.origin is 'Where the norm comes from: BENCHMARK (transcribed from ref_benchmark), HOUSE (own requirement, no benchmark equivalent), HOUSE_CONFLICT (own requirement that contradicts the benchmark).';
+comment on column ref_control_rule.benchmark_code is 'Benchmark the rule is transcribed from, or the one it contradicts (FK to ref_benchmark); NULL for a pure house rule.';
+comment on column ref_control_rule.benchmark_ref is 'Identifier of the recommendation inside the benchmark (e.g. ''2.3.4''); NULL until mapped against the retained document version.';
 
 create index ref_control_rule_ctl_ix
    on ref_control_rule ( control_code );
+
+
+-- ============================================================
+-- v_benchmark_mapping_gap
+-- ------------------------------------------------------------
+-- The worklist of the mapping pass: every rule that claims a benchmark origin
+-- but does not yet name the recommendation it transcribes. A compliance claim
+-- is only as strong as this view is empty.
+-- ============================================================
+create or replace view v_benchmark_mapping_gap as
+select rr.rule_code,
+       rc.platform,
+       rc.score_domain,
+       rr.origin,
+       rr.benchmark_code,
+       b.version benchmark_version,
+       rr.title,
+       rr.active
+  from ref_control_rule rr
+  join ref_control rc on rc.control_code = rr.control_code
+  left join ref_benchmark b on b.benchmark_code = rr.benchmark_code
+ where rr.origin in ( 'BENCHMARK', 'HOUSE_CONFLICT' )
+   and rr.benchmark_ref is null;
+
+comment on table v_benchmark_mapping_gap is 'Rules claiming a benchmark origin whose recommendation identifier is not yet mapped; drives the review that makes the score opposable.';
 
 
 -- ============================================================

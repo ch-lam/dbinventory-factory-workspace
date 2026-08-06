@@ -409,6 +409,88 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 
 
 -- ============================================================
+-- ref_benchmark
+-- ------------------------------------------------------------
+-- version and published_date are left NULL on purpose. The rules below were
+-- written against the CIS benchmarks, but WHICH edition the organisation
+-- retains as its opposable reference is a decision that has not been taken.
+-- Filling a plausible version here would be the one thing that cannot be
+-- defended in front of an auditor, since nothing in this repository could back
+-- it up. Pin them the day the document is chosen, then work through
+-- v_benchmark_mapping_gap.
+-- ============================================================
+insert into ref_benchmark ( benchmark_code, publisher, title, platform )
+   values ( 'CIS_MSSQL', 'CIS', 'CIS Microsoft SQL Server Benchmark', 'MSSQL' );
+insert into ref_benchmark ( benchmark_code, publisher, title, platform )
+   values ( 'CIS_ORACLE_DB', 'CIS', 'CIS Oracle Database Benchmark', 'ORACLE' );
+
+
+-- ============================================================
+-- Rule provenance
+-- ------------------------------------------------------------
+-- Everything defaults to HOUSE, then the rules transcribed from a benchmark are
+-- named explicitly. Written as set-based updates rather than folded into the 70
+-- inserts above: the classification is reviewed as a whole, and reading it as a
+-- list is what makes a wrong entry visible.
+--
+-- benchmark_ref (the recommendation identifier) is deliberately NOT populated:
+-- CIS renumbers between editions, and an identifier that cannot be checked
+-- against the retained document is worse than none. The origin below is a first
+-- pass to be confirmed during the same mapping review.
+-- ============================================================
+update ref_control_rule set origin = 'HOUSE', benchmark_code = null;
+
+update ref_control_rule set origin = 'BENCHMARK', benchmark_code = 'CIS_MSSQL'
+ where rule_code in (
+   'MSSQL_CFG_ADHOC_DIST_QUERIES', 'MSSQL_CFG_CLR_ENABLED', 'MSSQL_CFG_CLR_STRICT_SECURITY',
+   'MSSQL_CFG_CROSS_DB_CHAINING', 'MSSQL_CFG_DATABASE_MAIL_XPS', 'MSSQL_CFG_DEFAULT_TRACE',
+   'MSSQL_CFG_OLE_AUTOMATION', 'MSSQL_CFG_REMOTE_ACCESS', 'MSSQL_CFG_REMOTE_ADMIN_CONN',
+   'MSSQL_CFG_SCAN_STARTUP_PROCS', 'MSSQL_CFG_XP_CMDSHELL',
+   'MSSQL_REG_HIDE_INSTANCE', 'MSSQL_REG_FORCE_ENCRYPTION', 'MSSQL_REG_NUM_ERRORLOG_FILES',
+   'MSSQL_DBPROP_AUTO_CLOSE_OFF', 'MSSQL_DBPROP_TRUSTWORTHY_OFF',
+   'MSSQL_AUDIT_LEVEL_LOGIN_FAILURES', 'MSSQL_SRVAUDIT_ACTION_GROUP_ON',
+   'MSSQL_ENC_STRONG_ALGORITHM', 'MSSQL_GROUP_NO_LOCAL_PERMISSION', 'MSSQL_GUEST_NO_CONNECT',
+   'MSSQL_NO_ORPHANED_USER', 'MSSQL_PUBLIC_DEFAULT_PERMISSION',
+   'MSSQL_LOGIN_POLICY_CHECKED', 'MSSQL_LOGIN_SYSADMIN_EXPIRATION',
+   'MSSQL_SA_RENAMED', 'MSSQL_SA_DISABLED', 'MSSQL_AUTH_WINDOWS_ONLY',
+   'MSSQL_ENGINE_PATCH_CURRENT' );
+
+update ref_control_rule set origin = 'BENCHMARK', benchmark_code = 'CIS_ORACLE_DB'
+ where rule_code in (
+   'ORACLE_PRM_O7_DICT_ACCESS', 'ORACLE_PRM_REMOTE_OS_AUTHENT', 'ORACLE_PRM_REMOTE_OS_ROLES',
+   'ORACLE_PRM_OS_ROLES', 'ORACLE_PRM_UTL_FILE_DIR', 'ORACLE_PRM_AUDIT_TRAIL',
+   'ORACLE_PRM_AUDIT_SYS_OPERATIONS', 'ORACLE_PRM_UNIFIED_AUDITING', 'ORACLE_PRM_RESOURCE_LIMIT',
+   'ORACLE_PRM_SEC_CASE_SENSITIVE', 'ORACLE_PRM_SEC_MAX_FAILED_LOGIN', 'ORACLE_PRM_SEC_BANNER',
+   'ORACLE_PRM_SEC_PROTO_ERR_TRACE', 'ORACLE_PRM_SEC_PROTO_ERR_FURTHER',
+   'ORACLE_PRF_FAILED_LOGIN_ATTEMPTS', 'ORACLE_PRF_PASSWORD_LIFE_TIME',
+   'ORACLE_PRF_PASSWORD_LOCK_TIME', 'ORACLE_PRF_PASSWORD_GRACE_TIME',
+   'ORACLE_PRF_PASSWORD_REUSE_MAX', 'ORACLE_PRF_PASSWORD_REUSE_TIME',
+   'ORACLE_PRF_PASSWORD_VERIFY_FUNCTION', 'ORACLE_PRF_SESSIONS_PER_USER',
+   'ORACLE_PRF_INACTIVE_ACCOUNT_TIME',
+   'ORACLE_HIGH_SYS_PRIVS_GRANT', 'ORACLE_HIGH_ROLE_PRIVS_GRANT', 'ORACLE_HIGH_TAB_PRIVS_PUBLIC',
+   'ORACLE_ADMIN_PWFILE_SYS_ONLY', 'ORACLE_NO_DEFAULT_PASSWORD', 'ORACLE_NO_DEFAULT_PROFILE',
+   'ORACLE_AUDIT_CIS_POLICY_ON', 'ORACLE_NETWORK_ENCRYPTION_ON' );
+
+-- The one rule that states the opposite of the benchmark it sits beside: the
+-- fleet standardises on port 1433, CIS asks for the default port to be left
+-- behind. Kept as the norm the organisation actually applies, but no longer
+-- counted as benchmark compliance.
+update ref_control_rule set origin = 'HOUSE_CONFLICT', benchmark_code = 'CIS_MSSQL'
+ where rule_code = 'MSSQL_REG_TCP_PORT';
+
+-- Left as HOUSE, and worth re-examining during the mapping review:
+--   MSSQL_ENGINE_SUPPORTED, *_BACKUP_FRESHNESS_SLA, *_STORAGE_PCT_USED
+--     - service-level commitments, no benchmark equivalent.
+--   ORACLE_PRM_SYS_LOGON_DELAY, ORACLE_NO_USERMIG_TABLE
+--     - real hardening, but not traced to a published recommendation here.
+--   ORACLE_TABLESPACE_ENCRYPTED
+--     - encryption at rest is driven by regulation more than by the CIS Oracle
+--       document; classify it against whichever framework actually mandates it.
+--   ORACLE_PRM_PDB_OS_CREDENTIAL
+--     - inactive, norm not settled (see its own comment above).
+
+
+-- ============================================================
 -- ref_scoring_weight   (environment defaults to '*' = all environments)
 -- ============================================================
 

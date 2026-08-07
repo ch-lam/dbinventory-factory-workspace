@@ -901,6 +901,11 @@ create or replace package body pkg_dbinv_scoring as
               on a.entity_type = f2.entity_type and a.entity_id = f2.entity_id
             join ref_exception e
               on e.rule_code = f2.rule_code
+             -- The approval gate. Without it a derogation masked its deviation
+             -- the moment it was typed, which would hand anyone with access to
+             -- the screen a way to erase a finding from the score unreviewed.
+             -- A draft, a rejected or a revoked derogation covers nothing.
+             and e.status = 'APPROVED'
              and e.active = 1
              -- validity is judged on the snapshot date, never sysdate, so
              -- replaying an old snapshot does not apply today's derogations

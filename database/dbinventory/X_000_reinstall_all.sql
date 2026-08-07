@@ -5,4 +5,5 @@
 @V__005_create_scoring_etl.sql
 @V__006_create_discovery.sql
 @V__007_create_discovery_etl.sql
+@V__008_create_exception_api.sql
 @V__009_initial_data.sql

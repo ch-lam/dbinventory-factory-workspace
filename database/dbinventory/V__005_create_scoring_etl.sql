@@ -1058,18 +1058,27 @@ create or replace package body pkg_dbinv_scoring as
                 case when isc.max_score = 0 then null
                      when 100 * isc.score_value / isc.max_score >= 90 then 'OK'
                      when 100 * isc.score_value / isc.max_score >= 70 then 'WARNING'
-                     else 'CRITICAL' end status
+                     else 'CRITICAL' end status,
+                -- left join: an instance whose collect date cannot be resolved
+                -- keeps a NULL rather than a fabricated date, and the score is
+                -- still produced -- it is dated, never suppressed.
+                ecd.data_as_of,
+                p_snapshot_date - ecd.data_as_of data_age_days
          from inst_score isc
          join dim_instance di on di.instance_id = isc.instance_id
          join dim_host ds on ds.host_id = di.host_id
+         left join v_entity_collect_date ecd on ecd.instance_id = isc.instance_id
       ) s
       on ( f.platform = s.platform and f.environment = s.environment and f.score_domain = s.score_domain
            and f.entity_type = s.entity_type and f.entity_id = s.entity_id and f.snapshot_date = s.snapshot_date )
       when matched then update set
-         f.score_value = s.score_value, f.max_score = s.max_score, f.status = s.status
+         f.score_value = s.score_value, f.max_score = s.max_score, f.status = s.status,
+         f.data_as_of = s.data_as_of, f.data_age_days = s.data_age_days
       when not matched then
-         insert ( platform, environment, score_domain, entity_type, entity_id, snapshot_date, score_value, max_score, status )
-         values ( s.platform, s.environment, s.score_domain, s.entity_type, s.entity_id, s.snapshot_date, s.score_value, s.max_score, s.status );
+         insert ( platform, environment, score_domain, entity_type, entity_id, snapshot_date, score_value, max_score, status,
+                  data_as_of, data_age_days )
+         values ( s.platform, s.environment, s.score_domain, s.entity_type, s.entity_id, s.snapshot_date, s.score_value, s.max_score, s.status,
+                  s.data_as_of, s.data_age_days );
 
       -- Environment-level aggregate (mean of instance percentages)
       merge into fact_scoring f
@@ -1080,7 +1089,12 @@ create or replace package body pkg_dbinv_scoring as
                 100 max_score,
                 case when round(avg(100 * score_value / nullif(max_score, 0)), 2) >= 90 then 'OK'
                      when round(avg(100 * score_value / nullif(max_score, 0)), 2) >= 70 then 'WARNING'
-                     else 'CRITICAL' end status
+                     else 'CRITICAL' end status,
+                -- weakest link again: a fleet aggregate is only as current as its
+                -- least recently collected instance, so the oldest date and the
+                -- largest age win. The score itself stays an average.
+                min(data_as_of) data_as_of,
+                max(data_age_days) data_age_days
          from fact_scoring
          where snapshot_date = p_snapshot_date and entity_type = 'INSTANCE'
          group by platform, environment, score_domain
@@ -1088,10 +1102,13 @@ create or replace package body pkg_dbinv_scoring as
       on ( f.platform = s.platform and f.environment = s.environment and f.score_domain = s.score_domain
            and f.entity_type = s.entity_type and f.entity_id = s.entity_id and f.snapshot_date = s.snapshot_date )
       when matched then update set
-         f.score_value = s.score_value, f.max_score = s.max_score, f.status = s.status
+         f.score_value = s.score_value, f.max_score = s.max_score, f.status = s.status,
+         f.data_as_of = s.data_as_of, f.data_age_days = s.data_age_days
       when not matched then
-         insert ( platform, environment, score_domain, entity_type, entity_id, snapshot_date, score_value, max_score, status )
-         values ( s.platform, s.environment, s.score_domain, s.entity_type, s.entity_id, s.snapshot_date, s.score_value, s.max_score, s.status );
+         insert ( platform, environment, score_domain, entity_type, entity_id, snapshot_date, score_value, max_score, status,
+                  data_as_of, data_age_days )
+         values ( s.platform, s.environment, s.score_domain, s.entity_type, s.entity_id, s.snapshot_date, s.score_value, s.max_score, s.status,
+                  s.data_as_of, s.data_age_days );
    end load_scoring;
 
 

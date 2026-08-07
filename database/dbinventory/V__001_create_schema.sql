@@ -821,6 +821,7 @@ comment on column oracle_audit_logon_history.date_value is 'Timestamp at which t
 -- oracle_backup
 -- ============================================================
 create table oracle_backup (
+   collect_id       varchar2(16),
    db_name      varchar2(50 char) not null,
    environment  varchar2(20 char),
    backup_type  varchar2(50 char) not null,
@@ -831,6 +832,7 @@ create table oracle_backup (
 );
 
 comment on table oracle_backup is 'Oracle RMAN backup job records.';
+comment on column oracle_backup.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_backup.db_name is 'Name of the database.';
 comment on column oracle_backup.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column oracle_backup.backup_type is 'Type of backup (e.g. FULL, DIFF/DIFFERENTIAL, LOG).';
@@ -905,6 +907,7 @@ comment on column oracle_backup_summary.cumulative_hours_between_backup is 'Cumu
 -- oracle_client_version
 -- ============================================================
 create table oracle_client_version (
+   collect_id       varchar2(16),
    db_name         varchar2(50 char) not null,
    db_version      varchar2(50 char) not null,
    environment     varchar2(50 char) not null,
@@ -920,6 +923,7 @@ create table oracle_client_version (
 );
 
 comment on table oracle_client_version is 'Oracle client versions connecting to each database, collected for compatibility and security review.';
+comment on column oracle_client_version.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_client_version.db_name is 'Name of the database.';
 comment on column oracle_client_version.db_version is 'Database engine version.';
 comment on column oracle_client_version.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
@@ -937,6 +941,7 @@ comment on column oracle_client_version.check_client is 'Indicates whether this 
 -- oracle_metrics_cpu_memory
 -- ============================================================
 create table oracle_metrics_cpu_memory (
+   collect_id       varchar2(16),
    pdb_name            varchar2(50 char) not null,
    cpu_time_minutes    number(10) not null,
    avg_sga_mb          number(10) not null,
@@ -948,6 +953,7 @@ create table oracle_metrics_cpu_memory (
 );
 
 comment on table oracle_metrics_cpu_memory is 'Current Oracle PDB CPU and memory usage metrics.';
+comment on column oracle_metrics_cpu_memory.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_metrics_cpu_memory.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_metrics_cpu_memory.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
 comment on column oracle_metrics_cpu_memory.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
@@ -985,6 +991,7 @@ comment on column oracle_metrics_cpu_mem_hist.date_value is 'Timestamp at which 
 -- oracle_metrics_cpu_service
 -- ============================================================
 create table oracle_metrics_cpu_service (
+   collect_id       varchar2(16),
    pdb_name           varchar2(50 char) not null,
    service_name       varchar2(100 char) not null,
    dbcpu_time_minutes number(10) not null,
@@ -992,6 +999,7 @@ create table oracle_metrics_cpu_service (
 );
 
 comment on table oracle_metrics_cpu_service is 'Current Oracle CPU usage metrics broken down by service.';
+comment on column oracle_metrics_cpu_service.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_metrics_cpu_service.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_metrics_cpu_service.service_name is 'Name of the Oracle service.';
 comment on column oracle_metrics_cpu_service.dbcpu_time_minutes is 'Database CPU time consumed by the service, in minutes.';
@@ -1020,6 +1028,7 @@ comment on column oracle_metrics_cpu_svc_hist.date_value is 'Timestamp at which 
 -- oracle_size_usage
 -- ============================================================
 create table oracle_size_usage (
+   collect_id       varchar2(16),
    db_name         varchar2(50 char) not null,
    pdb_name        varchar2(50 char) not null,
    tablespace_name varchar2(200 char) not null,
@@ -1030,6 +1039,7 @@ create table oracle_size_usage (
 );
 
 comment on table oracle_size_usage is 'Current Oracle tablespace size usage per PDB.';
+comment on column oracle_size_usage.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_size_usage.db_name is 'Name of the database.';
 comment on column oracle_size_usage.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_size_usage.tablespace_name is 'Name of the tablespace.';
@@ -1064,6 +1074,7 @@ comment on column oracle_size_usage_history.date_value is 'Timestamp at which th
 -- oracle_size_usage_seg
 -- ============================================================
 create table oracle_size_usage_seg (
+   collect_id       varchar2(16),
    db_name         varchar2(50 char) not null,
    pdb_name        varchar2(50 char) not null,
    tablespace_name varchar2(200 char) not null,
@@ -1072,6 +1083,7 @@ create table oracle_size_usage_seg (
 );
 
 comment on table oracle_size_usage_seg is 'Oracle tablespace segment size usage per PDB.';
+comment on column oracle_size_usage_seg.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_size_usage_seg.db_name is 'Name of the database.';
 comment on column oracle_size_usage_seg.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_size_usage_seg.tablespace_name is 'Name of the tablespace.';
@@ -1188,6 +1200,7 @@ comment on column oracle_capplan_summary.date_value is 'Timestamp at which this 
 -- oracle_databases
 -- ============================================================
 create table oracle_databases (
+   collect_id       varchar2(16),
    environment      varchar2(20 char) not null,
    license_type     varchar2(50 char) not null,
    hostname         varchar2(100 char) not null,
@@ -1210,6 +1223,7 @@ create table oracle_databases (
 );
 
 comment on table oracle_databases is 'Inventory of Oracle databases/instances and their configuration.';
+comment on column oracle_databases.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_databases.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column oracle_databases.license_type is 'Licensing type applied to this host/instance.';
 comment on column oracle_databases.hostname is 'Host name of the database server or instance.';
@@ -1234,6 +1248,7 @@ comment on column oracle_databases.count_pdb is 'Number of pluggable databases (
 -- oracle_dataguard
 -- ============================================================
 create table oracle_dataguard (
+   collect_id       varchar2(16),
    primary_db            varchar2(100 char) not null,
    standby_db            varchar2(100 char) not null,
    pdb_list_impacted     varchar2(2000 char),
@@ -1242,6 +1257,7 @@ create table oracle_dataguard (
 );
 
 comment on table oracle_dataguard is 'Oracle Data Guard primary/standby configuration and protection mode.';
+comment on column oracle_dataguard.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_dataguard.primary_db is 'Name of the primary database.';
 comment on column oracle_dataguard.standby_db is 'Name of the standby database.';
 comment on column oracle_dataguard.pdb_list_impacted is 'List of PDBs impacted by this Data Guard configuration.';
@@ -1252,6 +1268,7 @@ comment on column oracle_dataguard.protection_mode is 'Data Guard protection mod
 -- oracle_hosts
 -- ============================================================
 create table oracle_hosts (
+   collect_id       varchar2(16),
    environment  varchar2(20 char) not null,
    license_type varchar2(50 char) not null,
    hostname     varchar2(100 char) not null,
@@ -1261,6 +1278,7 @@ create table oracle_hosts (
 );
 
 comment on table oracle_hosts is 'Inventory of Oracle database hosts and their hardware/OS configuration.';
+comment on column oracle_hosts.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_hosts.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column oracle_hosts.license_type is 'Licensing type applied to this host/instance.';
 comment on column oracle_hosts.hostname is 'Host name of the database server or instance.';
@@ -1292,6 +1310,7 @@ comment on column oracle_jdbc_tns.standby_hst is 'Host name of the standby datab
 -- oracle_lms
 -- ============================================================
 create table oracle_lms (
+   collect_id       varchar2(16),
    grouping_id      number(1),                     -- 0=détail par PDB, 1=agrégé toutes PDBs
    con_id           number(5),                     -- PDB container ID (DBA_FEATURE_USAGE_STATISTICS)
    db_pdb_name      varchar2(50 char),             -- Nullable in non-CDBs, populated in CDBs with PDB name
@@ -1305,6 +1324,7 @@ create table oracle_lms (
 );
 
 comment on table oracle_lms is 'Oracle License Management System (LMS) feature usage detection, used for license compliance review.';
+comment on column oracle_lms.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_lms.grouping_id is 'Aggregation level of the row: 0 = detail per PDB, 1 = aggregated across all PDBs.';
 comment on column oracle_lms.con_id is 'PDB container ID, as reported by DBA_FEATURE_USAGE_STATISTICS.';
 comment on column oracle_lms.db_pdb_name is 'Name of the database or pluggable database the feature usage was detected on.';
@@ -1335,6 +1355,7 @@ comment on column oracle_lms_reference.license_type is 'Oracle licensing metric 
 -- oracle_pdbs
 -- ============================================================
 create table oracle_pdbs (
+   collect_id       varchar2(16),
    hostname      varchar2(100 char) not null,
    instance_name varchar2(50 char) not null,
    pdb_name      varchar2(50 char) not null,
@@ -1342,6 +1363,7 @@ create table oracle_pdbs (
 );
 
 comment on table oracle_pdbs is 'Inventory of Oracle pluggable databases (PDBs) and their state.';
+comment on column oracle_pdbs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_pdbs.hostname is 'Host name of the database server or instance.';
 comment on column oracle_pdbs.instance_name is 'Name of the database instance.';
 comment on column oracle_pdbs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
@@ -1351,12 +1373,14 @@ comment on column oracle_pdbs.pdb_state is 'State of the pluggable database (e.g
 -- oracle_psu
 -- ============================================================
 create table oracle_psu (
+   collect_id       varchar2(16),
    db_name     varchar2(50 char) not null,
    db_version  varchar2(50 char) not null,
    psu_applied varchar2(200 char) not null
 );
 
 comment on table oracle_psu is 'Oracle Patch Set Update (PSU) / patch level applied per database.';
+comment on column oracle_psu.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_psu.db_name is 'Name of the database.';
 comment on column oracle_psu.db_version is 'Database engine version.';
 comment on column oracle_psu.psu_applied is 'Identifier of the patch set update (PSU/RU) applied to the database.';
@@ -1365,6 +1389,7 @@ comment on column oracle_psu.psu_applied is 'Identifier of the patch set update 
 -- oracle_sec_admin_high_privs
 -- ============================================================
 create table oracle_sec_admin_high_privs (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    username         varchar2(50 char) not null,
    compliance_score number(2) default 0,
@@ -1372,6 +1397,7 @@ create table oracle_sec_admin_high_privs (
 );
 
 comment on table oracle_sec_admin_high_privs is 'Oracle users holding high administrative privileges, compliance check results.';
+comment on column oracle_sec_admin_high_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_admin_high_privs.db_name is 'Name of the database.';
 comment on column oracle_sec_admin_high_privs.username is 'Name of the database account being evaluated.';
 comment on column oracle_sec_admin_high_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
@@ -1382,6 +1408,7 @@ comment on column oracle_sec_admin_high_privs.date_value is 'Timestamp at which 
 -- oracle_security_audit_enable
 -- ============================================================
 create table oracle_security_audit_enable (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    audit_parameter  varchar2(50 char) not null,
@@ -1391,6 +1418,7 @@ create table oracle_security_audit_enable (
 );
 
 comment on table oracle_security_audit_enable is 'Oracle unified audit policy activation compliance check results.';
+comment on column oracle_security_audit_enable.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_security_audit_enable.db_name is 'Name of the database.';
 comment on column oracle_security_audit_enable.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_security_audit_enable.audit_parameter is 'Name of the audit policy/parameter being evaluated.';
@@ -1402,6 +1430,7 @@ comment on column oracle_security_audit_enable.date_value is 'Timestamp at which
 -- oracle_sec_default_profile
 -- ============================================================
 create table oracle_sec_default_profile (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1412,6 +1441,7 @@ create table oracle_sec_default_profile (
 );
 
 comment on table oracle_sec_default_profile is 'Oracle users still assigned the DEFAULT profile, compliance check results.';
+comment on column oracle_sec_default_profile.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_default_profile.db_name is 'Name of the database.';
 comment on column oracle_sec_default_profile.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_default_profile.username is 'Name of the database account being evaluated.';
@@ -1425,6 +1455,7 @@ comment on column oracle_sec_default_profile.date_value is 'Timestamp at which t
 -- oracle_sec_default_user_pwd
 -- ============================================================
 create table oracle_sec_default_user_pwd (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1433,6 +1464,7 @@ create table oracle_sec_default_user_pwd (
 );
 
 comment on table oracle_sec_default_user_pwd is 'Oracle accounts detected using default/well-known passwords, compliance check results.';
+comment on column oracle_sec_default_user_pwd.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_default_user_pwd.db_name is 'Name of the database.';
 comment on column oracle_sec_default_user_pwd.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_default_user_pwd.username is 'Name of the database account being evaluated.';
@@ -1443,6 +1475,7 @@ comment on column oracle_sec_default_user_pwd.date_value is 'Timestamp at which 
 -- oracle_sec_high_role_privs
 -- ============================================================
 create table oracle_sec_high_role_privs (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1452,6 +1485,7 @@ create table oracle_sec_high_role_privs (
 );
 
 comment on table oracle_sec_high_role_privs is 'Oracle users granted high-privilege roles, compliance check results.';
+comment on column oracle_sec_high_role_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_high_role_privs.db_name is 'Name of the database.';
 comment on column oracle_sec_high_role_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_high_role_privs.username is 'Name of the database account being evaluated.';
@@ -1464,6 +1498,7 @@ comment on column oracle_sec_high_role_privs.date_value is 'Timestamp at which t
 -- oracle_sec_high_sys_privs
 -- ============================================================
 create table oracle_sec_high_sys_privs (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1473,6 +1508,7 @@ create table oracle_sec_high_sys_privs (
 );
 
 comment on table oracle_sec_high_sys_privs is 'Oracle users granted high-privilege system privileges, compliance check results.';
+comment on column oracle_sec_high_sys_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_high_sys_privs.db_name is 'Name of the database.';
 comment on column oracle_sec_high_sys_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_high_sys_privs.username is 'Name of the database account being evaluated.';
@@ -1485,6 +1521,7 @@ comment on column oracle_sec_high_sys_privs.date_value is 'Timestamp at which th
 -- oracle_sec_high_tab_privs
 -- ============================================================
 create table oracle_sec_high_tab_privs (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1494,6 +1531,7 @@ create table oracle_sec_high_tab_privs (
 );
 
 comment on table oracle_sec_high_tab_privs is 'Oracle users granted high-privilege table privileges, compliance check results.';
+comment on column oracle_sec_high_tab_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_high_tab_privs.db_name is 'Name of the database.';
 comment on column oracle_sec_high_tab_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_high_tab_privs.username is 'Name of the database account being evaluated.';
@@ -1522,6 +1560,7 @@ comment on column oracle_security_history.date_value is 'Timestamp at which this
 -- oracle_sec_network_encryption
 -- ============================================================
 create table oracle_sec_network_encryption (
+   collect_id       varchar2(16),
    db_name           varchar2(50 char) not null,
    sqlnet_encryption varchar2(200 char) not null,
    compliance_score  number(2) default 0,
@@ -1529,6 +1568,7 @@ create table oracle_sec_network_encryption (
 );
 
 comment on table oracle_sec_network_encryption is 'Oracle network (SQL*Net) encryption configuration compliance check results.';
+comment on column oracle_sec_network_encryption.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_network_encryption.db_name is 'Name of the database.';
 comment on column oracle_sec_network_encryption.sqlnet_encryption is 'Value of the SQL*Net encryption configuration parameter.';
 comment on column oracle_sec_network_encryption.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
@@ -1538,6 +1578,7 @@ comment on column oracle_sec_network_encryption.date_value is 'Timestamp at whic
 -- oracle_security_parameter
 -- ============================================================
 create table oracle_security_parameter (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    parameter_value  varchar2(1000 char),
    parameter_name   varchar2(50 char) not null,
@@ -1546,6 +1587,7 @@ create table oracle_security_parameter (
 );
 
 comment on table oracle_security_parameter is 'Oracle initialization/security parameter compliance check results.';
+comment on column oracle_security_parameter.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_security_parameter.db_name is 'Name of the database.';
 comment on column oracle_security_parameter.parameter_value is 'Value of the configuration parameter.';
 comment on column oracle_security_parameter.parameter_name is 'Name of the configuration parameter being evaluated.';
@@ -1557,6 +1599,7 @@ comment on column oracle_security_parameter.date_value is 'Timestamp at which th
 -- oracle_security_profile
 -- ============================================================
 create table oracle_security_profile (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    profile          varchar2(50 char) not null,
@@ -1567,6 +1610,7 @@ create table oracle_security_profile (
 );
 
 comment on table oracle_security_profile is 'Oracle profile resource limit compliance check results.';
+comment on column oracle_security_profile.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_security_profile.db_name is 'Name of the database.';
 comment on column oracle_security_profile.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_security_profile.profile is 'Name of the profile assigned to the account.';
@@ -1618,6 +1662,7 @@ comment on column oracle_security_scoring.date_value is 'Timestamp at which this
 -- oracle_security_tablespace
 -- ============================================================
 create table oracle_security_tablespace (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    tablespace_name  varchar2(100 char) not null,
@@ -1628,6 +1673,7 @@ create table oracle_security_tablespace (
 );
 
 comment on table oracle_security_tablespace is 'Oracle tablespace encryption compliance check results.';
+comment on column oracle_security_tablespace.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_security_tablespace.db_name is 'Name of the database.';
 comment on column oracle_security_tablespace.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_security_tablespace.tablespace_name is 'Name of the tablespace.';
@@ -1641,6 +1687,7 @@ comment on column oracle_security_tablespace.date_value is 'Timestamp at which t
 -- SYS.USER$MIG : residus de migration avec hash legacy 10G (DES).
 -- ============================================================
 create table oracle_sec_usermig_tbl_exist (
+   collect_id       varchar2(16),
    db_name    varchar2(50 char) not null,
    pdb_name   varchar2(50 char) not null,
    owner      varchar2(30 char) not null,
@@ -1648,6 +1695,7 @@ create table oracle_sec_usermig_tbl_exist (
 );
 
 comment on table oracle_sec_usermig_tbl_exist is 'Detection of the legacy SYS.USER$MIG table, a leftover of pre-11g password hash migration containing weak DES hashes.';
+comment on column oracle_sec_usermig_tbl_exist.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_usermig_tbl_exist.db_name is 'Name of the database.';
 comment on column oracle_sec_usermig_tbl_exist.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_usermig_tbl_exist.owner is 'Owner (schema) of the object.';
@@ -1657,6 +1705,7 @@ comment on column oracle_sec_usermig_tbl_exist.table_name is 'Name of the table.
 -- oracle_services
 -- ============================================================
 create table oracle_services (
+   collect_id       varchar2(16),
    hostname      varchar2(100 char) not null,
    instance_name varchar2(50 char) not null,
    pdb_name      varchar2(50 char) not null,
@@ -1664,6 +1713,7 @@ create table oracle_services (
 );
 
 comment on table oracle_services is 'Inventory of Oracle database services per PDB.';
+comment on column oracle_services.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_services.hostname is 'Host name of the database server or instance.';
 comment on column oracle_services.instance_name is 'Name of the database instance.';
 comment on column oracle_services.pdb_name is 'Name of the Oracle pluggable database (PDB).';
@@ -1673,6 +1723,7 @@ comment on column oracle_services.service_name is 'Name of the Oracle service.';
 -- oracle_users
 -- ============================================================
 create table oracle_users (
+   collect_id       varchar2(16),
    hostname       varchar2(100 char) not null,
    instance_name  varchar2(50 char) not null,
    pdb_name       varchar2(50 char) not null,
@@ -1682,6 +1733,7 @@ create table oracle_users (
 );
 
 comment on table oracle_users is 'Inventory of Oracle database users and their account status.';
+comment on column oracle_users.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_users.hostname is 'Host name of the database server or instance.';
 comment on column oracle_users.instance_name is 'Name of the database instance.';
 comment on column oracle_users.pdb_name is 'Name of the Oracle pluggable database (PDB).';

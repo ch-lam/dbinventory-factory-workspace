@@ -18,6 +18,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIST_DIR="${SCRIPT_DIR}/../collect"
 LIST_FILE="${SCRIPT_DIR}/../collect/oracle_database_lists.lst"
 
+# Identifiant de la collecte, au même format que côté MSSQL
+# (get_info_mssql_common.sh). Il porte la date de collecte : c'est lui qui permet
+# de dater la donnée derrière un score, et donc de voir vieillir un score adossé
+# à une collecte ancienne. finalize_lst le préfixe à chaque ligne produite.
+collect_id="COLL_ID_$(date +%Y%m%d)"
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 log()     { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 err()     { log "ERROR: $*" >&2; }
@@ -61,7 +67,17 @@ EXIT;
 EOF
 }
 
-# Trie, déduplique, filtre les artefacts sqlplus, supprime les lignes vides.
+# Trie, déduplique, filtre les artefacts sqlplus, supprime les lignes vides,
+# puis préfixe l'identifiant de collecte.
+#
+# Le préfixe, et non le suffixe : le chargement SQLcl est positionnel sans
+# en-tête, et la plupart de ces tables se terminent par compliance_score et
+# date_value, qui ne sont PAS fournies par le CSV (elles ont un default). Un
+# champ ajouté en fin de ligne atterrirait donc dans date_value. En tête, il
+# occupe la première colonne et tout le reste suit, exactement comme côté MSSQL.
+#
+# Les lignes vides sont déjà écartées plus haut, donc aucun préfixe orphelin.
+#
 # Usage : finalize_lst src.tmp dst.lst
 finalize_lst() {
     local src="$1" dst="$2"
@@ -73,6 +89,7 @@ finalize_lst() {
         | grep -Ev '^\s+' \
         | grep -Eiv '\b(SELECT|FROM|WHERE|UNION|GROUP|ORDER|HAVING|JOIN)\b|\|\|' \
         | sed 's/""//g' \
+        | sed "s/^/\"${collect_id}\",/" \
         > "${dst}" || true
     rm -f "${src}"
 }

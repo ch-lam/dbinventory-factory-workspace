@@ -5202,4 +5202,34 @@ begin
 end;
 /
 
+
+-- ============================================================
+-- collect_id sur les tables Oracle
+-- ------------------------------------------------------------
+-- Pose en un seul endroit plutot que dans chaque insert : la valeur n'a d'autre
+-- role que de dater la donnee, et la lire d'un bloc rend le scenario evident.
+--
+-- Deux dates differentes a dessein, pour exercer la regle du maillon faible de
+-- v_entity_collect_date : l'inventaire est plus ancien que la securite, donc la
+-- date retenue par instance doit etre celle de l'inventaire, la plus ancienne.
+-- Cote MSSQL le jeu d'essai porte COLL_ID_20260717, encore plus ancien : les
+-- deux plateformes doivent donc afficher des ages nettement differents, ce qui
+-- est exactement le signal que ces colonnes servent a rendre visible.
+-- ============================================================
+update oracle_hosts     set collect_id = 'COLL_ID_20260801';
+update oracle_databases set collect_id = 'COLL_ID_20260801';
+
+update oracle_security_parameter     set collect_id = 'COLL_ID_20260805';
+update oracle_security_profile       set collect_id = 'COLL_ID_20260805';
+update oracle_sec_default_profile    set collect_id = 'COLL_ID_20260805';
+update oracle_security_tablespace    set collect_id = 'COLL_ID_20260805';
+update oracle_security_audit_enable  set collect_id = 'COLL_ID_20260805';
+update oracle_sec_admin_high_privs   set collect_id = 'COLL_ID_20260805';
+update oracle_sec_network_encryption set collect_id = 'COLL_ID_20260805';
+update oracle_sec_high_sys_privs     set collect_id = 'COLL_ID_20260805';
+update oracle_sec_high_role_privs    set collect_id = 'COLL_ID_20260805';
+update oracle_sec_high_tab_privs     set collect_id = 'COLL_ID_20260805';
+update oracle_sec_default_user_pwd   set collect_id = 'COLL_ID_20260805';
+update oracle_sec_usermig_tbl_exist  set collect_id = 'COLL_ID_20260805';
+
 commit;

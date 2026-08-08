@@ -85,7 +85,12 @@ create or replace package pkg_dbinv_exception as
       p_next_review  date default null
    );
 
-   -- Attaches evidence. Fingerprints the content; raises if it cannot.
+   -- SHA-256 of an attachment. Public because the ref_exception_document trigger
+   -- calls it: that trigger, not this package, is the enforcement point, so the
+   -- fingerprint is computed for every writer -- the APEX form region included.
+   function fingerprint ( p_content blob ) return varchar2;
+
+   -- Attaches evidence. Fingerprint, size and journal are applied by the trigger.
    function add_document (
       p_exception_id number,
       p_file_name    varchar2,
@@ -96,14 +101,28 @@ create or replace package pkg_dbinv_exception as
 
    procedure remove_document ( p_document_id number, p_reason varchar2 default null );
 
+   -- Read by the journal trigger to label a withdrawal. NULL when a row is
+   -- deleted outside remove_document, which the journal then records as a bare
+   -- 'removed' rather than losing the event.
+   function removal_reason return varchar2;
+
 end pkg_dbinv_exception;
 /
 
 create or replace package body pkg_dbinv_exception as
 
+   -- Set for the duration of a remove_document call, read by the journal trigger.
+   g_remove_reason varchar2(1000 char);
+
+
    -- ---------------------------------------------------------------------
    -- Internal helpers
    -- ---------------------------------------------------------------------
+
+   function removal_reason return varchar2 is
+   begin
+      return g_remove_reason;
+   end removal_reason;
 
    procedure journal (
       p_exception_id number,
@@ -141,10 +160,9 @@ create or replace package body pkg_dbinv_exception as
    end require_status;
 
 
-   -- SHA-256 of an attachment. DBMS_CRYPTO is reached through dynamic SQL so
-   -- this package still compiles where the grant is missing: the failure then
-   -- surfaces at upload time with an actionable message, instead of leaving the
-   -- whole API uninstallable.
+   -- DBMS_CRYPTO is reached through dynamic SQL so this package still compiles
+   -- where the grant is missing: the failure then surfaces at upload time with an
+   -- actionable message, instead of leaving the whole API uninstallable.
    function fingerprint ( p_content blob ) return varchar2 is
       l_hash raw(32);
    begin
@@ -363,48 +381,81 @@ create or replace package body pkg_dbinv_exception as
       p_mime_type    varchar2 default null,
       p_doc_kind     varchar2 default 'OTHER'
    ) return number is
-      l_id       ref_exception_document.document_id%type;
-      l_checksum varchar2(64 char);
+      l_id ref_exception_document.document_id%type;
    begin
-      if p_content is null or dbms_lob.getlength(p_content) = 0 then
-         raise_application_error(-20025, 'Empty attachment refused.');
-      end if;
-
-      -- Fingerprint first: if it fails, nothing is stored.
-      l_checksum := fingerprint(p_content);
-
+      -- Deliberately a plain insert: size, fingerprint and journalling are applied
+      -- by the trigger below, so a row written by the APEX form region carries the
+      -- exact same guarantees as one written here.
       insert into ref_exception_document (
-         exception_id, doc_kind, file_name, mime_type, file_size, content, checksum_sha256 )
+         exception_id, doc_kind, file_name, mime_type, content )
       values (
-         p_exception_id, p_doc_kind, p_file_name, p_mime_type,
-         dbms_lob.getlength(p_content), p_content, l_checksum )
+         p_exception_id, p_doc_kind, p_file_name, p_mime_type, p_content )
       returning document_id into l_id;
 
-      journal(p_exception_id, 'DOCUMENT_ADDED', p_file_name, null, l_checksum);
       return l_id;
    end add_document;
 
 
    procedure remove_document ( p_document_id number, p_reason varchar2 default null ) is
-      l_exception_id ref_exception_document.exception_id%type;
-      l_file_name    ref_exception_document.file_name%type;
-      l_checksum     ref_exception_document.checksum_sha256%type;
    begin
-      select exception_id, file_name, checksum_sha256
-        into l_exception_id, l_file_name, l_checksum
-        from ref_exception_document
-       where document_id = p_document_id;
-
+      -- The withdrawal reason is stashed for the trigger, which does the
+      -- journalling: it is the only place that sees every delete, wherever it
+      -- comes from.
+      g_remove_reason := p_reason;
       delete from ref_exception_document where document_id = p_document_id;
+      g_remove_reason := null;
 
-      -- The file goes, the trace of it having existed does not: the journal keeps
-      -- its name and fingerprint, so an auditor can still see what was withdrawn.
-      journal(l_exception_id, 'DOCUMENT_REMOVED', nvl(p_reason, 'removed') || ' - ' || l_file_name,
-              l_checksum, null);
-   exception
-      when no_data_found then
+      if sql%rowcount = 0 then
          raise_application_error(-20026, 'Attachment ' || p_document_id || ' does not exist.');
+      end if;
    end remove_document;
 
 end pkg_dbinv_exception;
+/
+
+
+-- ============================================================================
+-- Enforcement on ref_exception_document
+-- ----------------------------------------------------------------------------
+-- The fingerprint and the journal live here rather than in add_document because
+-- the derogation screen cannot call the API to upload: APEXlang only sanctions a
+-- BLOB upload as a `fileUpload` render role inside a `form` region bound to the
+-- table (component-policies REGION_RULE_014/015), which means APEX writes the row
+-- with its own DML. Putting the guarantees in the trigger makes them hold for
+-- every writer -- the screen, this package, a script -- instead of only for
+-- callers who remembered to go through the API.
+-- ============================================================================
+
+create or replace trigger ref_exc_doc_before_write
+   before insert on ref_exception_document
+   for each row
+begin
+   :new.file_size := dbms_lob.getlength(:new.content);
+
+   if :new.file_size is null or :new.file_size = 0 then
+      raise_application_error(-20025, 'Empty attachment refused.');
+   end if;
+
+   -- Never trust a checksum supplied by the caller: recompute it. An attachment
+   -- whose fingerprint could be chosen by whoever uploads it proves nothing.
+   :new.checksum_sha256 := pkg_dbinv_exception.fingerprint(:new.content);
+end;
+/
+
+create or replace trigger ref_exc_doc_journal
+   after insert or delete on ref_exception_document
+   for each row
+begin
+   if inserting then
+      insert into ref_exception_event ( exception_id, event_type, note, new_value )
+         values ( :new.exception_id, 'DOCUMENT_ADDED', :new.file_name, :new.checksum_sha256 );
+   else
+      -- The file goes, the trace of it having existed does not: the journal keeps
+      -- its name and fingerprint, so an auditor still sees what was withdrawn.
+      insert into ref_exception_event ( exception_id, event_type, note, old_value )
+         values ( :old.exception_id, 'DOCUMENT_REMOVED',
+                  nvl(pkg_dbinv_exception.removal_reason, 'removed') || ' - ' || :old.file_name,
+                  :old.checksum_sha256 );
+   end if;
+end;
 /

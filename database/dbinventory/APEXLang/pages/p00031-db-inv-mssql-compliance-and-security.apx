@@ -36,7 +36,12 @@ page 31 (
                             when f.is_norm_exception = 1 then 'Accepted by the norm'
                             else 'Open'
                        end exception_status,
-                       e.justification
+                       e.justification,
+                       -- Appended at the end on purpose: the columns above are
+                       -- addressed by reportColumnQueryId, so inserting in the
+                       -- middle would renumber every one of them.
+                       r.rule_code,
+                       f.entity_id
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
@@ -230,6 +235,49 @@ page 31 (
             }
             layout {
                 sequence: 30
+            }
+        )
+
+        column RULE_CODE (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Derogation
+            }
+            layout {
+                sequence: 200
+            }
+            link {
+                target: {
+                    page: 71
+                    items: {
+                        P71_RULE_CODE: #RULE_CODE#
+                        P71_ENTITY_TYPE: #SCOPE#
+                        P71_ENTITY_ID: #ENTITY_ID#
+                        P71_ITEM_KEY: #ITEM_KEY#
+                        P71_OBSERVED_VALUE: #OBSERVED_VALUE#
+                    }
+                    clearCache: 71
+                }
+                linkText: Grant
+            }
+            sorting {
+                sortable: false
+            }
+            comments {
+                comments: Opens the derogation dialog already scoped to this finding, so the rule code and the entity are never typed by hand.
+            }
+        )
+
+        column ENTITY_ID (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            heading {
+                heading: Entity id
+            }
+            layout {
+                sequence: 210
             }
         )
 

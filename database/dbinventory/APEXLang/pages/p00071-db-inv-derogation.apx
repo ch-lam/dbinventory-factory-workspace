@@ -1,0 +1,1030 @@
+page 71 (
+    name: DB Inv. - Derogation
+    alias: DB-INV-DEROGATION
+    title: DB Inv. - Derogation
+    appearance {
+        pageMode: modalDialog
+        dialogTemplate: @/modal-dialog
+        templateOptions: #DEFAULT#
+    }
+    dialog {
+        resizable: true
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+        warnOnUnsavedChanges: false
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region scope (
+        name: Scope
+        title: Scope
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: contentBody
+            startNewRow: true
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region decision (
+        name: Decision
+        title: Decision
+        type: staticContent
+        layout {
+            sequence: 20
+            slot: contentBody
+            startNewRow: true
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region documents (
+        name: Supporting Documents
+        title: Supporting Documents
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d.document_id,
+                       d.doc_kind,
+                       d.file_name,
+                       d.file_size,
+                       d.checksum_sha256,
+                       d.uploaded_by,
+                       d.uploaded_date
+                  from ref_exception_document d
+                 where d.exception_id = :P71_EXCEPTION_ID
+                 order by d.uploaded_date
+                ```
+        }
+        layout {
+            sequence: 30
+            slot: contentBody
+            startNewRow: true
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: No document attached yet
+        }
+
+        column DOCUMENT_ID (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Id
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column DOC_KIND (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Type
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column FILE_NAME (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: File
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column FILE_SIZE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Bytes
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column CHECKSUM_SHA256 (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: SHA-256
+            }
+            layout {
+                sequence: 50
+            }
+            comments {
+                comments: Shown in full on purpose: this is what an auditor compares against the file handed over.
+            }
+        )
+
+        column UPLOADED_BY (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Uploaded by
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column UPLOADED_DATE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Uploaded on
+            }
+            layout {
+                sequence: 70
+            }
+        )
+    )
+
+    region history (
+        name: History
+        title: History
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select v.event_date,
+                       v.event_type,
+                       v.event_by,
+                       v.note,
+                       v.old_value,
+                       v.new_value
+                  from ref_exception_event v
+                 where v.exception_id = :P71_EXCEPTION_ID
+                 order by v.event_id desc
+                ```
+        }
+        layout {
+            sequence: 40
+            slot: contentBody
+            startNewRow: true
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: No event recorded yet
+        }
+
+        column EVENT_DATE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: When
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column EVENT_TYPE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Event
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column EVENT_BY (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: By
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column NOTE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Note
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column OLD_VALUE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Before
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column NEW_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: After
+            }
+            layout {
+                sequence: 60
+            }
+        )
+    )
+
+    pageItem P71_EXCEPTION_ID (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @scope
+            slot: regionBody
+        }
+    )
+
+    pageItem P71_RULE_CODE (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @scope
+            slot: regionBody
+        }
+    )
+
+    pageItem P71_ENTITY_ID (
+        type: hidden
+        layout {
+            sequence: 30
+            region: @scope
+            slot: regionBody
+        }
+    )
+
+    pageItem P71_RULE_TITLE (
+        type: displayOnly
+        label {
+            label: Rule
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_ENTITY_TYPE (
+        type: selectList
+        label {
+            label: Scope level
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @exception-entity-type
+            displayNullValue: false
+        }
+        layout {
+            sequence: 50
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: The derogation cascades downwards: granted on a host it covers its instances, their databases and their storage units.
+        }
+    )
+
+    pageItem P71_SCOPE_NAME (
+        type: displayOnly
+        label {
+            label: Entity
+            alignment: right
+        }
+        layout {
+            sequence: 60
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_ITEM_KEY (
+        type: textField
+        label {
+            label: Item
+            alignment: right
+        }
+        layout {
+            sequence: 70
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: The item inside the entity the derogation covers, or * for every item the rule evaluates.
+        }
+    )
+
+    pageItem P71_OBSERVED_VALUE (
+        type: textField
+        label {
+            label: Observed value
+            alignment: right
+        }
+        layout {
+            sequence: 80
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Pins the derogation to the value that was accepted. Leave * to cover any value; a setting drifting to another value then keeps its cover.
+        }
+    )
+
+    pageItem P71_STATUS (
+        type: displayOnly
+        label {
+            label: Status
+            alignment: right
+        }
+        layout {
+            sequence: 10
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_DEVIATION_DATE (
+        type: datePicker
+        label {
+            label: Deviation observed on
+            alignment: right
+        }
+        layout {
+            sequence: 20
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: The day the deviation itself was observed and accepted, which is not the day this record was captured.
+        }
+    )
+
+    pageItem P71_START_DATE (
+        type: datePicker
+        label {
+            label: Applies from
+            alignment: right
+        }
+        layout {
+            sequence: 30
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_END_DATE (
+        type: datePicker
+        label {
+            label: Applies until
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Leave empty for an open-ended derogation. Pushing this date back after approval sends the derogation back for approval.
+        }
+    )
+
+    pageItem P71_REVIEW_DUE_DATE (
+        type: datePicker
+        label {
+            label: Review due
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Defaults to one year after the derogation takes effect.
+        }
+    )
+
+    pageItem P71_JUSTIFICATION (
+        type: textarea
+        label {
+            label: Justification
+            alignment: right
+        }
+        layout {
+            sequence: 60
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Why the deviation is accepted. This is what an auditor reads first.
+        }
+    )
+
+    pageItem P71_DOCUMENT_REF (
+        type: textField
+        label {
+            label: External reference
+            alignment: right
+        }
+        layout {
+            sequence: 70
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Ticket, mail or EDM reference of the formalising document. Distinct from the files attached below.
+        }
+    )
+
+    pageItem P71_CREATED_BY (
+        type: displayOnly
+        label {
+            label: Requested by
+            alignment: right
+        }
+        layout {
+            sequence: 80
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_APPROVER (
+        type: textField
+        label {
+            label: Approver
+            alignment: right
+        }
+        layout {
+            sequence: 90
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Who signs the derogation off, typically the SSI or operations manager. It cannot be the person who requested it.
+        }
+    )
+
+    pageItem P71_NOTE (
+        type: textarea
+        label {
+            label: Note
+            alignment: right
+        }
+        layout {
+            sequence: 100
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Attached to the transition in the audit trail: why it is submitted, approved, rejected, revoked or maintained.
+        }
+    )
+
+    pageItem P71_DOC_KIND (
+        type: selectList
+        label {
+            label: Document type
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @exception-doc-kind
+            displayNullValue: false
+        }
+        layout {
+            sequence: 10
+            region: @documents
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_UPLOAD (
+        type: fileUpload
+        label {
+            label: Attach a file
+        }
+        layout {
+            sequence: 20
+            region: @documents
+            slot: regionBody
+        }
+        appearance {
+            template: @/optional-floating
+        }
+    )
+
+    button cancel (
+        buttonName: CANCEL
+        label: Cancel
+        layout {
+            sequence: 10
+            region: @decision
+            slot: close
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: definedByDynamicAction
+        }
+    )
+
+    button save (
+        buttonName: SAVE
+        label: Save
+        layout {
+            sequence: 20
+            region: @decision
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button submit-for-approval (
+        buttonName: SUBMIT_FOR_APPROVAL
+        label: Submit
+        layout {
+            sequence: 30
+            region: @decision
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button approve (
+        buttonName: APPROVE
+        label: Approve
+        layout {
+            sequence: 40
+            region: @decision
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button reject (
+        buttonName: REJECT
+        label: Reject
+        layout {
+            sequence: 50
+            region: @decision
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button revoke (
+        buttonName: REVOKE
+        label: Revoke
+        layout {
+            sequence: 60
+            region: @decision
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button record-review (
+        buttonName: RECORD_REVIEW
+        label: Record Review
+        layout {
+            sequence: 70
+            region: @decision
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button attach (
+        buttonName: ATTACH
+        label: Attach
+        layout {
+            sequence: 30
+            region: @documents
+            slot: regionBody
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    dynamicAction cancel-dialog (
+        name: Cancel Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: click
+            selectionType: button
+            button: @cancel
+        }
+
+        action native-cancel-dialog (
+            action: cancelDialog
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    process load-derogation (
+        name: Load Derogation
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P71_EXCEPTION_ID is not null then
+                   select e.status, e.rule_code, e.entity_type, e.entity_id, e.item_key,
+                          e.observed_value, e.deviation_date, e.start_date, e.end_date,
+                          e.review_due_date, e.justification, e.document_ref, e.created_by,
+                          v.rule_title, v.scope_name
+                     into :P71_STATUS, :P71_RULE_CODE, :P71_ENTITY_TYPE, :P71_ENTITY_ID, :P71_ITEM_KEY,
+                          :P71_OBSERVED_VALUE, :P71_DEVIATION_DATE, :P71_START_DATE, :P71_END_DATE,
+                          :P71_REVIEW_DUE_DATE, :P71_JUSTIFICATION, :P71_DOCUMENT_REF, :P71_CREATED_BY,
+                          :P71_RULE_TITLE, :P71_SCOPE_NAME
+                     from ref_exception e
+                     join v_exception_review v on v.exception_id = e.exception_id
+                    where e.exception_id = :P71_EXCEPTION_ID;
+                else
+                   -- New derogation, opened from a finding: the scope arrives in the
+                   -- URL, so the technical keys are never typed by hand.
+                   :P71_STATUS := 'DRAFT';
+                   :P71_ITEM_KEY := nvl(:P71_ITEM_KEY, '*');
+                   :P71_OBSERVED_VALUE := nvl(:P71_OBSERVED_VALUE, '*');
+                   :P71_DEVIATION_DATE := nvl(:P71_DEVIATION_DATE, trunc(sysdate));
+                   :P71_START_DATE := nvl(:P71_START_DATE, trunc(sysdate));
+                   :P71_CREATED_BY := :APP_USER;
+                   if :P71_RULE_CODE is not null then
+                      select r.title into :P71_RULE_TITLE
+                        from ref_control_rule r where r.rule_code = :P71_RULE_CODE;
+                   end if;
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: beforeHeader
+        }
+    )
+
+    process save-derogation (
+        name: Save Derogation
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P71_EXCEPTION_ID is null then
+                   :P71_EXCEPTION_ID := pkg_dbinv_exception.create_draft(
+                      p_rule_code      => :P71_RULE_CODE,
+                      p_entity_type    => :P71_ENTITY_TYPE,
+                      p_entity_id      => :P71_ENTITY_ID,
+                      p_justification  => :P71_JUSTIFICATION,
+                      p_item_key       => :P71_ITEM_KEY,
+                      p_observed_value => :P71_OBSERVED_VALUE,
+                      p_start_date     => :P71_START_DATE,
+                      p_end_date       => :P71_END_DATE,
+                      p_deviation_date => :P71_DEVIATION_DATE,
+                      p_document_ref   => :P71_DOCUMENT_REF,
+                      p_review_due     => :P71_REVIEW_DUE_DATE );
+                else
+                   pkg_dbinv_exception.amend(
+                      p_exception_id   => :P71_EXCEPTION_ID,
+                      p_justification  => :P71_JUSTIFICATION,
+                      p_item_key       => :P71_ITEM_KEY,
+                      p_observed_value => :P71_OBSERVED_VALUE,
+                      p_start_date     => :P71_START_DATE,
+                      p_end_date       => :P71_END_DATE,
+                      p_document_ref   => :P71_DOCUMENT_REF,
+                      p_note           => :P71_NOTE );
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
+    )
+
+    process attach-document (
+        name: Attach Document
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                -- The instr form covers a multi-file upload too, where APEX puts a
+                -- colon-separated list of names in the item.
+                for f in ( select filename, mime_type, blob_content
+                             from apex_application_temp_files
+                            where instr(':' || :P71_UPLOAD || ':', ':' || name || ':') > 0 ) loop
+                   declare
+                      l_id number;
+                   begin
+                      l_id := pkg_dbinv_exception.add_document(
+                                 p_exception_id => :P71_EXCEPTION_ID,
+                                 p_file_name    => f.filename,
+                                 p_content      => f.blob_content,
+                                 p_mime_type    => f.mime_type,
+                                 p_doc_kind     => nvl(:P71_DOC_KIND, 'OTHER') );
+                   end;
+                end loop;
+                delete from apex_application_temp_files
+                 where instr(':' || :P71_UPLOAD || ':', ':' || name || ':') > 0;
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        serverSideCondition {
+            whenButtonPressed: @attach
+        }
+    )
+
+    process submit-derogation (
+        name: Submit Derogation
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_exception.submit( :P71_EXCEPTION_ID, :P71_NOTE );
+                ```
+        }
+        execution {
+            sequence: 30
+        }
+        serverSideCondition {
+            whenButtonPressed: @submit-for-approval
+        }
+    )
+
+    process approve-derogation (
+        name: Approve Derogation
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_exception.approve(
+                   p_exception_id => :P71_EXCEPTION_ID,
+                   p_approver     => nvl(:P71_APPROVER, :APP_USER),
+                   p_note         => :P71_NOTE );
+                ```
+        }
+        execution {
+            sequence: 40
+        }
+        serverSideCondition {
+            whenButtonPressed: @approve
+        }
+    )
+
+    process reject-derogation (
+        name: Reject Derogation
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_exception.reject( :P71_EXCEPTION_ID, :P71_NOTE );
+                ```
+        }
+        execution {
+            sequence: 50
+        }
+        serverSideCondition {
+            whenButtonPressed: @reject
+        }
+    )
+
+    process revoke-derogation (
+        name: Revoke Derogation
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_exception.revoke_exception( :P71_EXCEPTION_ID, :P71_NOTE );
+                ```
+        }
+        execution {
+            sequence: 60
+        }
+        serverSideCondition {
+            whenButtonPressed: @revoke
+        }
+    )
+
+    process record-review-process (
+        name: Record Review
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_exception.record_review(
+                   p_exception_id => :P71_EXCEPTION_ID,
+                   p_note         => :P71_NOTE,
+                   p_next_review  => :P71_REVIEW_DUE_DATE );
+                ```
+        }
+        execution {
+            sequence: 70
+        }
+        serverSideCondition {
+            whenButtonPressed: @record-review
+        }
+    )
+
+    process close-derogation-dialog (
+        name: Close Derogation Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
+    )
+
+)

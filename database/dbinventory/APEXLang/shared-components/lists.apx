@@ -240,6 +240,21 @@ list navigation-menu (
         }
     )
 
+    entry derogations (
+        label: Derogations
+        icon {
+            imageIconCssClasses: fa-file-certificate
+        }
+        layout {
+            sequence: 95
+        }
+        link {
+            target: {
+                page: 70
+            }
+        }
+    )
+
     entry capacity-planning (
         label: Capacity Planning
         icon {

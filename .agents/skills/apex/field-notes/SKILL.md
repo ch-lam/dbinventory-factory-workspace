@@ -37,9 +37,11 @@ Four rules that would have saved most of those seven passes.
 3. **Never guess the APEX workspace name.** Read it from `apex_applications`.
    See `references/database-and-workspace.md`.
 
-4. **A `fail` verdict does not mean your code is wrong.** Read `problem_count` and
-   the transcript separately from the aggregate status. See
-   `references/validation-chain.md`.
+4. **A `fail` verdict does not mean your code is wrong**, and a `pass` does not
+   mean the page works. The chain checks that the `.apx` compiles; it never opens
+   the page. See `references/validation-chain.md`, and
+   `references/traps-register.md` for when a manual post-import check is
+   mandatory.
 
 ## Routing
 
@@ -50,6 +52,7 @@ Four rules that would have saved most of those seven passes.
 | Running the validation chain, or reading a verdict | `references/validation-chain.md` |
 | Writing or fixing `.apx` — regions, items, links, LOVs, modals | `references/apexlang-syntax.md` |
 | Facing a specific error message | `references/troubleshooting.md` |
+| Upgrading SQLcl, APEX, the extension or the APEXlang package | `references/traps-register.md` — re-test the entries, delete what is fixed |
 
 ## Scope
 

@@ -30,6 +30,13 @@ Symptom → cause → fix. Every entry was hit for real.
 | Report headings suddenly show the wrong data after adding a column | `reportColumnQueryId` is positional; inserting mid-`select` renumbers everything after it. | Append new columns at the end of the `select`. |
 | A page item type is rejected and compiler truth cannot confirm it | `pageItem.type` uses `lovType=PLUGINS`; values come from the APEX instance, not the metadata. | Check `templates/items/<family>/` for the sanctioned shape, or the instance. Do not invent. |
 
+## At runtime, after a clean validation
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `<ITEM> has to have a valid BLOB column as source` / `WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE` at page render | A `fileUpload` item inherits `storage_type = DB_COLUMN` and has no source. Validation does not catch it. | **Not fixable in the `.apx`** — APEXlang has no plugin-attribute group for page items. Set `Storage Type` → `Table APEX_APPLICATION_TEMP_FILES` in the builder, **after every import**. |
+| A page validates clean and still fails at render | The chain checks the `.apx` compiles, not that the page runs. An omitted property took a default that is invalid in context. | Read `attributes` from `apex_application_page_items` on the deployed app to see what the item actually got, then set it explicitly in source. |
+
 ## Reading the report
 
 | Symptom | Cause | Fix |

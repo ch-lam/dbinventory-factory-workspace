@@ -46,9 +46,9 @@ Validation successful.
 `Validation successful.` is APEX validating your application. It can appear while
 the aggregate verdict says `fail` — see the known failure below.
 
-## Known failure: `build_root_unresolved` blocks a passing app
+## `apex_root_missing` is a red herring
 
-Symptom, all at once:
+You may see this, all at once:
 
 ```
 problem_count: 0
@@ -59,29 +59,54 @@ import_eligibility: blocked
 blocking_reasons: ["Live APEX validation did not pass or did not produce pass evidence."]
 ```
 
-Cause: two capability probes disagree within one run. The standalone `preflight`
-reports `capability_state: path_sqlcl_apex_validate_import` with
-`apex_validate_available: true`. The probe *inside* the roundtrip reports
-`apex_validate_available: false`, `capability_state: build_root_unresolved`, note
-`apex_root_missing` — and the run is marked failed on that basis, before the
-validation that then succeeds.
+The report blames `apex_root_missing`: two capability probes disagree in one run,
+the standalone `preflight` reporting `capability_state:
+path_sqlcl_apex_validate_import` while the probe inside the roundtrip reports
+`build_root_unresolved`.
 
-`resolved_apex_build_root` stays empty. Passing `--apex-root <SQLcl home>` does
-**not** satisfy it: the tool wants an unpacked APEX distribution directory, not
-the SQLcl installation.
+**Do not chase the build root.** Two runs of the same source on the same machine:
 
-**Status: unresolved.** No tested fix. Options, best first:
+| | fail | pass |
+| --- | --- | --- |
+| `execution_mode_used` | `path` | `path` |
+| `resolved_apex_build_root` | `""` | `""` |
+| `live_check_status` | fail | **pass** |
 
-1. Obtain an APEX distribution matching the installed version and pass it as
-   `--apex-root`. Untested here, but it is the gap the tool names.
-2. Import the pages manually from the APEX builder. The code is validated by the
-   database's own APEX; you lose the roundtrip's traceability.
-3. Disabling `warnings_as_errors` does **not** help — the problem count is already
-   zero — and it costs you real signal (see below).
+The build root is still empty on the passing run, and `--apex-root <SQLcl home>`
+is not accepted anyway. So the missing root is not what blocks.
 
-Do not force the import past the gate. It exists to stop an application being
-changed on incomplete evidence, and it earned its keep: it caught four syntax
-errors that would otherwise have shipped.
+What changed between the two: the **target application had since been deployed and
+contained the pages**. That is the observation. **The mechanism is not
+established** — do not build a procedure on it. If you hit this, the useful move is
+to check whether the target already holds the artefacts before spending time on
+`--apex-root`.
+
+Do not force the import past the gate whatever the cause. It exists to stop an
+application being changed on incomplete evidence, and it earned its keep: it caught
+six real errors that would otherwise have shipped.
+
+## Validation does not mean the page works
+
+The most expensive lesson of all, and the one that limits everything above.
+
+A `fileUpload` item passed **five** validation passes — `problem_count: 0`,
+compiler-truth audit green, APEX answering `Validation successful.` — and then
+died on first render with
+`WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE`. Its `settings` block was absent, so
+it silently inherited a default storage type that is invalid without a source.
+
+The chain checks that the `.apx` **compiles**. It does not exercise the page. An
+omitted property whose default is wrong in context passes every gate.
+
+Practical consequences:
+
+- Treat a clean validation as *necessary, not sufficient*. The page still has to
+  be opened.
+- Be suspicious of properties you left out because you could not confirm their
+  values. Absence is a decision, and its default may not be the one you want.
+- A rendering error names its component (`component.name: P71_UPLOAD`) and an
+  `apex_error_code`. Both are precise; take them to the deployed metadata rather
+  than back to the validator, which already said yes.
 
 ## Keep `warnings_as_errors: true`
 

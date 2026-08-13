@@ -651,6 +651,24 @@ page 71 (
         appearance {
             template: @/optional-floating
         }
+        // KNOWN GAP -- this item needs its Storage Type set to
+        // "Table APEX_APPLICATION_TEMP_FILES" in the builder after every import.
+        //
+        // It cannot be expressed here. APEXlang 26.1.0+3102 has no property group
+        // for plugin attributes on a pageItem: the compiler exposes only advanced,
+        // appearance, comments, config, default, help, identification, label,
+        // layout, lov, security, source and validation. A `settings` block is
+        // rejected outright (`Invalid property: storageType`), even though
+        // templates/items/file-upload/file-upload._common.md still documents one --
+        // that template is stale against this compiler build.
+        //
+        // Left unset, the item inherits storage_type = DB_COLUMN, a BLOB column it
+        // has no source for, and the page dies at render with
+        // WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Validation does not catch it:
+        // the chain checks that this file compiles, not that the page runs.
+        help {
+            helpText: Licence, vendor manual, signed approval. Each file is fingerprinted with SHA-256 when attached, so it can later be proven to be the one that was filed.
+        }
     )
 
     button cancel (

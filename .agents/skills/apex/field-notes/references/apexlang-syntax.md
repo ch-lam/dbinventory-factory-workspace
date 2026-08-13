@@ -193,10 +193,51 @@ page item. Reading that rule as applying to page items leads to the wrong
 conclusion that uploads must go through a form region bound to the table. They do
 not.
 
-Its `settings.*` block (`storageType`, `allowMultipleFiles`, `fileTypes`,
-`maxFileSize`) comes from the plugin registry and is not resolvable from compiler
-metadata offline. The `minimal` template omits `settings` entirely and is the safe
-starting point; add attributes once live validation can confirm them.
+**Its storage type cannot be set from the `.apx`, and that is a hard trap.**
+
+Left unset, the item inherits `storage_type = DB_COLUMN` — a BLOB column it has no
+source for — and the page dies at render with
+`WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE`.
+
+And it cannot be set: APEXlang (compiler build 26.1.0+3102) exposes **no property
+group for plugin attributes on a `pageItem`**. The groups are `advanced`,
+`appearance`, `comments`, `config`, `default`, `help`, `identification`, `label`,
+`layout`, `lov`, `security`, `source`, `validation` — no `settings`. Emitting one
+is rejected with `Invalid property: storageType`.
+
+`templates/items/file-upload/file-upload._common.md` documents a `settings` block
+with `storageType`, `allowMultipleFiles` and more. **That template is stale against
+this compiler build.** Do not trust it; the skill's own contract says compiler
+truth outranks templates and a conflicting template is defective.
+
+Consequence to plan for: **every import resets the item, and the storage type must
+be set again by hand in the builder** (`Storage Type` → `Table
+APEX_APPLICATION_TEMP_FILES`). Record it next to the item in the `.apx` as a
+comment so the next person knows why.
+
+Internal values are `DB_COLUMN` and `APEX_APPLICATION_TEMP_FILES`.
+
+### Reading the real attribute values from a deployed app
+
+When a plugin-sourced value cannot be resolved offline, the deployed application
+is the authority. The whole attribute payload sits in one JSON column:
+
+```sql
+select attributes
+  from apex_application_page_items
+ where application_id = :app and page_id = :page and item_name = :item;
+```
+
+which returns, for a file upload item:
+
+```json
+{"storage_type":"DB_COLUMN","display_download_link":"Y","content_disposition":"attachment",
+ "display_as":"INLINE","allow_copy_paste":"N"}
+```
+
+That is the fastest route to a value the metadata will not give you: build the
+component once in the builder, read `attributes`, then write it back into the
+`.apx`.
 
 ## Writing data: the modal + package pattern
 

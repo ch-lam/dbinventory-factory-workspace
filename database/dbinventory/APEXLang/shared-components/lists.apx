@@ -255,6 +255,24 @@ list navigation-menu (
         }
     )
 
+    entry about (
+        label: About
+        icon {
+            imageIconCssClasses: fa-info-circle
+        }
+        layout {
+            sequence: 10100
+        }
+        link {
+            target: {
+                page: 10002
+            }
+        }
+        security {
+            authorizationScheme: @administration-rights
+        }
+    )
+
     entry capacity-planning (
         label: Capacity Planning
         icon {

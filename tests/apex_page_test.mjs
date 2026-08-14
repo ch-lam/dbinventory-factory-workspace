@@ -85,7 +85,7 @@ if (!user || !password) {
 // out loud what it covers, and so a page can be excluded with a reason.
 const PAGES = argOf('pages')
   ? argOf('pages').split(',').map(s => s.trim()).filter(Boolean)
-  : ['1', '20', '30', '31', '40', '70', '71', '90'];
+  : ['1', '20', '30', '31', '40', '70', '71', '90', '10002'];
 
 // Modal pages cannot be opened by URL. APEX answers "Dialog page N cannot be
 // rendered successfully" whatever the page actually does, which reads as a broken
@@ -313,6 +313,15 @@ try {
           return '';
         })()`);
 
+      // "Page not found" means the page exists in source but was never imported.
+      // Reported apart from a rendering error on purpose: after every source
+      // change you would otherwise get failures that only mean "not deployed
+      // yet", and a test people learn to ignore protects nothing.
+      if (/Page "?\d+"? not found/i.test(text || '')) {
+        record(page, 'fail', 'not deployed in application ' + appId + ' - import it first');
+        continue;
+      }
+
       const hit = ERROR_PATTERNS.find(re => re.test(text || ''));
       if (hit) {
         // Report the most useful line, not merely the first match. APEX renders
@@ -341,8 +350,15 @@ try {
   console.log(`${report.length} page(s) attempted, ${failures} failure(s)`
             + (skipped ? `, ${skipped} skipped` : ''));
   if (failures > 0) {
-    console.log('\nA failing page here is a real rendering error: the page was opened');
-    console.log('as a user would. Check the detail above, then the builder.');
+    const notDeployed = report.filter(r => r.status === 'fail' && /not deployed/.test(r.detail || ''));
+    if (notDeployed.length) {
+      console.log(`\n${notDeployed.length} page(s) exist in source but not in the application:`);
+      console.log('import them, then run this again. That is a deployment gap, not a bug.');
+    }
+    if (failures > notDeployed.length) {
+      console.log('\nThe other failures are real rendering errors: the page was opened as a');
+      console.log('user would. Check the detail above, then the builder.');
+    }
   }
   if (skipped > 0) {
     console.log('\nA skipped page was never opened, so it is NOT known to work. Modal');

@@ -1,6 +1,21 @@
--- 
+--
 -- Generate initial data for the DB Inventory database.
 --
+
+-- ---------------------------------------------------------------------------
+-- Record this installation.
+--
+-- Deliberately an INSERT with no delete: ref_app_release is append-only, so a
+-- reinstall adds a line instead of erasing the previous ones. That history is
+-- what lets you see how two environments diverged, not merely that they did.
+--
+-- Bump SCHEMA_VERSION when the model changes, and say what it carries in the
+-- note. v_environment_identity reads the latest row, and the About page shows it.
+-- ---------------------------------------------------------------------------
+insert into ref_app_release ( version, note )
+   values ( '1.1.0', 'CIS alignment: Oracle security rules, rule provenance, scoring freshness, derogation lifecycle.' );
+commit;
+
 delete from environments cascade;
 insert into environments ( envt_short_code, environment ) values ( 'PRD', 'Production' );
 insert into environments ( envt_short_code, environment ) values ( 'UAT', 'UAT' );

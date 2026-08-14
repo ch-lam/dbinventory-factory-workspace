@@ -50,6 +50,28 @@ Both exit non-zero on failure, so they can gate a deployment script.
   today `P71_UPLOAD`, which must be set back to `APEX_APPLICATION_TEMP_FILES` in
   the builder every time.
 
+## First: are both tests looking at the same database?
+
+They are configured **independently** — one by `APEX_BASE_URL` in `.env`, the other
+by a SQLcl connection name — so nothing guarantees they target the same
+environment. Two environments look alike until one of them misleads you.
+
+Ask the application itself. The About page (10002) and the query below read the
+same view, so they cannot disagree:
+
+```sql
+select value from v_environment_identity where name = 'Service name';
+-- DBINVENTORY_DEV_ALL
+```
+
+Open the About page in the browser and compare. Same service name, same schema
+version, same deployment date means the two tests are comparable; anything else
+means their verdicts say nothing about each other.
+
+This is not hypothetical: an instance *named* `BJ1` was once mistaken for a
+different environment than one holding `instance_id = 1`, and the two were the
+same row. The view exists so nobody has to infer it again.
+
 ## Reading a failure
 
 `T_001` tells you *why* — a query that no longer parses, an item on a bad default.

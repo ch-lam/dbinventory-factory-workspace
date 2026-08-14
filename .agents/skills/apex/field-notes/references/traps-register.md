@@ -72,7 +72,32 @@ and Java. On Windows the Store stub masquerades as `python.exe`.
 Only the live route matters anyway; the skill treats local checks as syntax
 hygiene.
 
-## T6 — `apex_root_missing` is a red herring
+## T6 — Logging in over raw HTTP does not work
+
+Not a bug, a design consequence, but it costs an afternoon if you assume otherwise.
+APEX protects page submission with `pSalt`, a single-use `p_page_submission_id`
+and `protected` values, all assembled by JavaScript on the page.
+
+Three conventions were tried against a 26.1 login page, all returning the login
+page with no error message: legacy `p_t01`/`p_t02` with `p_arg_names`, direct item
+names (`P9999_USERNAME`), and modern `p_json` with the extracted salt.
+
+**Drive a real browser instead.** It runs the JavaScript, and stays correct across
+APEX upgrades rather than re-implementing a protocol that moves. Node's built-in
+`WebSocket` speaks the Chrome DevTools Protocol with no npm dependency — see
+`tests/apex_page_test.mjs`.
+
+### T6b — `f?p=APP:PAGE` with an empty session slot silently logs you out
+
+Once authenticated, navigating to `f?p=100:70` starts a **new, unauthenticated**
+session: the page bounces to the login screen. Read as a page failure, it looks
+exactly like a broken page.
+
+Carry the session explicitly: `f?p=APP:PAGE:SESSION`. The id is in `?session=` on
+a friendly URL, in the third position of an `f?p=` URL, or in
+`apex.env.APP_SESSION`.
+
+## T7 — `apex_root_missing` is a red herring
 
 Reported as the cause when live validation fails to produce pass evidence, but the
 same source passed later with the build root still empty. See

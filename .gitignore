@@ -1,2 +1,8 @@
 ResourceUnit/lists/*
 ResourceUnit_old
+
+# Local configuration and credentials. .env.example is the versioned template;
+# .env itself must never be committed.
+.env
+.env.*
+!.env.example

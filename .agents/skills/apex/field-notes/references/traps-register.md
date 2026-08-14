@@ -97,12 +97,20 @@ Carry the session explicitly: `f?p=APP:PAGE:SESSION`. The id is in `?session=` o
 a friendly URL, in the third position of an `f?p=` URL, or in
 `apex.env.APP_SESSION`.
 
-## T7 — `apex_root_missing` is a red herring
+## T7 — `apex_root_missing` is a red herring, and it is intermittent
 
 Reported as the cause when live validation fails to produce pass evidence, but the
-same source passed later with the build root still empty. See
-`validation-chain.md`. **Mechanism unknown** — recorded so nobody spends a day
-installing an APEX distribution for it.
+same source passed later with the build root still empty.
+
+**Mechanism unknown, and an early hypothesis was wrong.** I first noted a
+correlation with whether the target application already held the pages; a later
+run contradicted it — an undeployed source page was present on both a passing and
+a failing run. Recorded here so nobody rebuilds that false trail, and so nobody
+spends a day installing an APEX distribution for it.
+
+Read `problem_count`, `compiler_truth.status` and `Validation successful.` in the
+transcript instead; when those three agree, the aggregate verdict is noise. See
+`validation-chain.md`.
 
 ---
 

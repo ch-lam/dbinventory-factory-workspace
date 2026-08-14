@@ -75,11 +75,17 @@ path_sqlcl_apex_validate_import` while the probe inside the roundtrip reports
 The build root is still empty on the passing run, and `--apex-root <SQLcl home>`
 is not accepted anyway. So the missing root is not what blocks.
 
-What changed between the two: the **target application had since been deployed and
-contained the pages**. That is the observation. **The mechanism is not
-established** — do not build a procedure on it. If you hit this, the useful move is
-to check whether the target already holds the artefacts before spending time on
-`--apex-root`.
+**It is intermittent, and no correlation has held up.** Across five runs of the
+same application on the same machine: fail, pass, pass, fail (real errors), fail
+with zero problems. An early guess that it depended on whether the target already
+held the pages was contradicted by a later run — a source page missing from the
+target was present on both a passing and a failing run.
+
+So: **do not build a procedure on it, and do not spend time on `--apex-root`.**
+When you see it, read the three things that do mean something —
+`problem_count`, `validation_sources.compiler_truth.status`, and
+`Validation successful.` in the transcript. If all three are good, your code is
+good and the aggregate verdict is noise.
 
 Do not force the import past the gate whatever the cause. It exists to stop an
 application being changed on incomplete evidence, and it earned its keep: it caught

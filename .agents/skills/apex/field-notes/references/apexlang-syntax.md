@@ -162,6 +162,30 @@ Symptom: `Invalid Slot value: layout - slot (STRING) : body`. It is reported as 
 **warning**, so it only blocks when `warnings_as_errors` is on — otherwise the
 region silently lands in the wrong place.
 
+### `order by` in a classic report query is discarded
+
+APEX wraps a classic report query for pagination, and the `order by` inside does
+not survive: rows come back in an arbitrary order — sections interleaved, items
+shuffled. **Validation passes and the page renders**, so nothing warns you; only
+looking at the page does.
+
+Sorting has to be declared on columns, which means the ordering columns must be
+selected and declared:
+
+```apexlang
+column SECTION_ORDER (
+    reportColumnQueryId: 1
+    derivedColumn: N
+    type: hidden
+    layout { sequence: 10 }
+    sorting { defaultSequence: 1 }
+)
+```
+
+Two details: a hidden column takes **no `heading` block** — it renders nothing, so
+the property is rejected — and `defaultSequence` accepts 1 to 8, applied in that
+order.
+
 ### `reportColumnQueryId` is positional
 
 Columns are addressed by their position in the region's `select`. Adding a column

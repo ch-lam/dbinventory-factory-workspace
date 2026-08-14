@@ -24,11 +24,12 @@ page 10002 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select e.section,
+                select e.section_order,
+                       e.sort_order,
+                       e.section,
                        e.name,
                        e.value
                   from v_environment_identity e
-                 order by e.section_order, e.sort_order
                 ```
         }
         layout {
@@ -59,36 +60,67 @@ page 10002 (
             comments: Answers "which database am I actually looking at, and is its data real". Reads v_environment_identity, the same view SQLcl and deployment pipelines read, so all three cannot disagree.
         }
 
-        column SECTION (
+        // The two ordering columns are hidden and carry the report's default
+        // sort. An `order by` inside the query does NOT survive: APEX wraps a
+        // classic report query for pagination and the rows come back in an
+        // arbitrary order -- sections interleaved, items shuffled. Sorting has to
+        // be declared on columns, so the columns have to exist.
+        // No `heading` on a hidden column: it renders nothing, so the property is
+        // rejected outright.
+        column SECTION_ORDER (
             reportColumnQueryId: 1
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 10
+            }
+            sorting {
+                defaultSequence: 1
+            }
+        )
+
+        column SORT_ORDER (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 20
+            }
+            sorting {
+                defaultSequence: 2
+            }
+        )
+
+        column SECTION (
+            reportColumnQueryId: 3
             derivedColumn: N
             heading {
                 heading: Section
             }
             layout {
-                sequence: 10
+                sequence: 30
             }
         )
 
         column NAME (
-            reportColumnQueryId: 2
+            reportColumnQueryId: 4
             derivedColumn: N
             heading {
                 heading: Item
             }
             layout {
-                sequence: 20
+                sequence: 40
             }
         )
 
         column VALUE (
-            reportColumnQueryId: 3
+            reportColumnQueryId: 5
             derivedColumn: N
             heading {
                 heading: Value
             }
             layout {
-                sequence: 30
+                sequence: 50
             }
         )
     )

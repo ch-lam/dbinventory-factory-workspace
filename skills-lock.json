@@ -11,7 +11,7 @@
       "source": "ch-lam/apex-field-notes",
       "sourceType": "github",
       "skillPath": "skills/apex-field-notes/SKILL.md",
-      "computedHash": "1696ecf7db8776bf6435de902c8e01d4d7237b5841deeeb401c138dc70e03c8c"
+      "computedHash": "20b2367b758514ed6eb4a3933981e7d26e1e1febcd5d7880c409da49ab335260"
     },
     "db": {
       "source": "oracle/skills",

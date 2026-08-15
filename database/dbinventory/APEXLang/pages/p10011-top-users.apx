@@ -1113,6 +1113,7 @@ page 10011 (
         )
 
         page {
+            height: 8.5
             borderWidth: 0.5
             borderColor: #666666
         }

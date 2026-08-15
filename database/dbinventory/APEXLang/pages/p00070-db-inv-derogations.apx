@@ -14,90 +14,6 @@ page 70 (
         formAutoComplete: false
     }
 
-    region review-summary (
-        name: To Review
-        title: To Review
-        type: classicReport
-        source {
-            location: localDatabase
-            type: sqlQuery
-            sqlQuery:
-                ```sql
-                select review_state,
-                       count(*) derogations,
-                       sum(covered_today) findings_covered
-                  from v_exception_review
-                 where review_state <> 'Current'
-                 group by review_state
-                 order by case review_state
-                             when 'Expired'                  then 1
-                             when 'Review overdue'           then 2
-                             when 'Expiring within 60 days'  then 3
-                             when 'Awaiting approval'        then 4
-                             when 'Draft, not submitted'     then 5
-                             when 'Approved, covers nothing' then 6
-                             else 7
-                          end
-                ```
-        }
-        layout {
-            sequence: 10
-            slot: body
-            startNewRow: true
-        }
-        appearance {
-            template: @/standard
-            templateOptions: [
-                #DEFAULT#
-                t-Region--scrollBody
-            ]
-        }
-        componentAppearance {
-            template: @/standard
-            templateOptions: [
-                #DEFAULT#
-                t-Report--stretch
-                t-Report--altRowsDefault
-            ]
-        }
-        messages {
-            whenNoDataFound: Nothing waiting: every derogation is current
-        }
-
-        column REVIEW_STATE (
-            reportColumnQueryId: 1
-            derivedColumn: N
-            heading {
-                heading: Review state
-            }
-            layout {
-                sequence: 10
-            }
-        )
-
-        column DEROGATIONS (
-            reportColumnQueryId: 2
-            derivedColumn: N
-            heading {
-                heading: Derogations
-            }
-            layout {
-                sequence: 20
-            }
-        )
-
-        column FINDINGS_COVERED (
-            reportColumnQueryId: 3
-            derivedColumn: N
-            heading {
-                heading: Findings covered
-            }
-            layout {
-                sequence: 30
-            }
-        )
-    )
-
     region derogations (
         name: Derogations
         title: Derogations
@@ -137,7 +53,6 @@ page 70 (
         layout {
             sequence: 20
             slot: body
-            startNewRow: true
         }
         appearance {
             template: @/standard
@@ -145,6 +60,9 @@ page 70 (
                 #DEFAULT#
                 t-Region--scrollBody
             ]
+        }
+        reportLayout {
+            numberOfRows: 30
         }
         componentAppearance {
             template: @/standard
@@ -155,9 +73,6 @@ page 70 (
                 t-Report--rowHighlight
             ]
         }
-        reportLayout {
-            numberOfRows: 30
-        }
         pagination {
             type: rowRangesXToYOfZWithPagination
             displayPosition: topAndBottomRight
@@ -166,135 +81,14 @@ page 70 (
             whenNoDataFound: No derogation has been captured yet
         }
 
-        column EXCEPTION_ID (
-            reportColumnQueryId: 1
-            derivedColumn: N
-            type: link
-            heading {
-                heading: Id
-            }
-            layout {
-                sequence: 10
-            }
-            link {
-                target: {
-                    page: 71
-                    items: {
-                        P71_EXCEPTION_ID: #EXCEPTION_ID#
-                    }
-                    clearCache: 71
-                }
-                linkText: #EXCEPTION_ID#
-            }
-        )
-
-        column REVIEW_STATE (
-            reportColumnQueryId: 2
+        column APPROVED_BY (
+            reportColumnQueryId: 14
             derivedColumn: N
             heading {
-                heading: Review
+                heading: Approved by
             }
             layout {
-                sequence: 20
-            }
-        )
-
-        column STATUS (
-            reportColumnQueryId: 3
-            derivedColumn: N
-            heading {
-                heading: Status
-            }
-            layout {
-                sequence: 30
-            }
-        )
-
-        column PLATFORM (
-            reportColumnQueryId: 4
-            derivedColumn: N
-            heading {
-                heading: Platform
-            }
-            layout {
-                sequence: 40
-            }
-        )
-
-        column RULE_TITLE (
-            reportColumnQueryId: 5
-            derivedColumn: N
-            heading {
-                heading: Rule
-            }
-            layout {
-                sequence: 50
-            }
-        )
-
-        column ENTITY_TYPE (
-            reportColumnQueryId: 6
-            derivedColumn: N
-            heading {
-                heading: Scope
-            }
-            layout {
-                sequence: 60
-            }
-        )
-
-        column SCOPE_NAME (
-            reportColumnQueryId: 7
-            derivedColumn: N
-            heading {
-                heading: Entity
-            }
-            layout {
-                sequence: 70
-            }
-        )
-
-        column ITEM_KEY (
-            reportColumnQueryId: 8
-            derivedColumn: N
-            heading {
-                heading: Item
-            }
-            layout {
-                sequence: 80
-            }
-        )
-
-        column START_DATE (
-            reportColumnQueryId: 9
-            derivedColumn: N
-            heading {
-                heading: From
-            }
-            layout {
-                sequence: 90
-            }
-        )
-
-        column END_DATE (
-            reportColumnQueryId: 10
-            derivedColumn: N
-            heading {
-                heading: Until
-            }
-            layout {
-                sequence: 100
-            }
-        )
-
-        column REVIEW_DUE_DATE (
-            reportColumnQueryId: 11
-            derivedColumn: N
-            heading {
-                heading: Review due
-            }
-            layout {
-                sequence: 110
+                sequence: 140
             }
         )
 
@@ -320,16 +114,222 @@ page 70 (
             }
         )
 
-        column APPROVED_BY (
-            reportColumnQueryId: 14
+        column END_DATE (
+            reportColumnQueryId: 10
             derivedColumn: N
             heading {
-                heading: Approved by
+                heading: Until
             }
             layout {
-                sequence: 140
+                sequence: 100
             }
         )
+
+        column ENTITY_TYPE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Scope
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column EXCEPTION_ID (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Id
+            }
+            layout {
+                sequence: 10
+            }
+            link {
+                target: {
+                    page: 71
+                    items: {
+                        P71_EXCEPTION_ID: #EXCEPTION_ID#
+                    }
+                    clearCache: 71
+                }
+                linkText: #EXCEPTION_ID#
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column PLATFORM (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Platform
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column REVIEW_DUE_DATE (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Review due
+            }
+            layout {
+                sequence: 110
+            }
+        )
+
+        column REVIEW_STATE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Review
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column RULE_TITLE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Rule
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column SCOPE_NAME (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Entity
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column START_DATE (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: From
+            }
+            layout {
+                sequence: 90
+            }
+        )
+
+        column STATUS (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Status
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+    )
+
+    region review-summary (
+        name: To Review
+        title: To Review
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select review_state,
+                       count(*) derogations,
+                       sum(covered_today) findings_covered
+                  from v_exception_review
+                 where review_state <> 'Current'
+                 group by review_state
+                 order by case review_state
+                             when 'Expired'                  then 1
+                             when 'Review overdue'           then 2
+                             when 'Expiring within 60 days'  then 3
+                             when 'Awaiting approval'        then 4
+                             when 'Draft, not submitted'     then 5
+                             when 'Approved, covers nothing' then 6
+                             else 7
+                          end
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: Nothing waiting: every derogation is current
+        }
+
+        column DEROGATIONS (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Derogations
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column FINDINGS_COVERED (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Findings covered
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column REVIEW_STATE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Review state
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
     )
 
     button create (
@@ -356,3 +356,4 @@ page 70 (
     )
 
 )
+

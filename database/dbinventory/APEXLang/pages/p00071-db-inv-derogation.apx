@@ -7,9 +7,6 @@ page 71 (
         dialogTemplate: @/modal-dialog
         templateOptions: #DEFAULT#
     }
-    dialog {
-        resizable: true
-    }
     navigation {
         cursorFocus: doNotFocusCursor
         warnOnUnsavedChanges: false
@@ -19,21 +16,6 @@ page 71 (
         formAutoComplete: false
     }
 
-    region scope (
-        name: Scope
-        title: Scope
-        type: staticContent
-        layout {
-            sequence: 10
-            slot: contentBody
-            startNewRow: true
-        }
-        appearance {
-            template: @/standard
-            templateOptions: #DEFAULT#
-        }
-    )
-
     region decision (
         name: Decision
         title: Decision
@@ -41,7 +23,6 @@ page 71 (
         layout {
             sequence: 20
             slot: contentBody
-            startNewRow: true
         }
         appearance {
             template: @/standard
@@ -73,7 +54,6 @@ page 71 (
         layout {
             sequence: 30
             slot: contentBody
-            startNewRow: true
         }
         appearance {
             template: @/standard
@@ -90,6 +70,20 @@ page 71 (
         messages {
             whenNoDataFound: No document attached yet
         }
+
+        column CHECKSUM_SHA256 (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: SHA-256
+            }
+            layout {
+                sequence: 50
+            }
+            comments {
+                comments: Shown in full on purpose: this is what an auditor compares against the file handed over.
+            }
+        )
 
         column DOCUMENT_ID (
             reportColumnQueryId: 1
@@ -135,20 +129,6 @@ page 71 (
             }
         )
 
-        column CHECKSUM_SHA256 (
-            reportColumnQueryId: 5
-            derivedColumn: N
-            heading {
-                heading: SHA-256
-            }
-            layout {
-                sequence: 50
-            }
-            comments {
-                comments: Shown in full on purpose: this is what an auditor compares against the file handed over.
-            }
-        )
-
         column UPLOADED_BY (
             reportColumnQueryId: 6
             derivedColumn: N
@@ -170,6 +150,7 @@ page 71 (
                 sequence: 70
             }
         )
+
     )
 
     region history (
@@ -195,7 +176,6 @@ page 71 (
         layout {
             sequence: 40
             slot: contentBody
-            startNewRow: true
         }
         appearance {
             template: @/standard
@@ -215,6 +195,17 @@ page 71 (
         messages {
             whenNoDataFound: No event recorded yet
         }
+
+        column EVENT_BY (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: By
+            }
+            layout {
+                sequence: 30
+            }
+        )
 
         column EVENT_DATE (
             reportColumnQueryId: 1
@@ -238,14 +229,14 @@ page 71 (
             }
         )
 
-        column EVENT_BY (
-            reportColumnQueryId: 3
+        column NEW_VALUE (
+            reportColumnQueryId: 6
             derivedColumn: N
             heading {
-                heading: By
+                heading: After
             }
             layout {
-                sequence: 30
+                sequence: 60
             }
         )
 
@@ -271,77 +262,31 @@ page 71 (
             }
         )
 
-        column NEW_VALUE (
-            reportColumnQueryId: 6
-            derivedColumn: N
-            heading {
-                heading: After
-            }
-            layout {
-                sequence: 60
-            }
-        )
     )
 
-    pageItem P71_EXCEPTION_ID (
-        type: hidden
+    region scope (
+        name: Scope
+        title: Scope
+        type: staticContent
         layout {
             sequence: 10
-            region: @scope
-            slot: regionBody
-        }
-    )
-
-    pageItem P71_RULE_CODE (
-        type: hidden
-        layout {
-            sequence: 20
-            region: @scope
-            slot: regionBody
-        }
-    )
-
-    pageItem P71_ENTITY_ID (
-        type: hidden
-        layout {
-            sequence: 30
-            region: @scope
-            slot: regionBody
-        }
-    )
-
-    pageItem P71_RULE_TITLE (
-        type: displayOnly
-        label {
-            label: Rule
-            alignment: right
-        }
-        layout {
-            sequence: 40
-            region: @scope
-            slot: regionBody
-            alignment: left
+            slot: contentBody
         }
         appearance {
-            template: @/optional-floating
+            template: @/standard
             templateOptions: #DEFAULT#
         }
     )
 
-    pageItem P71_ENTITY_TYPE (
-        type: selectList
+    pageItem P71_APPROVER (
+        type: textField
         label {
-            label: Scope level
+            label: Approver
             alignment: right
         }
-        lov {
-            type: sharedComponent
-            lov: @exception-entity-type
-            displayNullValue: false
-        }
         layout {
-            sequence: 50
-            region: @scope
+            sequence: 90
+            region: @decision
             slot: regionBody
             alignment: left
         }
@@ -350,78 +295,18 @@ page 71 (
             templateOptions: #DEFAULT#
         }
         help {
-            helpText: The derogation cascades downwards: granted on a host it covers its instances, their databases and their storage units.
+            helpText: Who signs the derogation off, typically the SSI or operations manager. It cannot be the person who requested it.
         }
     )
 
-    pageItem P71_SCOPE_NAME (
+    pageItem P71_CREATED_BY (
         type: displayOnly
         label {
-            label: Entity
-            alignment: right
-        }
-        layout {
-            sequence: 60
-            region: @scope
-            slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
-        }
-    )
-
-    pageItem P71_ITEM_KEY (
-        type: textField
-        label {
-            label: Item
-            alignment: right
-        }
-        layout {
-            sequence: 70
-            region: @scope
-            slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
-        }
-        help {
-            helpText: The item inside the entity the derogation covers, or * for every item the rule evaluates.
-        }
-    )
-
-    pageItem P71_OBSERVED_VALUE (
-        type: textField
-        label {
-            label: Observed value
+            label: Requested by
             alignment: right
         }
         layout {
             sequence: 80
-            region: @scope
-            slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
-        }
-        help {
-            helpText: Pins the derogation to the value that was accepted. Leave * to cover any value; a setting drifting to another value then keeps its cover.
-        }
-    )
-
-    pageItem P71_STATUS (
-        type: displayOnly
-        label {
-            label: Status
-            alignment: right
-        }
-        layout {
-            sequence: 10
             region: @decision
             slot: regionBody
             alignment: left
@@ -453,15 +338,41 @@ page 71 (
         }
     )
 
-    pageItem P71_START_DATE (
-        type: datePicker
+    pageItem P71_DOCUMENT_REF (
+        type: textField
         label {
-            label: Applies from
+            label: External reference
             alignment: right
         }
         layout {
-            sequence: 30
+            sequence: 70
             region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Ticket, mail or EDM reference of the formalising document. Distinct from the files attached below.
+        }
+    )
+
+    pageItem P71_DOC_KIND (
+        type: selectList
+        label {
+            label: Document type
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @exception-doc-kind
+            displayNullValue: false
+        }
+        layout {
+            sequence: 10
+            region: @documents
             slot: regionBody
             alignment: left
         }
@@ -492,15 +403,29 @@ page 71 (
         }
     )
 
-    pageItem P71_REVIEW_DUE_DATE (
-        type: datePicker
+    pageItem P71_ENTITY_ID (
+        type: hidden
+        layout {
+            sequence: 30
+            region: @scope
+            slot: regionBody
+        }
+    )
+
+    pageItem P71_ENTITY_TYPE (
+        type: selectList
         label {
-            label: Review due
+            label: Scope level
             alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @exception-entity-type
+            displayNullValue: false
         }
         layout {
             sequence: 50
-            region: @decision
+            region: @scope
             slot: regionBody
             alignment: left
         }
@@ -509,7 +434,37 @@ page 71 (
             templateOptions: #DEFAULT#
         }
         help {
-            helpText: Defaults to one year after the derogation takes effect.
+            helpText: The derogation cascades downwards: granted on a host it covers its instances, their databases and their storage units.
+        }
+    )
+
+    pageItem P71_EXCEPTION_ID (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @scope
+            slot: regionBody
+        }
+    )
+
+    pageItem P71_ITEM_KEY (
+        type: textField
+        label {
+            label: Item
+            alignment: right
+        }
+        layout {
+            sequence: 70
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: The item inside the entity the derogation covers, or * for every item the rule evaluates.
         }
     )
 
@@ -534,66 +489,6 @@ page 71 (
         }
     )
 
-    pageItem P71_DOCUMENT_REF (
-        type: textField
-        label {
-            label: External reference
-            alignment: right
-        }
-        layout {
-            sequence: 70
-            region: @decision
-            slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
-        }
-        help {
-            helpText: Ticket, mail or EDM reference of the formalising document. Distinct from the files attached below.
-        }
-    )
-
-    pageItem P71_CREATED_BY (
-        type: displayOnly
-        label {
-            label: Requested by
-            alignment: right
-        }
-        layout {
-            sequence: 80
-            region: @decision
-            slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
-        }
-    )
-
-    pageItem P71_APPROVER (
-        type: textField
-        label {
-            label: Approver
-            alignment: right
-        }
-        layout {
-            sequence: 90
-            region: @decision
-            slot: regionBody
-            alignment: left
-        }
-        appearance {
-            template: @/optional-floating
-            templateOptions: #DEFAULT#
-        }
-        help {
-            helpText: Who signs the derogation off, typically the SSI or operations manager. It cannot be the person who requested it.
-        }
-    )
-
     pageItem P71_NOTE (
         type: textarea
         label {
@@ -615,20 +510,120 @@ page 71 (
         }
     )
 
-    pageItem P71_DOC_KIND (
-        type: selectList
+    pageItem P71_OBSERVED_VALUE (
+        type: textField
         label {
-            label: Document type
+            label: Observed value
             alignment: right
         }
-        lov {
-            type: sharedComponent
-            lov: @exception-doc-kind
-            displayNullValue: false
+        layout {
+            sequence: 80
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Pins the derogation to the value that was accepted. Leave * to cover any value; a setting drifting to another value then keeps its cover.
+        }
+    )
+
+    pageItem P71_REVIEW_DUE_DATE (
+        type: datePicker
+        label {
+            label: Review due
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Defaults to one year after the derogation takes effect.
+        }
+    )
+
+    pageItem P71_RULE_CODE (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @scope
+            slot: regionBody
+        }
+    )
+
+    pageItem P71_RULE_TITLE (
+        type: displayOnly
+        label {
+            label: Rule
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_SCOPE_NAME (
+        type: displayOnly
+        label {
+            label: Entity
+            alignment: right
+        }
+        layout {
+            sequence: 60
+            region: @scope
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_START_DATE (
+        type: datePicker
+        label {
+            label: Applies from
+            alignment: right
+        }
+        layout {
+            sequence: 30
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P71_STATUS (
+        type: displayOnly
+        label {
+            label: Status
+            alignment: right
         }
         layout {
             sequence: 10
-            region: @documents
+            region: @decision
             slot: regionBody
             alignment: left
         }
@@ -651,23 +646,45 @@ page 71 (
         appearance {
             template: @/optional-floating
         }
-        // KNOWN GAP -- this item needs its Storage Type set to
-        // "Table APEX_APPLICATION_TEMP_FILES" in the builder after every import.
-        //
-        // It cannot be expressed here. APEXlang 26.1.0+3102 has no property group
-        // for plugin attributes on a pageItem: the compiler exposes only advanced,
-        // appearance, comments, config, default, help, identification, label,
-        // layout, lov, security, source and validation. A `settings` block is
-        // rejected outright (`Invalid property: storageType`), even though
-        // templates/items/file-upload/file-upload._common.md still documents one --
-        // that template is stale against this compiler build.
-        //
-        // Left unset, the item inherits storage_type = DB_COLUMN, a BLOB column it
-        // has no source for, and the page dies at render with
-        // WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Validation does not catch it:
-        // the chain checks that this file compiles, not that the page runs.
         help {
             helpText: Licence, vendor manual, signed approval. Each file is fingerprinted with SHA-256 when attached, so it can later be proven to be the one that was filed.
+        }
+        comments {
+            comments: KNOWN GAP - set Storage Type to "Table APEX_APPLICATION_TEMP_FILES" in the builder after EVERY import. It cannot be set from the .apx: APEXlang has no property group for plugin attributes on a page item, so a settings block is rejected. Left unset the item inherits storage_type DB_COLUMN, a BLOB column it has no source for, and the page dies at render with WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Validation does not catch it - the chain checks this file compiles, not that the page runs. Written as a comments block, not a // comment, because an APEX export round-trip strips // comments and keeps these.
+        }
+    )
+
+    button approve (
+        buttonName: APPROVE
+        label: Approve
+        layout {
+            sequence: 40
+            region: @decision
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button attach (
+        buttonName: ATTACH
+        label: Attach
+        layout {
+            sequence: 30
+            region: @documents
+            slot: regionBody
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
         }
     )
 
@@ -688,46 +705,11 @@ page 71 (
         }
     )
 
-    button save (
-        buttonName: SAVE
-        label: Save
+    button record-review (
+        buttonName: RECORD_REVIEW
+        label: Record Review
         layout {
-            sequence: 20
-            region: @decision
-            slot: next
-        }
-        appearance {
-            buttonTemplate: @/text
-            hot: true
-            templateOptions: #DEFAULT#
-        }
-        behavior {
-            warnOnUnsavedChanges: doNotCheck
-        }
-    )
-
-    button submit-for-approval (
-        buttonName: SUBMIT_FOR_APPROVAL
-        label: Submit
-        layout {
-            sequence: 30
-            region: @decision
-            slot: next
-        }
-        appearance {
-            buttonTemplate: @/text
-            templateOptions: #DEFAULT#
-        }
-        behavior {
-            warnOnUnsavedChanges: doNotCheck
-        }
-    )
-
-    button approve (
-        buttonName: APPROVE
-        label: Approve
-        layout {
-            sequence: 40
+            sequence: 70
             region: @decision
             slot: next
         }
@@ -774,16 +756,17 @@ page 71 (
         }
     )
 
-    button record-review (
-        buttonName: RECORD_REVIEW
-        label: Record Review
+    button save (
+        buttonName: SAVE
+        label: Save
         layout {
-            sequence: 70
+            sequence: 20
             region: @decision
             slot: next
         }
         appearance {
             buttonTemplate: @/text
+            hot: true
             templateOptions: #DEFAULT#
         }
         behavior {
@@ -791,13 +774,13 @@ page 71 (
         }
     )
 
-    button attach (
-        buttonName: ATTACH
-        label: Attach
+    button submit-for-approval (
+        buttonName: SUBMIT_FOR_APPROVAL
+        label: Submit
         layout {
             sequence: 30
-            region: @documents
-            slot: regionBody
+            region: @decision
+            slot: next
         }
         appearance {
             buttonTemplate: @/text
@@ -827,6 +810,80 @@ page 71 (
             }
         )
 
+    )
+
+    process approve-derogation (
+        name: Approve Derogation
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_exception.approve(
+                   p_exception_id => :P71_EXCEPTION_ID,
+                   p_approver     => nvl(:P71_APPROVER, :APP_USER),
+                   p_note         => :P71_NOTE );
+                ```
+        }
+        execution {
+            sequence: 40
+        }
+        advanced {
+            executionMappingIdentifier: 4581098197192499
+        }
+        serverSideCondition {
+            whenButtonPressed: @approve
+        }
+    )
+
+    process attach-document (
+        name: Attach Document
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                -- The instr form covers a multi-file upload too, where APEX puts a
+                -- colon-separated list of names in the item.
+                for f in ( select filename, mime_type, blob_content
+                             from apex_application_temp_files
+                            where instr(':' || :P71_UPLOAD || ':', ':' || name || ':') > 0 ) loop
+                   declare
+                      l_id number;
+                   begin
+                      l_id := pkg_dbinv_exception.add_document(
+                                 p_exception_id => :P71_EXCEPTION_ID,
+                                 p_file_name    => f.filename,
+                                 p_content      => f.blob_content,
+                                 p_mime_type    => f.mime_type,
+                                 p_doc_kind     => nvl(:P71_DOC_KIND, 'OTHER') );
+                   end;
+                end loop;
+                delete from apex_application_temp_files
+                 where instr(':' || :P71_UPLOAD || ':', ':' || name || ':') > 0;
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        advanced {
+            executionMappingIdentifier: 4580875413192499
+        }
+        serverSideCondition {
+            whenButtonPressed: @attach
+        }
+    )
+
+    process close-derogation-dialog (
+        name: Close Derogation Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+        advanced {
+            executionMappingIdentifier: 4581429391192499
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
     )
 
     process load-derogation (
@@ -867,6 +924,66 @@ page 71 (
             sequence: 10
             point: beforeHeader
         }
+        advanced {
+            executionMappingIdentifier: 4580602934192497
+        }
+    )
+
+    process record-review-process (
+        name: Record Review
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_exception.record_review(
+                   p_exception_id => :P71_EXCEPTION_ID,
+                   p_note         => :P71_NOTE,
+                   p_next_review  => :P71_REVIEW_DUE_DATE );
+                ```
+        }
+        execution {
+            sequence: 70
+        }
+        advanced {
+            executionMappingIdentifier: 4581399724192499
+        }
+        serverSideCondition {
+            whenButtonPressed: @record-review
+        }
+    )
+
+    process reject-derogation (
+        name: Reject Derogation
+        type: executeCode
+        source {
+            plsqlCode: pkg_dbinv_exception.reject( :P71_EXCEPTION_ID, :P71_NOTE );
+        }
+        execution {
+            sequence: 50
+        }
+        advanced {
+            executionMappingIdentifier: 4581107412192499
+        }
+        serverSideCondition {
+            whenButtonPressed: @reject
+        }
+    )
+
+    process revoke-derogation (
+        name: Revoke Derogation
+        type: executeCode
+        source {
+            plsqlCode: pkg_dbinv_exception.revoke_exception( :P71_EXCEPTION_ID, :P71_NOTE );
+        }
+        execution {
+            sequence: 60
+        }
+        advanced {
+            executionMappingIdentifier: 4581207445192499
+        }
+        serverSideCondition {
+            whenButtonPressed: @revoke
+        }
     )
 
     process save-derogation (
@@ -904,42 +1021,11 @@ page 71 (
         execution {
             sequence: 10
         }
+        advanced {
+            executionMappingIdentifier: 4580756145192499
+        }
         serverSideCondition {
             whenButtonPressed: @save
-        }
-    )
-
-    process attach-document (
-        name: Attach Document
-        type: executeCode
-        source {
-            plsqlCode:
-                ```plsql
-                -- The instr form covers a multi-file upload too, where APEX puts a
-                -- colon-separated list of names in the item.
-                for f in ( select filename, mime_type, blob_content
-                             from apex_application_temp_files
-                            where instr(':' || :P71_UPLOAD || ':', ':' || name || ':') > 0 ) loop
-                   declare
-                      l_id number;
-                   begin
-                      l_id := pkg_dbinv_exception.add_document(
-                                 p_exception_id => :P71_EXCEPTION_ID,
-                                 p_file_name    => f.filename,
-                                 p_content      => f.blob_content,
-                                 p_mime_type    => f.mime_type,
-                                 p_doc_kind     => nvl(:P71_DOC_KIND, 'OTHER') );
-                   end;
-                end loop;
-                delete from apex_application_temp_files
-                 where instr(':' || :P71_UPLOAD || ':', ':' || name || ':') > 0;
-                ```
-        }
-        execution {
-            sequence: 20
-        }
-        serverSideCondition {
-            whenButtonPressed: @attach
         }
     )
 
@@ -947,102 +1033,18 @@ page 71 (
         name: Submit Derogation
         type: executeCode
         source {
-            plsqlCode:
-                ```plsql
-                pkg_dbinv_exception.submit( :P71_EXCEPTION_ID, :P71_NOTE );
-                ```
+            plsqlCode: pkg_dbinv_exception.submit( :P71_EXCEPTION_ID, :P71_NOTE );
         }
         execution {
             sequence: 30
+        }
+        advanced {
+            executionMappingIdentifier: 4580937024192499
         }
         serverSideCondition {
             whenButtonPressed: @submit-for-approval
         }
     )
 
-    process approve-derogation (
-        name: Approve Derogation
-        type: executeCode
-        source {
-            plsqlCode:
-                ```plsql
-                pkg_dbinv_exception.approve(
-                   p_exception_id => :P71_EXCEPTION_ID,
-                   p_approver     => nvl(:P71_APPROVER, :APP_USER),
-                   p_note         => :P71_NOTE );
-                ```
-        }
-        execution {
-            sequence: 40
-        }
-        serverSideCondition {
-            whenButtonPressed: @approve
-        }
-    )
-
-    process reject-derogation (
-        name: Reject Derogation
-        type: executeCode
-        source {
-            plsqlCode:
-                ```plsql
-                pkg_dbinv_exception.reject( :P71_EXCEPTION_ID, :P71_NOTE );
-                ```
-        }
-        execution {
-            sequence: 50
-        }
-        serverSideCondition {
-            whenButtonPressed: @reject
-        }
-    )
-
-    process revoke-derogation (
-        name: Revoke Derogation
-        type: executeCode
-        source {
-            plsqlCode:
-                ```plsql
-                pkg_dbinv_exception.revoke_exception( :P71_EXCEPTION_ID, :P71_NOTE );
-                ```
-        }
-        execution {
-            sequence: 60
-        }
-        serverSideCondition {
-            whenButtonPressed: @revoke
-        }
-    )
-
-    process record-review-process (
-        name: Record Review
-        type: executeCode
-        source {
-            plsqlCode:
-                ```plsql
-                pkg_dbinv_exception.record_review(
-                   p_exception_id => :P71_EXCEPTION_ID,
-                   p_note         => :P71_NOTE,
-                   p_next_review  => :P71_REVIEW_DUE_DATE );
-                ```
-        }
-        execution {
-            sequence: 70
-        }
-        serverSideCondition {
-            whenButtonPressed: @record-review
-        }
-    )
-
-    process close-derogation-dialog (
-        name: Close Derogation Dialog
-        type: closeDialog
-        execution {
-            sequence: 90
-        }
-        serverSideCondition {
-            whenButtonPressed: @save
-        }
-    )
-
 )
+

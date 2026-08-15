@@ -35,11 +35,16 @@ page 10002 (
         layout {
             sequence: 10
             slot: body
-            startNewRow: true
         }
         appearance {
             template: @/standard
             templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Answers "which database am I actually looking at, and is its data real". Reads v_environment_identity, the same view SQLcl and deployment pipelines read, so all three cannot disagree.
+        }
+        reportLayout {
+            numberOfRows: 50
         }
         componentAppearance {
             template: @/standard
@@ -50,23 +55,32 @@ page 10002 (
                 t-Report--rowHighlight
             ]
         }
-        reportLayout {
-            numberOfRows: 50
-        }
         messages {
             whenNoDataFound: The environment could not describe itself - check v_environment_identity
         }
-        comments {
-            comments: Answers "which database am I actually looking at, and is its data real". Reads v_environment_identity, the same view SQLcl and deployment pipelines read, so all three cannot disagree.
-        }
 
-        // The two ordering columns are hidden and carry the report's default
-        // sort. An `order by` inside the query does NOT survive: APEX wraps a
-        // classic report query for pagination and the rows come back in an
-        // arbitrary order -- sections interleaved, items shuffled. Sorting has to
-        // be declared on columns, so the columns have to exist.
-        // No `heading` on a hidden column: it renders nothing, so the property is
-        // rejected outright.
+        column NAME (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column SECTION (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Section
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
         column SECTION_ORDER (
             reportColumnQueryId: 1
             derivedColumn: N
@@ -91,28 +105,6 @@ page 10002 (
             }
         )
 
-        column SECTION (
-            reportColumnQueryId: 3
-            derivedColumn: N
-            heading {
-                heading: Section
-            }
-            layout {
-                sequence: 30
-            }
-        )
-
-        column NAME (
-            reportColumnQueryId: 4
-            derivedColumn: N
-            heading {
-                heading: Item
-            }
-            layout {
-                sequence: 40
-            }
-        )
-
         column VALUE (
             reportColumnQueryId: 5
             derivedColumn: N
@@ -123,6 +115,7 @@ page 10002 (
                 sequence: 50
             }
         )
+
     )
 
     region releases (
@@ -145,7 +138,6 @@ page 10002 (
         layout {
             sequence: 20
             slot: body
-            startNewRow: true
         }
         appearance {
             template: @/standard
@@ -153,6 +145,9 @@ page 10002 (
                 #DEFAULT#
                 t-Region--scrollBody
             ]
+        }
+        comments {
+            comments: Append-only, so a reinstall adds a line rather than erasing the previous ones. That sequence is what shows HOW two environments diverged, not merely that they did.
         }
         componentAppearance {
             template: @/standard
@@ -162,24 +157,18 @@ page 10002 (
                 t-Report--altRowsDefault
             ]
         }
-        reportLayout {
-            numberOfRows: 15
-        }
         messages {
             whenNoDataFound: No installation has been recorded yet
         }
-        comments {
-            comments: Append-only, so a reinstall adds a line rather than erasing the previous ones. That sequence is what shows HOW two environments diverged, not merely that they did.
-        }
 
-        column VERSION (
-            reportColumnQueryId: 1
+        column INSTALLED_BY (
+            reportColumnQueryId: 3
             derivedColumn: N
             heading {
-                heading: Version
+                heading: By
             }
             layout {
-                sequence: 10
+                sequence: 30
             }
         )
 
@@ -194,17 +183,6 @@ page 10002 (
             }
         )
 
-        column INSTALLED_BY (
-            reportColumnQueryId: 3
-            derivedColumn: N
-            heading {
-                heading: By
-            }
-            layout {
-                sequence: 30
-            }
-        )
-
         column NOTE (
             reportColumnQueryId: 4
             derivedColumn: N
@@ -215,6 +193,19 @@ page 10002 (
                 sequence: 40
             }
         )
+
+        column VERSION (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
     )
 
 )
+

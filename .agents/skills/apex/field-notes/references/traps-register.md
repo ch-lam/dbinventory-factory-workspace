@@ -97,6 +97,34 @@ Carry the session explicitly: `f?p=APP:PAGE:SESSION`. The id is in `?session=` o
 a friendly URL, in the third position of an `f?p=` URL, or in
 `apex.env.APP_SESSION`.
 
+## T8 — An export round-trip strips `//` comments
+
+**Impact: silent loss of the reasoning behind a design.** Exporting the
+application back out of APEX rewrites the `.apx` files — columns reordered
+alphabetically, formatting normalised — and **every `//` line comment
+disappears**. Verified over four pages: 0 remaining out of all that were there.
+
+What survives is the native `comments { comments: ... }` block, which is a real
+APEX attribute stored with the component.
+
+So: anything a future reader must not lose — why an item needs a manual builder
+setting, why a value is what it is — goes in a `comments { }` block. Use `//`
+only for notes you accept losing.
+
+Casualty on first occurrence: a `// KNOWN GAP` note explaining that
+`P71_UPLOAD` needs its storage type reset in the builder after every import. The
+note vanished; the problem did not.
+
+Re-test: add a `//` comment to a page, export, check whether it is still there.
+
+### T8b — a round-trip does not carry authorization back to a moved entry
+
+Moving a navigation entry and re-exporting dropped its
+`security { authorizationScheme }`. Whether that matters depends on where the
+entry moved, but check it after any shared-component reshuffle: the page keeps
+its own authorization, so security holds — it is the *visibility* of the link
+that stops being gated.
+
 ## T7 — `apex_root_missing` is a red herring, and it is intermittent
 
 Reported as the cause when live validation fails to produce pass evidence, but the

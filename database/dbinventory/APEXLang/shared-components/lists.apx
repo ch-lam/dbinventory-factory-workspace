@@ -135,6 +135,22 @@ list activity-reports (
 list navigation-bar (
     name: Navigation Bar
 
+    entry about (
+        label: About
+        icon {
+            imageIconCssClasses: fa-question-square-o
+        }
+        layout {
+            sequence: 40
+            parentEntry: @app-user
+        }
+        link {
+            target: {
+                page: 10002
+            }
+        }
+    )
+
     entry app-user (
         label: &APP_USER.
         icon {
@@ -193,7 +209,7 @@ list navigation-bar (
             imageIconCssClasses: fa-sign-out
         }
         layout {
-            sequence: 40
+            sequence: 50
             parentEntry: @app-user
         }
         link {
@@ -237,39 +253,6 @@ list navigation-menu (
             target: {
                 page: 10000
             }
-        }
-    )
-
-    entry derogations (
-        label: Derogations
-        icon {
-            imageIconCssClasses: fa-file-certificate
-        }
-        layout {
-            sequence: 95
-        }
-        link {
-            target: {
-                page: 70
-            }
-        }
-    )
-
-    entry about (
-        label: About
-        icon {
-            imageIconCssClasses: fa-info-circle
-        }
-        layout {
-            sequence: 10100
-        }
-        link {
-            target: {
-                page: 10002
-            }
-        }
-        security {
-            authorizationScheme: @administration-rights
         }
     )
 
@@ -444,6 +427,21 @@ list navigation-menu (
         link {
             target: {
                 page: 20
+            }
+        }
+    )
+
+    entry derogations (
+        label: Derogations
+        icon {
+            imageIconCssClasses: fa-file-certificate
+        }
+        layout {
+            sequence: 95
+        }
+        link {
+            target: {
+                page: 70
             }
         }
     )

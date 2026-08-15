@@ -121,6 +121,9 @@ comment on column mssql_backup_temp.backup_size is 'Size of the backup, in bytes
 create table mssql_databases (
    collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
+   collect_port          number(5),
+   environment           varchar2(20 char),
+   license_type          varchar2(50 char),
    hostname              varchar2(100 char),
    database_id           number(5),
    database_name         varchar2(100 char),
@@ -141,6 +144,9 @@ create table mssql_databases (
 comment on table mssql_databases is 'Inventory of MSSQL databases and their configuration, collected per instance.';
 comment on column mssql_databases.collect_id is 'Identifier for the collect run that produced this row';
 comment on column mssql_databases.collect_target is 'Target of the collection.';
+comment on column mssql_databases.collect_port is 'TCP port the collected instance listens on, as declared in the collect perimeter.';
+comment on column mssql_databases.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST), as declared in the collect perimeter.';
+comment on column mssql_databases.license_type is 'Licensing type applied to this host/instance, as declared in the collect perimeter.';
 comment on column mssql_databases.hostname is 'Host name of the database server or instance.';
 comment on column mssql_databases.database_id is 'Database ID as reported by sys.databases.';
 comment on column mssql_databases.database_name is 'Name of the database.';
@@ -196,6 +202,9 @@ comment on column mssql_files.max_size is 'Maximum size the file is allowed to g
 create table mssql_hosts (
    collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
+   collect_port          number(5),
+   environment           varchar2(20 char),
+   license_type          varchar2(50 char),
    hostname              varchar2(100 char),
    mssql_edition         varchar2(100 char),
    mssql_product_version varchar2(100 char),
@@ -213,12 +222,18 @@ create table mssql_hosts (
    memory_gb             number(6),
    os_type               varchar2(100 char),
    install_date          varchar2(10 char),
-   service_account       varchar2(100 char)
+   service_account       varchar2(100 char),
+   -- Appended last on purpose: the CSV load is positional, so inserting a column
+   -- in the middle would shift every column after it.
+   is_integrated_security_only number(1)
 );
 
 comment on table mssql_hosts is 'Inventory of MSSQL instances/hosts and their engine, cluster and resource configuration.';
 comment on column mssql_hosts.collect_id is 'Identifier for the collect run that produced this row';
 comment on column mssql_hosts.collect_target is 'Target of the collection.';
+comment on column mssql_hosts.collect_port is 'TCP port the collected instance listens on, as declared in the collect perimeter.';
+comment on column mssql_hosts.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST), as declared in the collect perimeter.';
+comment on column mssql_hosts.license_type is 'Licensing type applied to this host/instance, as declared in the collect perimeter.';
 comment on column mssql_hosts.hostname is 'Host name of the database server or instance.';
 comment on column mssql_hosts.mssql_edition is 'SQL Server edition (e.g. Enterprise, Standard).';
 comment on column mssql_hosts.mssql_product_version is 'SQL Server product version.';
@@ -237,6 +252,7 @@ comment on column mssql_hosts.memory_gb is 'Amount of memory available on the ho
 comment on column mssql_hosts.os_type is 'Operating system running on the host.';
 comment on column mssql_hosts.install_date is 'Installation date of the instance, as an integer (YYYYMMDD).';
 comment on column mssql_hosts.service_account is 'Windows account the SQL Server service runs as.';
+comment on column mssql_hosts.is_integrated_security_only is 'Authentication mode: 1 = Windows authentication only, 0 = mixed mode (SQL logins accepted).';
 
 -- ============================================================
 -- mssql_logins
@@ -341,25 +357,6 @@ comment on column mssql_security_auditlevel.auditlevel is 'Audit level configure
 comment on column mssql_security_auditlevel.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_auditlevel.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_auditlvl_exc
--- ============================================================
-create table mssql_sec_auditlvl_exc (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   servername varchar2(50 char) not null,
-   auditlevel varchar2(50 char) not null,
-   comments   varchar2(200 char) default '0' not null,
-   date_value timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_auditlvl_exc is 'Documented exceptions accepted for the MSSQL server audit level compliance check.';
-comment on column mssql_sec_auditlvl_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_auditlvl_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_auditlvl_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_auditlvl_exc.auditlevel is 'Audit level configured on the server.';
-comment on column mssql_sec_auditlvl_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_auditlvl_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_configoptions
@@ -385,29 +382,6 @@ comment on column mssql_security_configoptions.run_value is 'Currently running v
 comment on column mssql_security_configoptions.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_configoptions.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_cfgopt_exc
--- ============================================================
-create table mssql_sec_cfgopt_exc (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   servername   varchar2(50 char) not null,
-   name         varchar2(200 char) not null,
-   config_value number(10) not null,
-   run_value    number(10) not null,
-   comments     varchar2(200 char) default '0' not null,
-   date_value   timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_cfgopt_exc is 'Documented exceptions accepted for the MSSQL sp_configure options compliance check.';
-comment on column mssql_sec_cfgopt_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_cfgopt_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_cfgopt_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_cfgopt_exc.name is 'Name of the sp_configure option.';
-comment on column mssql_sec_cfgopt_exc.config_value is 'Configured value of the option.';
-comment on column mssql_sec_cfgopt_exc.run_value is 'Currently running value of the option.';
-comment on column mssql_sec_cfgopt_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_cfgopt_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_dbproperties
@@ -434,29 +408,6 @@ comment on column mssql_security_dbproperties.is_trustworthy_on is 'Indicates wh
 comment on column mssql_security_dbproperties.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_dbproperties.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_dbprops_exc
--- ============================================================
-create table mssql_sec_dbprops_exc (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   servername        varchar2(50 char) not null,
-   db_name           varchar2(50 char) not null,
-   is_auto_close_on  number(10) not null,
-   is_trustworthy_on number(10) not null,
-   comments          varchar2(200 char) default '0' not null,
-   date_value        timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_dbprops_exc is 'Documented exceptions accepted for the MSSQL database property compliance check.';
-comment on column mssql_sec_dbprops_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_dbprops_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_dbprops_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_dbprops_exc.db_name is 'Name of the database.';
-comment on column mssql_sec_dbprops_exc.is_auto_close_on is 'Indicates whether the AUTO_CLOSE database option is enabled.';
-comment on column mssql_sec_dbprops_exc.is_trustworthy_on is 'Indicates whether the TRUSTWORTHY database option is enabled.';
-comment on column mssql_sec_dbprops_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_dbprops_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_encryption
@@ -484,31 +435,6 @@ comment on column mssql_security_encryption.algorithm_desc is 'Encryption algori
 comment on column mssql_security_encryption.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_encryption.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_encryption_exc
--- ============================================================
-create table mssql_sec_encryption_exc (
-   collect_id       varchar2(16) not null,
-   collect_target   varchar2(50 char) not null,
-   servername       varchar2(50 char) not null,
-   db_name          varchar2(50 char) not null,
-   key_type         varchar2(50 char) not null,
-   key_name         varchar2(100 char) not null,
-   algorithm_desc   varchar2(50 char) not null,
-   comments         varchar2(200 char) default '0' not null,
-   date_value       timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_encryption_exc is 'Documented exceptions accepted for the MSSQL encryption compliance check.';
-comment on column mssql_sec_encryption_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_encryption_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_encryption_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_encryption_exc.db_name is 'Name of the database.';
-comment on column mssql_sec_encryption_exc.key_type is 'Type of encryption key (e.g. certificate, asymmetric key).';
-comment on column mssql_sec_encryption_exc.key_name is 'Name of the encryption key.';
-comment on column mssql_sec_encryption_exc.algorithm_desc is 'Encryption algorithm used by the key.';
-comment on column mssql_sec_encryption_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_encryption_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_groups
@@ -534,29 +460,6 @@ comment on column mssql_security_groups.state_desc is 'State of the permission/o
 comment on column mssql_security_groups.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_groups.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_groups_exc
--- ============================================================
-create table mssql_sec_groups_exc (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   servername      varchar2(50 char) not null,
-   localgroupname  varchar2(50 char) not null,
-   permission_name varchar2(100 char) not null,
-   state_desc      varchar2(50 char) not null,
-   comments        varchar2(200 char) not null,
-   date_value      timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_groups_exc is 'Documented exceptions accepted for the MSSQL local Windows group permissions compliance check.';
-comment on column mssql_sec_groups_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_groups_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_groups_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_groups_exc.localgroupname is 'Name of the local Windows group.';
-comment on column mssql_sec_groups_exc.permission_name is 'Name of the permission being evaluated.';
-comment on column mssql_sec_groups_exc.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
-comment on column mssql_sec_groups_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_groups_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_guestconnect
@@ -582,29 +485,6 @@ comment on column mssql_security_guestconnect.state_desc is 'State of the permis
 comment on column mssql_security_guestconnect.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_guestconnect.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_guestconn_exc
--- ============================================================
-create table mssql_sec_guestconn_exc (
-   collect_id       varchar2(16) not null,
-   collect_target   varchar2(50 char) not null,
-   servername      varchar2(50 char) not null,
-   db_name         varchar2(50 char) not null,
-   permission_name varchar2(50 char) not null,
-   state_desc      varchar2(50 char) not null,
-   comments        varchar2(200 char) default '0' not null,
-   date_value      timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_guestconn_exc is 'Documented exceptions accepted for the MSSQL guest account CONNECT permission compliance check.';
-comment on column mssql_sec_guestconn_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_guestconn_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_guestconn_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_guestconn_exc.db_name is 'Name of the database.';
-comment on column mssql_sec_guestconn_exc.permission_name is 'Name of the permission being evaluated.';
-comment on column mssql_sec_guestconn_exc.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
-comment on column mssql_sec_guestconn_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_guestconn_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_history
@@ -660,27 +540,6 @@ comment on column mssql_security_logins.compliance_score is 'Compliance score as
 comment on column mssql_security_logins.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
--- mssql_sec_logins_exc
--- Note : ON UPDATE current_timestamp() non supporte en Oracle (supprime)
--- ============================================================
-create table mssql_sec_logins_exc (
-   collect_id             varchar2(16) not null,
-   collect_target         varchar2(50 char) not null,
-   servername varchar2(50 char) not null,
-   login_name varchar2(100 char) not null,
-   comments   varchar2(200 char) default '0' not null,
-   date_value timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_logins_exc is 'Documented exceptions accepted for the MSSQL sysadmin / high-privilege login compliance check.';
-comment on column mssql_sec_logins_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_logins_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_logins_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_logins_exc.login_name is 'Name of the login being evaluated.';
-comment on column mssql_sec_logins_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_logins_exc.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
 -- mssql_security_orphanedusers
 -- ============================================================
 create table mssql_security_orphanedusers (
@@ -702,27 +561,6 @@ comment on column mssql_security_orphanedusers.user_name is 'Name of the orphane
 comment on column mssql_security_orphanedusers.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_orphanedusers.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_orphanusr_exc
--- ============================================================
-create table mssql_sec_orphanusr_exc (
-   collect_id       varchar2(16) not null,
-   collect_target   varchar2(50 char) not null,
-   servername varchar2(50 char) not null,
-   db_name    varchar2(50 char) not null,
-   user_name  varchar2(100 char) not null,
-   comments   varchar2(200 char) not null,
-   date_value timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_orphanusr_exc is 'Documented exceptions accepted for the MSSQL orphaned database users compliance check.';
-comment on column mssql_sec_orphanusr_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_orphanusr_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_orphanusr_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_orphanusr_exc.db_name is 'Name of the database.';
-comment on column mssql_sec_orphanusr_exc.user_name is 'Name of the orphaned database user.';
-comment on column mssql_sec_orphanusr_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_orphanusr_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_sec_pubperm
@@ -750,31 +588,6 @@ comment on column mssql_sec_pubperm.state_desc is 'State of the permission/objec
 comment on column mssql_sec_pubperm.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_sec_pubperm.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_pubperm_exc
--- ============================================================
-create table mssql_sec_pubperm_exc (
-   collect_id       varchar2(16) not null,
-   collect_target   varchar2(50 char) not null,
-   servername      varchar2(50 char) not null,
-   db_name         varchar2(50 char) not null,
-   username        varchar2(100 char) not null,
-   permission_name varchar2(100 char) not null,
-   state_desc      varchar2(50 char) not null,
-   comments        varchar2(200 char) default '0' not null,
-   date_value      timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_pubperm_exc is 'Documented exceptions accepted for the MSSQL public role permissions compliance check.';
-comment on column mssql_sec_pubperm_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_pubperm_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_pubperm_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_pubperm_exc.db_name is 'Name of the database.';
-comment on column mssql_sec_pubperm_exc.username is 'Name of the database account being evaluated.';
-comment on column mssql_sec_pubperm_exc.permission_name is 'Name of the permission being evaluated.';
-comment on column mssql_sec_pubperm_exc.state_desc is 'State of the permission/object as reported by the engine (e.g. GRANT, DENY, REVOKE).';
-comment on column mssql_sec_pubperm_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_pubperm_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_security_registryinfo
@@ -798,25 +611,34 @@ comment on column mssql_security_registryinfo.value is 'Value read from the regi
 comment on column mssql_security_registryinfo.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_registryinfo.date_value is 'Timestamp at which this row was collected or computed.';
 
+
 -- ============================================================
--- mssql_sec_reginfo_exc
+-- mssql_security_sa
+-- ------------------------------------------------------------
+-- Landing table for mssql_getsainfo.sql, which reads the principal holding
+-- sid 0x01 -- the built-in sysadmin account, whatever it has been renamed to.
+-- One row per instance, carrying both CIS answers at once: whether the account
+-- still bears its default name, and whether it is disabled.
 -- ============================================================
-create table mssql_sec_reginfo_exc (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   servername varchar2(50 char) not null,
-   name       varchar2(100 char) not null,
-   comments   varchar2(200 char) default '0' not null,
-   date_value timestamp default on null systimestamp not null
+create table mssql_security_sa (
+   collect_id       varchar2(16) not null,
+   collect_target   varchar2(50 char) not null,
+   servername       varchar2(50 char) not null,
+   login_name       varchar2(128 char) not null,
+   is_disabled      number(1),
+   compliance_score number(3) default 0,
+   date_value       timestamp default on null systimestamp not null
 );
 
-comment on table mssql_sec_reginfo_exc is 'Documented exceptions accepted for the MSSQL registry configuration compliance check.';
-comment on column mssql_sec_reginfo_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_reginfo_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_reginfo_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_reginfo_exc.name is 'Name of the registry value being evaluated.';
-comment on column mssql_sec_reginfo_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_reginfo_exc.date_value is 'Timestamp at which this row was collected or computed.';
+comment on table mssql_security_sa is 'MSSQL built-in sysadmin account (sid 0x01): current name and enabled state.';
+comment on column mssql_security_sa.collect_id is 'Identifier for the collect run that produced this row';
+comment on column mssql_security_sa.collect_target is 'Target of the collection.';
+comment on column mssql_security_sa.servername is 'Name of the SQL Server instance being evaluated.';
+comment on column mssql_security_sa.login_name is 'Current name of the sid 0x01 principal; ''sa'' means it was never renamed.';
+comment on column mssql_security_sa.is_disabled is 'Whether the account is disabled (1) or usable (0).';
+comment on column mssql_security_sa.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
+comment on column mssql_security_sa.date_value is 'Timestamp at which this row was collected or computed.';
+
 
 -- ============================================================
 -- mssql_security_scoring
@@ -893,25 +715,6 @@ comment on column mssql_security_sqlserveraudit.audited_result is 'Result record
 comment on column mssql_security_sqlserveraudit.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_sqlserveraudit.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- mssql_sec_srvaudit_exc
--- ============================================================
-create table mssql_sec_srvaudit_exc (
-   collect_id       varchar2(16) not null,
-   collect_target   varchar2(50 char) not null,
-   servername      varchar2(50 char) not null,
-   auditactionname varchar2(100 char) not null,
-   comments        varchar2(200 char) default '0' not null,
-   date_value      timestamp default on null systimestamp not null
-);
-
-comment on table mssql_sec_srvaudit_exc is 'Documented exceptions accepted for the MSSQL Server Audit compliance check.';
-comment on column mssql_sec_srvaudit_exc.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_sec_srvaudit_exc.collect_target is 'Target of the collection.';
-comment on column mssql_sec_srvaudit_exc.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_sec_srvaudit_exc.auditactionname is 'Name of the audited action.';
-comment on column mssql_sec_srvaudit_exc.comments is 'Free-text justification for this documented exception.';
-comment on column mssql_sec_srvaudit_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- mssql_users
@@ -1018,6 +821,7 @@ comment on column oracle_audit_logon_history.date_value is 'Timestamp at which t
 -- oracle_backup
 -- ============================================================
 create table oracle_backup (
+   collect_id       varchar2(16),
    db_name      varchar2(50 char) not null,
    environment  varchar2(20 char),
    backup_type  varchar2(50 char) not null,
@@ -1028,6 +832,7 @@ create table oracle_backup (
 );
 
 comment on table oracle_backup is 'Oracle RMAN backup job records.';
+comment on column oracle_backup.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_backup.db_name is 'Name of the database.';
 comment on column oracle_backup.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column oracle_backup.backup_type is 'Type of backup (e.g. FULL, DIFF/DIFFERENTIAL, LOG).';
@@ -1102,6 +907,7 @@ comment on column oracle_backup_summary.cumulative_hours_between_backup is 'Cumu
 -- oracle_client_version
 -- ============================================================
 create table oracle_client_version (
+   collect_id       varchar2(16),
    db_name         varchar2(50 char) not null,
    db_version      varchar2(50 char) not null,
    environment     varchar2(50 char) not null,
@@ -1117,6 +923,7 @@ create table oracle_client_version (
 );
 
 comment on table oracle_client_version is 'Oracle client versions connecting to each database, collected for compatibility and security review.';
+comment on column oracle_client_version.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_client_version.db_name is 'Name of the database.';
 comment on column oracle_client_version.db_version is 'Database engine version.';
 comment on column oracle_client_version.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
@@ -1134,6 +941,7 @@ comment on column oracle_client_version.check_client is 'Indicates whether this 
 -- oracle_metrics_cpu_memory
 -- ============================================================
 create table oracle_metrics_cpu_memory (
+   collect_id       varchar2(16),
    pdb_name            varchar2(50 char) not null,
    cpu_time_minutes    number(10) not null,
    avg_sga_mb          number(10) not null,
@@ -1145,6 +953,7 @@ create table oracle_metrics_cpu_memory (
 );
 
 comment on table oracle_metrics_cpu_memory is 'Current Oracle PDB CPU and memory usage metrics.';
+comment on column oracle_metrics_cpu_memory.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_metrics_cpu_memory.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_metrics_cpu_memory.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
 comment on column oracle_metrics_cpu_memory.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
@@ -1182,6 +991,7 @@ comment on column oracle_metrics_cpu_mem_hist.date_value is 'Timestamp at which 
 -- oracle_metrics_cpu_service
 -- ============================================================
 create table oracle_metrics_cpu_service (
+   collect_id       varchar2(16),
    pdb_name           varchar2(50 char) not null,
    service_name       varchar2(100 char) not null,
    dbcpu_time_minutes number(10) not null,
@@ -1189,6 +999,7 @@ create table oracle_metrics_cpu_service (
 );
 
 comment on table oracle_metrics_cpu_service is 'Current Oracle CPU usage metrics broken down by service.';
+comment on column oracle_metrics_cpu_service.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_metrics_cpu_service.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_metrics_cpu_service.service_name is 'Name of the Oracle service.';
 comment on column oracle_metrics_cpu_service.dbcpu_time_minutes is 'Database CPU time consumed by the service, in minutes.';
@@ -1217,6 +1028,7 @@ comment on column oracle_metrics_cpu_svc_hist.date_value is 'Timestamp at which 
 -- oracle_size_usage
 -- ============================================================
 create table oracle_size_usage (
+   collect_id       varchar2(16),
    db_name         varchar2(50 char) not null,
    pdb_name        varchar2(50 char) not null,
    tablespace_name varchar2(200 char) not null,
@@ -1227,6 +1039,7 @@ create table oracle_size_usage (
 );
 
 comment on table oracle_size_usage is 'Current Oracle tablespace size usage per PDB.';
+comment on column oracle_size_usage.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_size_usage.db_name is 'Name of the database.';
 comment on column oracle_size_usage.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_size_usage.tablespace_name is 'Name of the tablespace.';
@@ -1261,6 +1074,7 @@ comment on column oracle_size_usage_history.date_value is 'Timestamp at which th
 -- oracle_size_usage_seg
 -- ============================================================
 create table oracle_size_usage_seg (
+   collect_id       varchar2(16),
    db_name         varchar2(50 char) not null,
    pdb_name        varchar2(50 char) not null,
    tablespace_name varchar2(200 char) not null,
@@ -1269,6 +1083,7 @@ create table oracle_size_usage_seg (
 );
 
 comment on table oracle_size_usage_seg is 'Oracle tablespace segment size usage per PDB.';
+comment on column oracle_size_usage_seg.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_size_usage_seg.db_name is 'Name of the database.';
 comment on column oracle_size_usage_seg.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_size_usage_seg.tablespace_name is 'Name of the tablespace.';
@@ -1385,6 +1200,7 @@ comment on column oracle_capplan_summary.date_value is 'Timestamp at which this 
 -- oracle_databases
 -- ============================================================
 create table oracle_databases (
+   collect_id       varchar2(16),
    environment      varchar2(20 char) not null,
    license_type     varchar2(50 char) not null,
    hostname         varchar2(100 char) not null,
@@ -1407,6 +1223,7 @@ create table oracle_databases (
 );
 
 comment on table oracle_databases is 'Inventory of Oracle databases/instances and their configuration.';
+comment on column oracle_databases.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_databases.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column oracle_databases.license_type is 'Licensing type applied to this host/instance.';
 comment on column oracle_databases.hostname is 'Host name of the database server or instance.';
@@ -1431,6 +1248,7 @@ comment on column oracle_databases.count_pdb is 'Number of pluggable databases (
 -- oracle_dataguard
 -- ============================================================
 create table oracle_dataguard (
+   collect_id       varchar2(16),
    primary_db            varchar2(100 char) not null,
    standby_db            varchar2(100 char) not null,
    pdb_list_impacted     varchar2(2000 char),
@@ -1439,6 +1257,7 @@ create table oracle_dataguard (
 );
 
 comment on table oracle_dataguard is 'Oracle Data Guard primary/standby configuration and protection mode.';
+comment on column oracle_dataguard.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_dataguard.primary_db is 'Name of the primary database.';
 comment on column oracle_dataguard.standby_db is 'Name of the standby database.';
 comment on column oracle_dataguard.pdb_list_impacted is 'List of PDBs impacted by this Data Guard configuration.';
@@ -1449,6 +1268,7 @@ comment on column oracle_dataguard.protection_mode is 'Data Guard protection mod
 -- oracle_hosts
 -- ============================================================
 create table oracle_hosts (
+   collect_id       varchar2(16),
    environment  varchar2(20 char) not null,
    license_type varchar2(50 char) not null,
    hostname     varchar2(100 char) not null,
@@ -1458,6 +1278,7 @@ create table oracle_hosts (
 );
 
 comment on table oracle_hosts is 'Inventory of Oracle database hosts and their hardware/OS configuration.';
+comment on column oracle_hosts.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_hosts.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column oracle_hosts.license_type is 'Licensing type applied to this host/instance.';
 comment on column oracle_hosts.hostname is 'Host name of the database server or instance.';
@@ -1489,6 +1310,7 @@ comment on column oracle_jdbc_tns.standby_hst is 'Host name of the standby datab
 -- oracle_lms
 -- ============================================================
 create table oracle_lms (
+   collect_id       varchar2(16),
    grouping_id      number(1),                     -- 0=détail par PDB, 1=agrégé toutes PDBs
    con_id           number(5),                     -- PDB container ID (DBA_FEATURE_USAGE_STATISTICS)
    db_pdb_name      varchar2(50 char),             -- Nullable in non-CDBs, populated in CDBs with PDB name
@@ -1502,6 +1324,7 @@ create table oracle_lms (
 );
 
 comment on table oracle_lms is 'Oracle License Management System (LMS) feature usage detection, used for license compliance review.';
+comment on column oracle_lms.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_lms.grouping_id is 'Aggregation level of the row: 0 = detail per PDB, 1 = aggregated across all PDBs.';
 comment on column oracle_lms.con_id is 'PDB container ID, as reported by DBA_FEATURE_USAGE_STATISTICS.';
 comment on column oracle_lms.db_pdb_name is 'Name of the database or pluggable database the feature usage was detected on.';
@@ -1532,6 +1355,7 @@ comment on column oracle_lms_reference.license_type is 'Oracle licensing metric 
 -- oracle_pdbs
 -- ============================================================
 create table oracle_pdbs (
+   collect_id       varchar2(16),
    hostname      varchar2(100 char) not null,
    instance_name varchar2(50 char) not null,
    pdb_name      varchar2(50 char) not null,
@@ -1539,6 +1363,7 @@ create table oracle_pdbs (
 );
 
 comment on table oracle_pdbs is 'Inventory of Oracle pluggable databases (PDBs) and their state.';
+comment on column oracle_pdbs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_pdbs.hostname is 'Host name of the database server or instance.';
 comment on column oracle_pdbs.instance_name is 'Name of the database instance.';
 comment on column oracle_pdbs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
@@ -1548,12 +1373,14 @@ comment on column oracle_pdbs.pdb_state is 'State of the pluggable database (e.g
 -- oracle_psu
 -- ============================================================
 create table oracle_psu (
+   collect_id       varchar2(16),
    db_name     varchar2(50 char) not null,
    db_version  varchar2(50 char) not null,
    psu_applied varchar2(200 char) not null
 );
 
 comment on table oracle_psu is 'Oracle Patch Set Update (PSU) / patch level applied per database.';
+comment on column oracle_psu.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_psu.db_name is 'Name of the database.';
 comment on column oracle_psu.db_version is 'Database engine version.';
 comment on column oracle_psu.psu_applied is 'Identifier of the patch set update (PSU/RU) applied to the database.';
@@ -1562,6 +1389,7 @@ comment on column oracle_psu.psu_applied is 'Identifier of the patch set update 
 -- oracle_sec_admin_high_privs
 -- ============================================================
 create table oracle_sec_admin_high_privs (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    username         varchar2(50 char) not null,
    compliance_score number(2) default 0,
@@ -1569,31 +1397,18 @@ create table oracle_sec_admin_high_privs (
 );
 
 comment on table oracle_sec_admin_high_privs is 'Oracle users holding high administrative privileges, compliance check results.';
+comment on column oracle_sec_admin_high_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_admin_high_privs.db_name is 'Name of the database.';
 comment on column oracle_sec_admin_high_privs.username is 'Name of the database account being evaluated.';
 comment on column oracle_sec_admin_high_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_sec_admin_high_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- oracle_sec_adm_high_privs_exc
--- ============================================================
-create table oracle_sec_adm_high_privs_exc (
-   db_name    varchar2(50 char) not null,
-   username   varchar2(50 char) not null,
-   comments   varchar2(100 char) not null,
-   date_value timestamp default on null systimestamp not null
-);
-
-comment on table oracle_sec_adm_high_privs_exc is 'Documented exceptions accepted for the Oracle high administrative privileges compliance check.';
-comment on column oracle_sec_adm_high_privs_exc.db_name is 'Name of the database.';
-comment on column oracle_sec_adm_high_privs_exc.username is 'Name of the database account being evaluated.';
-comment on column oracle_sec_adm_high_privs_exc.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_sec_adm_high_privs_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_audit_enable
 -- ============================================================
 create table oracle_security_audit_enable (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    audit_parameter  varchar2(50 char) not null,
@@ -1603,6 +1418,7 @@ create table oracle_security_audit_enable (
 );
 
 comment on table oracle_security_audit_enable is 'Oracle unified audit policy activation compliance check results.';
+comment on column oracle_security_audit_enable.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_security_audit_enable.db_name is 'Name of the database.';
 comment on column oracle_security_audit_enable.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_security_audit_enable.audit_parameter is 'Name of the audit policy/parameter being evaluated.';
@@ -1614,6 +1430,7 @@ comment on column oracle_security_audit_enable.date_value is 'Timestamp at which
 -- oracle_sec_default_profile
 -- ============================================================
 create table oracle_sec_default_profile (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1624,6 +1441,7 @@ create table oracle_sec_default_profile (
 );
 
 comment on table oracle_sec_default_profile is 'Oracle users still assigned the DEFAULT profile, compliance check results.';
+comment on column oracle_sec_default_profile.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_default_profile.db_name is 'Name of the database.';
 comment on column oracle_sec_default_profile.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_default_profile.username is 'Name of the database account being evaluated.';
@@ -1632,30 +1450,12 @@ comment on column oracle_sec_default_profile.oracle_managed is 'Indicates whethe
 comment on column oracle_sec_default_profile.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_sec_default_profile.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- oracle_sec_def_profile_exc
--- ============================================================
-create table oracle_sec_def_profile_exc (
-   db_name    varchar2(50 char) not null,
-   pdb_name   varchar2(50 char) not null,
-   username   varchar2(50 char) not null,
-   profile    varchar2(50 char) not null,
-   comments   varchar2(100 char) not null,
-   date_value timestamp default on null systimestamp not null
-);
-
-comment on table oracle_sec_def_profile_exc is 'Documented exceptions accepted for the Oracle default profile compliance check.';
-comment on column oracle_sec_def_profile_exc.db_name is 'Name of the database.';
-comment on column oracle_sec_def_profile_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_sec_def_profile_exc.username is 'Name of the database account being evaluated.';
-comment on column oracle_sec_def_profile_exc.profile is 'Name of the profile assigned to the account.';
-comment on column oracle_sec_def_profile_exc.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_sec_def_profile_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_sec_default_user_pwd
 -- ============================================================
 create table oracle_sec_default_user_pwd (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1664,6 +1464,7 @@ create table oracle_sec_default_user_pwd (
 );
 
 comment on table oracle_sec_default_user_pwd is 'Oracle accounts detected using default/well-known passwords, compliance check results.';
+comment on column oracle_sec_default_user_pwd.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_default_user_pwd.db_name is 'Name of the database.';
 comment on column oracle_sec_default_user_pwd.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_default_user_pwd.username is 'Name of the database account being evaluated.';
@@ -1674,6 +1475,7 @@ comment on column oracle_sec_default_user_pwd.date_value is 'Timestamp at which 
 -- oracle_sec_high_role_privs
 -- ============================================================
 create table oracle_sec_high_role_privs (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1683,6 +1485,7 @@ create table oracle_sec_high_role_privs (
 );
 
 comment on table oracle_sec_high_role_privs is 'Oracle users granted high-privilege roles, compliance check results.';
+comment on column oracle_sec_high_role_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_high_role_privs.db_name is 'Name of the database.';
 comment on column oracle_sec_high_role_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_high_role_privs.username is 'Name of the database account being evaluated.';
@@ -1690,30 +1493,12 @@ comment on column oracle_sec_high_role_privs.privilege is 'Name of the privilege
 comment on column oracle_sec_high_role_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_sec_high_role_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- oracle_sec_high_role_priv_exc
--- ============================================================
-create table oracle_sec_high_role_priv_exc (
-   db_name    varchar2(50 char) not null,
-   pdb_name   varchar2(50 char) not null,
-   username   varchar2(50 char) not null,
-   privilege  varchar2(100 char) not null,
-   comments   varchar2(100 char) not null,
-   date_value timestamp default on null systimestamp not null
-);
-
-comment on table oracle_sec_high_role_priv_exc is 'Documented exceptions accepted for the Oracle high-privilege role compliance check.';
-comment on column oracle_sec_high_role_priv_exc.db_name is 'Name of the database.';
-comment on column oracle_sec_high_role_priv_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_sec_high_role_priv_exc.username is 'Name of the database account being evaluated.';
-comment on column oracle_sec_high_role_priv_exc.privilege is 'Name of the privilege being evaluated.';
-comment on column oracle_sec_high_role_priv_exc.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_sec_high_role_priv_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_sec_high_sys_privs
 -- ============================================================
 create table oracle_sec_high_sys_privs (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1723,6 +1508,7 @@ create table oracle_sec_high_sys_privs (
 );
 
 comment on table oracle_sec_high_sys_privs is 'Oracle users granted high-privilege system privileges, compliance check results.';
+comment on column oracle_sec_high_sys_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_high_sys_privs.db_name is 'Name of the database.';
 comment on column oracle_sec_high_sys_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_high_sys_privs.username is 'Name of the database account being evaluated.';
@@ -1730,30 +1516,12 @@ comment on column oracle_sec_high_sys_privs.privilege is 'Name of the privilege 
 comment on column oracle_sec_high_sys_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_sec_high_sys_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- oracle_sec_high_sys_privs_exc
--- ============================================================
-create table oracle_sec_high_sys_privs_exc (
-   db_name    varchar2(50 char) not null,
-   pdb_name   varchar2(50 char) not null,
-   username   varchar2(50 char) not null,
-   privilege  varchar2(100 char) not null,
-   comments   varchar2(100 char) not null,
-   date_value timestamp default on null systimestamp not null
-);
-
-comment on table oracle_sec_high_sys_privs_exc is 'Documented exceptions accepted for the Oracle high-privilege system privileges compliance check.';
-comment on column oracle_sec_high_sys_privs_exc.db_name is 'Name of the database.';
-comment on column oracle_sec_high_sys_privs_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_sec_high_sys_privs_exc.username is 'Name of the database account being evaluated.';
-comment on column oracle_sec_high_sys_privs_exc.privilege is 'Name of the privilege being evaluated.';
-comment on column oracle_sec_high_sys_privs_exc.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_sec_high_sys_privs_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_sec_high_tab_privs
 -- ============================================================
 create table oracle_sec_high_tab_privs (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    username         varchar2(50 char) not null,
@@ -1763,6 +1531,7 @@ create table oracle_sec_high_tab_privs (
 );
 
 comment on table oracle_sec_high_tab_privs is 'Oracle users granted high-privilege table privileges, compliance check results.';
+comment on column oracle_sec_high_tab_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_high_tab_privs.db_name is 'Name of the database.';
 comment on column oracle_sec_high_tab_privs.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_high_tab_privs.username is 'Name of the database account being evaluated.';
@@ -1770,25 +1539,6 @@ comment on column oracle_sec_high_tab_privs.privilege is 'Name of the privilege 
 comment on column oracle_sec_high_tab_privs.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_sec_high_tab_privs.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- oracle_sec_high_tab_privs_exc
--- ============================================================
-create table oracle_sec_high_tab_privs_exc (
-   db_name    varchar2(50 char) not null,
-   pdb_name   varchar2(50 char) not null,
-   username   varchar2(50 char) not null,
-   privilege  varchar2(100 char) not null,
-   comments   varchar2(100 char) not null,
-   date_value timestamp default on null systimestamp not null
-);
-
-comment on table oracle_sec_high_tab_privs_exc is 'Documented exceptions accepted for the Oracle high-privilege table privileges compliance check.';
-comment on column oracle_sec_high_tab_privs_exc.db_name is 'Name of the database.';
-comment on column oracle_sec_high_tab_privs_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_sec_high_tab_privs_exc.username is 'Name of the database account being evaluated.';
-comment on column oracle_sec_high_tab_privs_exc.privilege is 'Name of the privilege being evaluated.';
-comment on column oracle_sec_high_tab_privs_exc.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_sec_high_tab_privs_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_history
@@ -1810,6 +1560,7 @@ comment on column oracle_security_history.date_value is 'Timestamp at which this
 -- oracle_sec_network_encryption
 -- ============================================================
 create table oracle_sec_network_encryption (
+   collect_id       varchar2(16),
    db_name           varchar2(50 char) not null,
    sqlnet_encryption varchar2(200 char) not null,
    compliance_score  number(2) default 0,
@@ -1817,6 +1568,7 @@ create table oracle_sec_network_encryption (
 );
 
 comment on table oracle_sec_network_encryption is 'Oracle network (SQL*Net) encryption configuration compliance check results.';
+comment on column oracle_sec_network_encryption.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_network_encryption.db_name is 'Name of the database.';
 comment on column oracle_sec_network_encryption.sqlnet_encryption is 'Value of the SQL*Net encryption configuration parameter.';
 comment on column oracle_sec_network_encryption.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
@@ -1826,6 +1578,7 @@ comment on column oracle_sec_network_encryption.date_value is 'Timestamp at whic
 -- oracle_security_parameter
 -- ============================================================
 create table oracle_security_parameter (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    parameter_value  varchar2(1000 char),
    parameter_name   varchar2(50 char) not null,
@@ -1834,34 +1587,19 @@ create table oracle_security_parameter (
 );
 
 comment on table oracle_security_parameter is 'Oracle initialization/security parameter compliance check results.';
+comment on column oracle_security_parameter.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_security_parameter.db_name is 'Name of the database.';
 comment on column oracle_security_parameter.parameter_value is 'Value of the configuration parameter.';
 comment on column oracle_security_parameter.parameter_name is 'Name of the configuration parameter being evaluated.';
 comment on column oracle_security_parameter.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_security_parameter.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- oracle_sec_parameter_exc
--- ============================================================
-create table oracle_sec_parameter_exc (
-   db_name         varchar2(50 char) not null,
-   parameter_value varchar2(50 char),
-   parameter_name  varchar2(50 char) not null,
-   comments        varchar2(100 char) not null,
-   date_value      timestamp default on null systimestamp not null
-);
-
-comment on table oracle_sec_parameter_exc is 'Documented exceptions accepted for the Oracle security parameter compliance check.';
-comment on column oracle_sec_parameter_exc.db_name is 'Name of the database.';
-comment on column oracle_sec_parameter_exc.parameter_value is 'Value of the configuration parameter.';
-comment on column oracle_sec_parameter_exc.parameter_name is 'Name of the configuration parameter being evaluated.';
-comment on column oracle_sec_parameter_exc.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_sec_parameter_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_profile
 -- ============================================================
 create table oracle_security_profile (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    profile          varchar2(50 char) not null,
@@ -1872,6 +1610,7 @@ create table oracle_security_profile (
 );
 
 comment on table oracle_security_profile is 'Oracle profile resource limit compliance check results.';
+comment on column oracle_security_profile.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_security_profile.db_name is 'Name of the database.';
 comment on column oracle_security_profile.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_security_profile.profile is 'Name of the profile assigned to the account.';
@@ -1880,27 +1619,6 @@ comment on column oracle_security_profile.limit_value is 'Value configured for t
 comment on column oracle_security_profile.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_security_profile.date_value is 'Timestamp at which this row was collected or computed.';
 
--- ============================================================
--- oracle_sec_profile_exc
--- ============================================================
-create table oracle_sec_profile_exc (
-   db_name       varchar2(50 char) not null,
-   pdb_name      varchar2(50 char) not null,
-   profile       varchar2(50 char) not null,
-   resource_name varchar2(100 char) not null,
-   limit_value   varchar2(100 char) not null,
-   comments      varchar2(100 char) not null,
-   date_value    timestamp default on null systimestamp not null
-);
-
-comment on table oracle_sec_profile_exc is 'Documented exceptions accepted for the Oracle profile resource limit compliance check.';
-comment on column oracle_sec_profile_exc.db_name is 'Name of the database.';
-comment on column oracle_sec_profile_exc.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_sec_profile_exc.profile is 'Name of the profile assigned to the account.';
-comment on column oracle_sec_profile_exc.resource_name is 'Name of the profile resource limit parameter.';
-comment on column oracle_sec_profile_exc.limit_value is 'Value configured for the profile resource limit.';
-comment on column oracle_sec_profile_exc.comments is 'Free-text justification for this documented exception.';
-comment on column oracle_sec_profile_exc.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_scoring
@@ -1944,6 +1662,7 @@ comment on column oracle_security_scoring.date_value is 'Timestamp at which this
 -- oracle_security_tablespace
 -- ============================================================
 create table oracle_security_tablespace (
+   collect_id       varchar2(16),
    db_name          varchar2(50 char) not null,
    pdb_name         varchar2(50 char) not null,
    tablespace_name  varchar2(100 char) not null,
@@ -1954,6 +1673,7 @@ create table oracle_security_tablespace (
 );
 
 comment on table oracle_security_tablespace is 'Oracle tablespace encryption compliance check results.';
+comment on column oracle_security_tablespace.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_security_tablespace.db_name is 'Name of the database.';
 comment on column oracle_security_tablespace.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_security_tablespace.tablespace_name is 'Name of the tablespace.';
@@ -1967,6 +1687,7 @@ comment on column oracle_security_tablespace.date_value is 'Timestamp at which t
 -- SYS.USER$MIG : residus de migration avec hash legacy 10G (DES).
 -- ============================================================
 create table oracle_sec_usermig_tbl_exist (
+   collect_id       varchar2(16),
    db_name    varchar2(50 char) not null,
    pdb_name   varchar2(50 char) not null,
    owner      varchar2(30 char) not null,
@@ -1974,6 +1695,7 @@ create table oracle_sec_usermig_tbl_exist (
 );
 
 comment on table oracle_sec_usermig_tbl_exist is 'Detection of the legacy SYS.USER$MIG table, a leftover of pre-11g password hash migration containing weak DES hashes.';
+comment on column oracle_sec_usermig_tbl_exist.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_sec_usermig_tbl_exist.db_name is 'Name of the database.';
 comment on column oracle_sec_usermig_tbl_exist.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_sec_usermig_tbl_exist.owner is 'Owner (schema) of the object.';
@@ -1983,6 +1705,7 @@ comment on column oracle_sec_usermig_tbl_exist.table_name is 'Name of the table.
 -- oracle_services
 -- ============================================================
 create table oracle_services (
+   collect_id       varchar2(16),
    hostname      varchar2(100 char) not null,
    instance_name varchar2(50 char) not null,
    pdb_name      varchar2(50 char) not null,
@@ -1990,6 +1713,7 @@ create table oracle_services (
 );
 
 comment on table oracle_services is 'Inventory of Oracle database services per PDB.';
+comment on column oracle_services.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_services.hostname is 'Host name of the database server or instance.';
 comment on column oracle_services.instance_name is 'Name of the database instance.';
 comment on column oracle_services.pdb_name is 'Name of the Oracle pluggable database (PDB).';
@@ -1999,6 +1723,7 @@ comment on column oracle_services.service_name is 'Name of the Oracle service.';
 -- oracle_users
 -- ============================================================
 create table oracle_users (
+   collect_id       varchar2(16),
    hostname       varchar2(100 char) not null,
    instance_name  varchar2(50 char) not null,
    pdb_name       varchar2(50 char) not null,
@@ -2008,6 +1733,7 @@ create table oracle_users (
 );
 
 comment on table oracle_users is 'Inventory of Oracle database users and their account status.';
+comment on column oracle_users.collect_id is 'Identifier for the collect run that produced this row';
 comment on column oracle_users.hostname is 'Host name of the database server or instance.';
 comment on column oracle_users.instance_name is 'Name of the database instance.';
 comment on column oracle_users.pdb_name is 'Name of the Oracle pluggable database (PDB).';

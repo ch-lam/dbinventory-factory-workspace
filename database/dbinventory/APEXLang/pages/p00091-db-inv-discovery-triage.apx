@@ -1,0 +1,344 @@
+page 91 (
+    name: DB Inv. - Discovery Triage
+    alias: DB-INV-DISCOVERY-TRIAGE
+    title: DB Inv. - Discovery Triage
+    appearance {
+        pageMode: modalDialog
+        dialogTemplate: @/modal-dialog
+        templateOptions: #DEFAULT#
+    }
+    dialog {
+        resizable: false
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+        warnOnUnsavedChanges: false
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region triage (
+        name: Discovered Entity
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: contentBody
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P91_ENTITY_ID (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @triage
+            slot: regionBody
+        }
+    )
+
+    pageItem P91_ENVIRONMENT (
+        type: selectList
+        label {
+            label: Environment
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @discovery-environment
+            displayNullValue: false
+        }
+        layout {
+            sequence: 60
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Values in use in the collection perimeter. Required to promote.
+        }
+    )
+
+    pageItem P91_HOSTNAME (
+        type: displayOnly
+        label {
+            label: Host
+            alignment: right
+        }
+        layout {
+            sequence: 30
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P91_INSTANCE_NAME (
+        type: displayOnly
+        label {
+            label: Instance
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P91_LEVEL_NAME (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @triage
+            slot: regionBody
+        }
+    )
+
+    pageItem P91_LICENSE_TYPE (
+        type: selectList
+        label {
+            label: License Type
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @discovery-license
+            displayNullValue: false
+        }
+        layout {
+            sequence: 70
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Values in use in the collection perimeter. Required to promote.
+        }
+    )
+
+    pageItem P91_PORT (
+        type: displayOnly
+        label {
+            label: TCP Port
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Read from the instance registry key by the Windows discovery. Without it the instance cannot be collected, because a named instance does not listen on 1433.
+        }
+    )
+
+    pageItem P91_TRIAGE_NOTE (
+        type: textarea
+        label {
+            label: Note
+            alignment: right
+        }
+        layout {
+            sequence: 80
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Why this entity is being ignored. Kept with the row so the next weekly run does not raise it again as an open question.
+        }
+    )
+
+    button cancel (
+        buttonName: CANCEL
+        label: Cancel
+        layout {
+            sequence: 10
+            region: @triage
+            slot: close
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: definedByDynamicAction
+        }
+    )
+
+    button ignore (
+        buttonName: IGNORE
+        label: Ignore
+        layout {
+            sequence: 20
+            region: @triage
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button promote (
+        buttonName: PROMOTE
+        label: Add to Collection
+        layout {
+            sequence: 30
+            region: @triage
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    dynamicAction cancel-dialog (
+        name: Cancel Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: click
+            selectionType: button
+            button: @cancel
+        }
+
+        action native-cancel-dialog (
+            action: cancelDialog
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    process close-triage-dialog (
+        name: Close Triage Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+        advanced {
+            executionMappingIdentifier: 6078469143392321
+        }
+    )
+
+    process load-context (
+        name: Load Context
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P91_LEVEL_NAME = 'INSTANCE' then
+                   select h.hostname, i.instance_name, i.port
+                     into :P91_HOSTNAME, :P91_INSTANCE_NAME, :P91_PORT
+                     from disc_instance i
+                     join disc_host h on h.disc_host_id = i.disc_host_id
+                    where i.disc_instance_id = :P91_ENTITY_ID;
+                else
+                   select h.hostname, null, null
+                     into :P91_HOSTNAME, :P91_INSTANCE_NAME, :P91_PORT
+                     from disc_host h
+                    where h.disc_host_id = :P91_ENTITY_ID;
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: beforeHeader
+        }
+        advanced {
+            executionMappingIdentifier: 6077280278392321
+        }
+    )
+
+    process mark-ignored (
+        name: Mark Ignored
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_discovery.set_triage(
+                    p_level     => :P91_LEVEL_NAME,
+                    p_entity_id => :P91_ENTITY_ID,
+                    p_status    => 'IGNORED',
+                    p_note      => :P91_TRIAGE_NOTE );
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        advanced {
+            executionMappingIdentifier: 6078066242392321
+        }
+        serverSideCondition {
+            whenButtonPressed: @ignore
+        }
+    )
+
+    process promote-to-collection (
+        name: Promote To Collection
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_discovery.promote_instance(
+                    p_disc_instance_id => :P91_ENTITY_ID,
+                    p_environment      => :P91_ENVIRONMENT,
+                    p_license_type     => :P91_LICENSE_TYPE );
+                ```
+        }
+        execution {
+            sequence: 10
+        }
+        advanced {
+            executionMappingIdentifier: 6077615025392321
+        }
+        serverSideCondition {
+            whenButtonPressed: @promote
+        }
+    )
+
+)
+

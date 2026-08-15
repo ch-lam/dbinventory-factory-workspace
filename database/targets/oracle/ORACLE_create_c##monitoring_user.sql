@@ -9,8 +9,11 @@ create profile C##MONITORING limit PASSWORD_LIFE_TIME UNLIMITED;
 -- Create user and privs.
 create user C##MONITORING identified by "F5t9TAcbjLTzhBNE69YeYBTx1BLgOZ" -- use secret server to retreive correct value.
        profile C##MONITORING;
+ALTER USER c##monitoring SET CONTAINER_DATA = ALL CONTAINER = CURRENT;
 grant create session to C##MONITORING;
-grant SELECT_CATALOG_ROLE to C##MONITORING;
+GRANT SET CONTAINER TO C##MONITORING CONTAINER=ALL;
+GRANT SELECT_CATALOG_ROLE TO C##MONITORING CONTAINER=ALL;
+GRANT SELECT ANY DICTIONARY TO C##MONITORING CONTAINER=ALL;
 
 -- create view as X$ cannot be granted directly, then grant select on view
 create view vw_x$dbgalertext as select * from sys.x$dbgalertext;

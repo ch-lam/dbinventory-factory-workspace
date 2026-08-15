@@ -28,6 +28,16 @@ const COMPILER_METADATA_PROPERTY_ALIASES = new Map([
   ["app.authentication.scheme", "authenticationScheme"]
 ]);
 
+// Properties the LIVE compiler accepts -- apex validate passes on them -- but which
+// the offline metadata snapshot does not carry. APEX writes them on export, and they
+// are load-bearing: savedReportMappingIdentifier is what keeps an interactive report's
+// saved reports attached to the component across re-imports. Deleting them to silence
+// this audit would lose that mapping, so they are accepted here instead.
+// Re-check when the snapshot is refreshed (see tools/query-valid-props.mjs).
+const COMPILER_METADATA_SNAPSHOT_GAPS = new Set([
+  "region.advanced.savedReportMappingIdentifier"
+]);
+
 function defaultCommand() {
   return IS_PACKAGED_ROOT
     ? "node tools/compiler-truth-audit.mjs"
@@ -256,6 +266,12 @@ function validateProperty({ issues, filePath, lineNumber, componentFrame, groupF
   if (!componentFrame?.record || !propertyName) {
     return;
   }
+  const scopedKey = groupFrame
+    ? `${componentFrame.name}.${groupFrame.name}.${propertyName}`
+    : `${componentFrame.name}.${propertyName}`;
+  if (COMPILER_METADATA_SNAPSHOT_GAPS.has(scopedKey)) {
+    return;
+  }
   const compilerPropertyNames = compilerMetadataPropertyNames(componentFrame.name, groupFrame?.name || "", propertyName);
   if (groupFrame) {
     const props = componentFrame.record.groups[groupFrame.name] || [];
@@ -300,10 +316,25 @@ export function auditApxText(filePath, text, map) {
   const observations = [];
   const stack = [];
   const lines = text.split(/\r?\n/);
+  let inFencedValue = false;
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
     const trimmed = line.trim();
+
+    // A ```sql / ```plsql fence carries a property VALUE, not APEXLang source.
+    // Parsing it as source invents properties -- "into :P91_HOSTNAME" matches the
+    // property regex and is reported as an unknown `into` -- and its unbalanced
+    // parentheses pop the component frame, so every later property of that
+    // component is blamed on its parent (process.advanced.x read as page.advanced.x).
+    if (trimmed.startsWith("```")) {
+      inFencedValue = !inFencedValue;
+      return;
+    }
+    if (inFencedValue) {
+      return;
+    }
+
     if (!trimmed || trimmed.startsWith("//") || trimmed.startsWith("#")) {
       return;
     }

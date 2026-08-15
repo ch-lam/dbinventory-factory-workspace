@@ -5005,4 +5005,231 @@ insert into mssql_databases (
            null,
            'PROD' );
 
+
+-- ============================================================
+-- mssql_hosts.is_integrated_security_only
+-- ------------------------------------------------------------
+-- Set by update rather than in the 50 inserts above: the column is appended at
+-- the end of the table, and rewriting every literal insert to carry it would
+-- bury the change. The fleet leans towards mixed mode, which is what the real
+-- one looks like before the control is enforced.
+-- ============================================================
+update mssql_hosts
+   set is_integrated_security_only = case when mod(ora_hash(hostname), 5) = 0 then 1 else 0 end;
+
+commit;
+
+
+-- ============================================================
+-- mssql_security_sa
+-- ------------------------------------------------------------
+-- Driven off the instances already present in mssql_security_configoptions, so
+-- the sa rows cover exactly the fleet the other security checks cover. The mix
+-- leans non-compliant on purpose: leaving the account named 'sa' and enabled is
+-- what the fleet actually looks like before the control is enforced.
+-- ============================================================
+begin
+   for i in ( select distinct collect_id, collect_target, servername
+                from mssql_security_configoptions ) loop
+      insert into mssql_security_sa ( collect_id, collect_target, servername, login_name, is_disabled )
+         values ( i.collect_id, i.collect_target, i.servername,
+                  case when mod(ora_hash(i.servername), 4) = 0 then 'sa_admin_local' else 'sa' end,
+                  case when mod(ora_hash(i.servername), 3) = 0 then 1 else 0 end );
+   end loop;
+end;
+/
+
+
+-- ============================================================
+-- Oracle security staging (12 tables)
+-- ------------------------------------------------------------
+-- Generated rather than written out: 12 tables x 32 databases is well past the
+-- point where literal inserts stay readable, and what matters here is the MIX of
+-- compliant and deviating cases, not the individual values.
+--
+-- The mix is deterministic - ora_hash(db_name) mod 10 - so two runs produce the
+-- same fleet and a scoring regression shows up as a changed number rather than
+-- as noise. Every database gets a full parameter set and a full profile, so
+-- pkg_dbinv_scoring.load_findings_oracle_sec always sees its collect witnesses.
+--
+-- Cases this data deliberately exercises:
+--   * SYS / SYSTEM / DBSNMP hold high privileges and sit on DEFAULT: they are
+--     oracle_managed and must NOT produce a deviation (scope of the norm).
+--   * APP_PROF reports every limit as 'DEFAULT': inherited, must be skipped.
+--   * pdb_os_credential is collected but its rule is active = 0: no finding.
+--   * a database with no privilege deviation must still get its compliant row.
+-- ============================================================
+declare
+   procedure p ( p_db varchar2, p_name varchar2, p_value varchar2 ) is
+   begin
+      insert into oracle_security_parameter ( db_name, parameter_name, parameter_value, date_value )
+         values ( p_db, p_name, p_value, systimestamp );
+   end p;
+
+   procedure prf ( p_db varchar2, p_profile varchar2, p_res varchar2, p_limit varchar2 ) is
+   begin
+      insert into oracle_security_profile ( db_name, pdb_name, profile, resource_name, limit_value, date_value )
+         values ( p_db, 'NON CONTAINER', p_profile, p_res, p_limit, systimestamp );
+   end prf;
+
+   procedure usr ( p_db varchar2, p_user varchar2, p_profile varchar2, p_managed varchar2 ) is
+   begin
+      insert into oracle_sec_default_profile ( db_name, pdb_name, username, profile, oracle_managed, date_value )
+         values ( p_db, 'NON CONTAINER', p_user, p_profile, p_managed, systimestamp );
+   end usr;
+
+   procedure tbs ( p_db varchar2, p_ts varchar2, p_enc varchar2 ) is
+   begin
+      insert into oracle_security_tablespace ( db_name, pdb_name, tablespace_name, encrypted, date_value )
+         values ( p_db, 'NON CONTAINER', p_ts, p_enc, systimestamp );
+   end tbs;
+begin
+   -- ora_hash is a SQL function, so the bucket is computed by the cursor rather
+   -- than in PL/SQL.
+   for d in ( select db_name, mod(ora_hash(db_name), 10) h
+                from oracle_databases order by db_name ) loop
+      -- ---------- initialisation parameters ----------
+      p(d.db_name, 'o7_dictionary_accessibility',       case when d.h < 2 then 'TRUE'  else 'FALSE' end);
+      p(d.db_name, 'remote_os_authent',                 case when d.h = 3 then 'TRUE'  else 'FALSE' end);
+      p(d.db_name, 'remote_os_roles',                   'FALSE');
+      p(d.db_name, 'os_roles',                          'FALSE');
+      p(d.db_name, 'utl_file_dir',                      case when d.h = 4 then '/tmp'  else null end);
+      p(d.db_name, 'audit_trail',                       case when d.h < 3 then 'NONE'  else 'DB' end);
+      p(d.db_name, 'audit_sys_operations',              case when d.h = 5 then 'FALSE' else 'TRUE' end);
+      p(d.db_name, 'Unified Auditing',                  case when d.h < 4 then 'FALSE' else 'TRUE' end);
+      p(d.db_name, 'resource_limit',                    case when d.h = 6 then 'FALSE' else 'TRUE' end);
+      p(d.db_name, 'sec_case_sensitive_logon',          'TRUE');
+      p(d.db_name, 'sec_max_failed_login_attempts',     case when d.h = 7 then '10'    else '3' end);
+      p(d.db_name, 'sec_return_server_release_banner',  case when d.h = 8 then 'TRUE'  else 'FALSE' end);
+      p(d.db_name, 'sec_protocol_error_trace_action',   'TRACE');
+      p(d.db_name, 'sec_protocol_error_further_action', case when d.h = 9 then 'CONTINUE' else '(DROP,3)' end);
+      p(d.db_name, '_sys_logon_delay',                  case when d.h = 1 then '0'     else '4' end);
+      -- collected, rule inactive: must not produce a finding
+      p(d.db_name, 'pdb_os_credential',                 null);
+
+      -- ---------- profiles ----------
+      prf(d.db_name, 'DEFAULT', 'FAILED_LOGIN_ATTEMPTS',    case when d.h < 3 then '10' else '5' end);
+      prf(d.db_name, 'DEFAULT', 'PASSWORD_LIFE_TIME',       case when d.h < 2 then '180' else '90' end);
+      prf(d.db_name, 'DEFAULT', 'PASSWORD_LOCK_TIME',       '1');
+      prf(d.db_name, 'DEFAULT', 'PASSWORD_GRACE_TIME',      case when d.h = 4 then '7' else '5' end);
+      prf(d.db_name, 'DEFAULT', 'PASSWORD_REUSE_MAX',       'UNLIMITED');
+      prf(d.db_name, 'DEFAULT', 'PASSWORD_REUSE_TIME',      'UNLIMITED');
+      prf(d.db_name, 'DEFAULT', 'PASSWORD_VERIFY_FUNCTION', case when d.h < 4 then 'NULL' else 'ORA12C_STRONG_VERIFY_FUNCTION' end);
+      prf(d.db_name, 'DEFAULT', 'SESSIONS_PER_USER',        case when d.h = 5 then 'UNLIMITED' else '10' end);
+      prf(d.db_name, 'DEFAULT', 'INACTIVE_ACCOUNT_TIME',    case when d.h < 2 then 'UNLIMITED' else '120' end);
+      -- inherited limits: skipped by the norm, must produce no finding
+      prf(d.db_name, 'APP_PROF', 'FAILED_LOGIN_ATTEMPTS',    'DEFAULT');
+      prf(d.db_name, 'APP_PROF', 'PASSWORD_LIFE_TIME',       'DEFAULT');
+      prf(d.db_name, 'APP_PROF', 'PASSWORD_VERIFY_FUNCTION', 'DEFAULT');
+
+      -- ---------- users ----------
+      usr(d.db_name, 'SYS',     'DEFAULT',  'Y');
+      usr(d.db_name, 'SYSTEM',  'DEFAULT',  'Y');
+      usr(d.db_name, 'DBSNMP',  'DEFAULT',  'Y');
+      usr(d.db_name, 'APPUSER', 'APP_PROF', 'N');
+      if d.h < 4 then
+         usr(d.db_name, 'LEGACY_USER', 'DEFAULT', 'N');
+      end if;
+
+      -- ---------- tablespaces ----------
+      tbs(d.db_name, 'SYSTEM',   'NO');
+      tbs(d.db_name, 'SYSAUX',   'NO');
+      tbs(d.db_name, 'TEMP',     'NO');
+      tbs(d.db_name, 'UNDOTBS1', 'NO');
+      tbs(d.db_name, 'USERS',    case when d.h >= 4 then 'YES' else 'NO' end);
+      tbs(d.db_name, 'APPDATA',  case when d.h >= 6 then 'YES' else 'NO' end);
+
+      -- ---------- audit policy ----------
+      insert into oracle_security_audit_enable ( db_name, pdb_name, audit_parameter, audit_activated, date_value )
+         values ( d.db_name, 'NON CONTAINER', 'ORA_CIS_RECOMMENDATIONS',
+                  case when d.h >= 3 then 1 else 0 end, systimestamp );
+
+      -- ---------- password file ----------
+      insert into oracle_sec_admin_high_privs ( db_name, username, date_value )
+         values ( d.db_name, 'SYS', systimestamp );
+      if d.h < 3 then
+         insert into oracle_sec_admin_high_privs ( db_name, username, date_value )
+            values ( d.db_name, 'OPSDBA', systimestamp );
+      end if;
+
+      -- ---------- network encryption ----------
+      if d.h >= 3 then
+         insert into oracle_sec_network_encryption ( db_name, sqlnet_encryption, date_value )
+            values ( d.db_name, 'AES256_Encryption_Service_Adapter', systimestamp );
+      end if;
+
+      -- ---------- high system privileges ----------
+      -- SYS is oracle_managed: present in the collect, filtered out by the norm.
+      insert into oracle_sec_high_sys_privs ( db_name, pdb_name, username, privilege, date_value )
+         values ( d.db_name, 'NON CONTAINER', 'SYS', 'SELECT ANY DICTIONARY', systimestamp );
+      if d.h < 4 then
+         insert into oracle_sec_high_sys_privs ( db_name, pdb_name, username, privilege, date_value )
+            values ( d.db_name, 'NON CONTAINER', 'APPUSER', 'SELECT ANY DICTIONARY', systimestamp );
+      end if;
+      if d.h < 2 then
+         insert into oracle_sec_high_sys_privs ( db_name, pdb_name, username, privilege, date_value )
+            values ( d.db_name, 'NON CONTAINER', 'BATCHUSER', 'GRANT ANY ROLE', systimestamp );
+      end if;
+
+      -- ---------- high roles ----------
+      insert into oracle_sec_high_role_privs ( db_name, pdb_name, username, privilege, date_value )
+         values ( d.db_name, 'NON CONTAINER', 'SYSTEM', 'DBA', systimestamp );
+      if d.h < 3 then
+         insert into oracle_sec_high_role_privs ( db_name, pdb_name, username, privilege, date_value )
+            values ( d.db_name, 'NON CONTAINER', 'APPUSER', 'DBA', systimestamp );
+      end if;
+
+      -- ---------- packages granted to PUBLIC ----------
+      if d.h < 5 then
+         insert into oracle_sec_high_tab_privs ( db_name, pdb_name, username, privilege, date_value )
+            values ( d.db_name, 'NON CONTAINER', 'PUBLIC', 'UTL_FILE', systimestamp );
+         insert into oracle_sec_high_tab_privs ( db_name, pdb_name, username, privilege, date_value )
+            values ( d.db_name, 'NON CONTAINER', 'PUBLIC', 'DBMS_FILE_TRANSFER', systimestamp );
+      end if;
+
+      -- ---------- default passwords ----------
+      if d.h < 2 then
+         insert into oracle_sec_default_user_pwd ( db_name, pdb_name, username, date_value )
+            values ( d.db_name, 'NON CONTAINER', 'SCOTT', systimestamp );
+      end if;
+
+      -- ---------- residual SYS.USER$MIG ----------
+      if d.h = 0 then
+         insert into oracle_sec_usermig_tbl_exist ( db_name, pdb_name, owner, table_name )
+            values ( d.db_name, 'NON CONTAINER', 'SYS', 'USER$MIG' );
+      end if;
+   end loop;
+end;
+/
+
+
+-- ============================================================
+-- collect_id sur les tables Oracle
+-- ------------------------------------------------------------
+-- Pose en un seul endroit plutot que dans chaque insert : la valeur n'a d'autre
+-- role que de dater la donnee, et la lire d'un bloc rend le scenario evident.
+--
+-- Deux dates differentes a dessein, pour exercer la regle du maillon faible de
+-- v_entity_collect_date : l'inventaire est plus ancien que la securite, donc la
+-- date retenue par instance doit etre celle de l'inventaire, la plus ancienne.
+-- Cote MSSQL le jeu d'essai porte COLL_ID_20260717, encore plus ancien : les
+-- deux plateformes doivent donc afficher des ages nettement differents, ce qui
+-- est exactement le signal que ces colonnes servent a rendre visible.
+-- ============================================================
+update oracle_hosts     set collect_id = 'COLL_ID_20260801';
+update oracle_databases set collect_id = 'COLL_ID_20260801';
+
+update oracle_security_parameter     set collect_id = 'COLL_ID_20260805';
+update oracle_security_profile       set collect_id = 'COLL_ID_20260805';
+update oracle_sec_default_profile    set collect_id = 'COLL_ID_20260805';
+update oracle_security_tablespace    set collect_id = 'COLL_ID_20260805';
+update oracle_security_audit_enable  set collect_id = 'COLL_ID_20260805';
+update oracle_sec_admin_high_privs   set collect_id = 'COLL_ID_20260805';
+update oracle_sec_network_encryption set collect_id = 'COLL_ID_20260805';
+update oracle_sec_high_sys_privs     set collect_id = 'COLL_ID_20260805';
+update oracle_sec_high_role_privs    set collect_id = 'COLL_ID_20260805';
+update oracle_sec_high_tab_privs     set collect_id = 'COLL_ID_20260805';
+update oracle_sec_default_user_pwd   set collect_id = 'COLL_ID_20260805';
+update oracle_sec_usermig_tbl_exist  set collect_id = 'COLL_ID_20260805';
+
 commit;

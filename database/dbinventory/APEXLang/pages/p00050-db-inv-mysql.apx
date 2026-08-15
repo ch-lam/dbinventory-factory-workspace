@@ -1,0 +1,31 @@
+page 50 (
+    name: DB Inv. - MySQL
+    alias: DB-INV-MYSQL
+    title: DB Inv. - MySQL
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region page-title (
+        name: DB Inv. - MySQL
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
+)
+

@@ -1,0 +1,94 @@
+﻿CNSSQL1,Nod32 SQL DBs,IT-SysAdmin-Windows,<Unknown>
+LABOSOMSRV,"Labo SommeilShares: BrainNet, ResScanSQL Express for Philips EncorePro",IT-Medicotech-General,<Unknown>
+MATCHERSRV,IMT International Matcher (FIV),IT-Medicotech-General,<Unknown>
+SHATEST,INCCI SHA Test Server,IT-Medicotech-INCCI,<Unknown>
+SCCMCHL,System Center Configuration Manager- Primary Site Server- Site DB- Management Point 80/443- SMS Provider- Windows ADK,IT-SysAdmin-Windows,<Unknown>
+SCCMREPORT,System Center Configuration Manager- Reporting 80/443- Date Warehouse- Reporting & Data Warehouse DBs,IT-SysAdmin-Windows,<Unknown>
+MVESRV,Lexmark MarkVision Enterprise (Print Services),IT-Helpdesk-L2,<Unknown>
+INFRASQL,SQL ServerEvidian EAM Audit DBVMware Horizon Event DBWSUS DB (used by WUSRV)oSCM DB (OPNS SmartCard Manager)CHL IPAM DB,IT-SysAdmin-Windows,<Unknown>
+ORALABO-PROD,Oracle DB server LABO,IT-DBA,<Unknown>
+SCHAUFSRV,Schauf GmbH S-Guide - Prod ServerKontakt: Vera Lion,IT-SysAdmin-Windows,IT-Infra-Management
+IMAGEDRIVEDB,Synaptive ImageDriveSQL Server,IT-Medicotech-General,Service Neurochirurgie
+ZCMSQL,Windows 2019 SQL 2016 Server for ZCM 2017,IT-SysAdmin-Windows,<Unknown>
+COPRADEMO,INCCI new Copra Test Server,IT-Medicotech-INCCI,<Unknown>
+ESTOSPROCALL,Estos ProCall + MetaDirectory,IT-Infra-Management,<Unknown>
+SBIMSRV,SBIM Prod Server,IT-EAI,<Unknown>
+SBIMTEST,SBIM Test Server,IT-EAI,<Unknown>
+CATOTEST,CATO Test SQL Server,IT-Medicotech-General,<Unknown>
+SCCMSUP,System Center Configuration Manager- Software Update Point	8530/8531- SUS DB- Endpoint Protection- Asset Intelligence,IT-SysAdmin-Windows,<Unknown>
+COPRALIVE,INCCI Copra 6 Live-Server,IT-Medicotech-INCCI,<Unknown>
+COPRASTAT,INCCI Copra 6 Statistikserver,IT-Medicotech-INCCI,<Unknown>
+COPRATEST,INCCI Copra 6 Test- & Designserver,IT-Medicotech-INCCI,<Unknown>
+LABOSRV,Labo Applications:- Scanbac- Biorad UnityRT,IT-Medicotech-Labo,<Unknown>
+TSSTEST,Thycotic Test Server,IT-SecOps,<Unknown>
+APEXONE,TrendMicro EndPoint Management,IT-SecOps,<Unknown>
+APEXCENTRAL,TrendMicro Management,IT-SecOps,<Unknown>
+ONKOZERTSRV,OnkoZert TuDoc (documentation tumeurs),IT-Medicotech-General,<Unknown>
+SENTRYSUITESRV,"SentrySuite (EFR, épreuves fonctionnelles respiratoires) - Prod",IT-Medicotech-General,<Unknown>
+SENTRYSUITETEST,"SentrySuite (EFR, épreuves fonctionnelles respiratoires) - Test",IT-Medicotech-General,<Unknown>
+INFINITYGW,Dräger Infinity Gateway Suite (INCCI),IT-Medicotech-INCCI,<Unknown>
+NEUROSRV,BrainRT (Neuro),IT-Medicotech-General,<Unknown>
+RDMSRV,"Medsquare RDM (Radiation Dose Monitor)Contacts: Laurent Noël, Robert Bertinelli",IT-Medicotech-Imagerie,<Unknown>
+THYCOTICDB,Thycotic Database & File Share Server,IT-SecOps,<Unknown>
+THYCOTICSRV,Thycotic Secret Server (Internal),IT-SecOps,<Unknown>
+ECGTEST,Philips IntelliSpace ECG - Test,IT-Medicotech-General,<Unknown>
+SAATMANNSRV,Saatmann GeDoWin & QS-Monitor (INCCI),IT-Medicotech-INCCI,<Unknown>
+ECGSRV,Philips IntelliSpace ECG - Prod,IT-Medicotech-General,<Unknown>
+DRAGONDB,new 2k19 server / speech exec DB server - replace DicteesrvCHG0032612,IT-Medicotech-General,Direction médicale
+CATOSRV,Medico-Tech SQL server (CATO)CHG0032694,IT-Medicotech-General,<Unknown>
+SAPCHLDB,SAP DB server for production system CHL (formerly with server linux127),IT-SAP Admins,<Unknown>
+OPTIMDB,"OPTIM Database server (sterilisation) ",IT-Medicotech-General,<Unknown>
+WSSQL01,Fabio : 22/04/21 : General purpose MS SQL server (No Medical Data)PORTIERDB.ad.chl.lu -> Key management by Service transport ->Carrousel -> Callcenter software used by few secretariesPapercut -> Folow me Printing solutionwPO_WSEPO01 -> EPO MCafee DB for OES ServersUnitexxx -> UnitePlatform (Acertys and Ascom) système de report d'alarme de monitorings de l'USN3B vers les DECTSrmonidb.ad.chl.lu S4L -> RMONISRV (sensor 4 lab server) Monitoring sondes de température des frigos labo + pharmacie + med Nuc,IT-SysAdmin-Windows,<Unknown>
+ITCDB01,,IT-SAP Admins,<Unknown>
+ORARETRO-PROD,Oracle DB production server for Rétrovirologie(Nelly GOEPFERT & Toni HELENO ROLO),IT-DBA,<Unknown>
+ORARETRO-UAT,Oracle DB UAT (preprod) server for Rétrovirologie(Nelly GOEPFERT & Toni HELENO ROLO),IT-DBA,<Unknown>
+ORARETRO-DEV,Oracle DB dev&test server for Rétrovirologie(Nelly GOEPFERT & Toni HELENO ROLO),IT-DBA,<Unknown>
+WSSQLTEST01,,IT-SysAdmin-Windows,<Unknown>
+SAPCHCDB,NEW address for VLAN consolidationSAP DB server for consolidation (preprod) system CHC (formerly with server linux226),IT-SAP Admins,<Unknown>
+ORA-DEV,Oracle server for DEV databases containing non critical data (Nelly GOEPFERT),IT-DBA,<Unknown>
+ORAENNOV-PROD,Oracle server for Ennov production DB (Nelly GOEPFERT),IT-DBA,Gestionnaire qualité
+SYSMEXIPUSRV,Sysmex Extended IPU Server (Labo) Migration purpose of the 23/11/2021 (fabio & ALbert),IT-Medicotech-Labo,<Unknown>
+BRAINWAVEDB,BraneWave DB serverKey User : Gerald BertolottiCHG0035510,IT-SecOps,<Unknown>
+ORGACARDDB01,Orgacard DB server for Orgacard Version 115.0 infrastructure CHG0036329,IT-Logistique,IT-Infra-Management
+SAPCHSDB,,IT-SAP Admins,<Unknown>
+ENDOBASESRV,New Endobase infra CHG0036889,IT-Medicotech-General,<Unknown>
+ORALEGACY,,IT-DBA,<Unknown>
+ORAHYDMEDIA-PROD,SRV DB Oracle HydMedia Prod,IT-DBA,<Unknown>
+WSSQLMED01,"Fabio : 20/09/22 : General purpose MS SQL server for Medical Data (no critial systems only) (24/24 7/7 systems need to be on dedicated MS SQL Server to be able to update and patch easier)MUSEDB -> ",IT-SysAdmin-Windows,<Unknown>
+ORACYBERLAB-PROD,Nouveau serveur oracyberlab-prod - CHG0036473,IT-DBA,IT-SysAdmin-Linux
+COPRA6COPUS,Server for the Software COPUS (Interface server for the medical devices) CHG0039638,IT-Medicotech-INCCI,<Unknown>
+SAPCHLLMS,système LMS (Local Model System) pour le projet DPI (Cerner)CHG0039867,IT-SAP Admins,<Unknown>
+ORALABO-DEV,"Serveur Oracle du Labo, Environnement Dev - CHG0039739",IT-DBA,<Unknown>
+ORASHERLOCK-PROD,Création de nouveaux serveurs DB Sherlock (projet migration Oracle / migration ISIS) - Nelly Goepfert - CHG0039629,IT-DBA,<Unknown>
+ORAMIRTH-PROD,Création de nouveaux serveurs DB MIRTH (projet migration Oracle / migration ISIS) - Nelly Goepfert - CHG0040133,IT-DBA,<Unknown>
+BWCHEMPROD,CHG0040782 - Serveur BW de Test pour le CHEM - AmadouOury Diallo,IT-SAP Admins,IT-SysAdmin-Linux
+ORGCARDSAS-TI,Serveur Orgacard de test Standalone Cfr Eric WeberCHG0041242,IT-Logistique,IT-Logistique
+SAPBWN01-TD,CHG0041501 - CHDN SAP BW TEST - AmadouOury Diallo,IT-SysAdmin-Linux,IT-SAP Admins
+CHIPTEXSAS01-PI,Serveur LCT pour buanderie pédiatrique - Maternité (Eric Weber),IT-Logistique,IT-Logistique
+SALTOSAS01-PI,CHG0041992 - Server pour Salto app - Badge access control,IT-SysAdmin-Windows,Sécurité au travail
+OPERA5SAS01-TI,CHG0042393 - OPERA 5.8.1 Test server  - created on 17.05.2024 by cocjoh01,IT-Medicotech-General,<Unknown>
+OPERA5DBS01-PI,CHG0042393 - OPERA 5.8.1 DB server  - created on 17.05.2024 by cocjoh01,IT-Medicotech-General,<Unknown>
+SALTOSAS01-TI,CHG0042491 - Salto Test server contenant une copie du salto de production afin d'activer SHIPS over http au lieu de STP - Created on 27052024 by Cocjoh01,IT-SysAdmin-Windows,Sécurité au travail
+SAPBWL01-PI,CHG0042638 - Migration SLES 15 de BA1 - Installation du nouveau serveur de BA1 - AmadouOury Diallo,IT-SAP Admins,IT-SAP Admins
+SAPBWN01-PD,CHG0042646 - Migration SLES 15 de BA3 - Installation du nouveau serveur de BA3 - AmadouOury Diallo,IT-SAP Admins,IT-SAP Admins
+PFMSAS02-PI,Effigen Patient Flow Manager - Prod ServerCreated by cocjoh01 on 02.07.2024Change CHG0042602,IT-Applications-Patients,<Unknown>
+SYSEPUSAS01-PI,Sysmex Extended IPU Server (Labo) - replacement of SYSMEXIPUSRV - Owner: Xenia PapaioannouCreated by cocjoh01 on 12.11.2024 (CHG0043397),IT-Medicotech-Labo,<Unknown>
+COPLIVEDBS01-PI,CHG0044051 - Redeploy copra infra en os 2022INCCI Copra 6 Live-ServerCreated by cocjoh01 on 03.03.2025,IT-Medicotech-INCCI,<Unknown>
+COPSTATDBS01-PI,CHG0044051 - Redeploy copra infra en os 2022INCCI Copra 6 StatistikserverCreated by cocjoh01 on 03.03.2025,IT-Medicotech-INCCI,<Unknown>
+OPSCCTSSAS01-PI,OpenScape Concierge Telephony Server V5Created on 15.04.2025 by cocjoh01 (CHG0044388),IT-Infra-Management,<Unknown>
+SYSADMVWS01-DI,TEST-DEV VM For sysadmins testing and developpement on Server OSFor DBA for Installation and testing purposes.,IT-SysAdmin-Windows,IT-SysAdmin-Windows
+NOSOKOSDBS01-PI,"Server DB pour application NOSOKOS (soc NOSOTECH), Natacha Leduc",IT-Medicotech-General,IT-Medicotech-General
+ORAAPPSDBS01-PI,,IT-SysAdmin-Linux,IT-DBA
+DIATMONSAS01-TI,serveur pour l'application TMON de Fresenius Ce serveur va travailler entre les machines de dialyse Fresenius et les serveurs Diamantowner: Albert MartinezCreated by cocjoh01 on 31.03.2026 (CHG0046463),IT-Medicotech-General,IT-SysAdmin-Windows
+WSSQLDBS01-TI,Server MSSQL 2022 mutualisé de Test,IT-SysAdmin-Windows,<Unknown>
+
+
+METAVI6DBS01-TI,Metavision 6 Database Server - Test - owner:Eric FornesCreated by cocjoh01 on 18/07/2025 (CHG0044919),IT-Medicotech-Metavision,<Unknown>
+METAVI6DBS01-DI,Metavision 6 Database Server - Dev - Owner: Eric FornesCreated by cocjoh01 on 18/07/2025 (CHG0044919),IT-Medicotech-Metavision,<Unknown>
+METAVI6DBS01-PI,Serveur DB Metavision 6 (old: mvdb23)owner: Eric FornesCreated by cocjoh01 on 22/04/2026 (CHG0046624),IT-Medicotech-Metavision,<Unknown>
+MVDEVDBS01-TI,Metavision Development and Test Server (replacement of MVDEV) - Owner: Eric FornesCreated by cocjoh01 on 12.11.2024 (CHG0043400),IT-Medicotech-Metavision,<Unknown>
+MVDB23,Serveur DB Metavision OS 2019 + MSSQL 2019Owner: Eric Fornes,IT-Medicotech-Metavision,<Unknown>
+MVDBTEST23,Metavision  Database Server - Test,IT-Medicotech-Metavision,<Unknown>
+
+SWLMAESDBS01-PI,CHG0042322 - armoires SWISSLOG masetrosrv - Owner:Eric Fornes / Laury Phelix (Pharmacie) - Created on 29.04.2024 by cocjoh01,IT-Medicotech-Metavision,<Unknown>
+SWLMAESDBS01-TI,CHG0042322 - armoires SWISSLOG masetrosrv (Test Environment) - Owner:Eric Fornes / Laury Phelix (Pharmacie) - Created on 29.04.2024 by cocjoh01,IT-Medicotech-Metavision,<Unknown>

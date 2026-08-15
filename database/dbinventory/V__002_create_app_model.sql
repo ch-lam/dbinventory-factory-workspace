@@ -538,6 +538,60 @@ create index fact_compliance_entity_ix
 
 
 -- ============================================================
+-- fact_control_finding  (grain: rule x entity x item x day)
+-- ------------------------------------------------------------
+-- The per-item evidence behind fact_compliance. fact_compliance is the roll-up
+-- that feeds the scoring; this is the level an auditor works at.
+--
+-- is_compliant holds the RAW verdict of the norm and is never rewritten by an
+-- exception: a granted derogation sets exception_id and leaves the deviation
+-- visible. That is what makes the periodic review possible -- an exception whose
+-- finding is compliant again is an exception that can be revoked.
+--
+-- item_key = natural key of the object evaluated INSIDE the entity (login name,
+-- TDE key name, Windows group name...), or '*' when the rule is evaluated once
+-- for the entity as a whole (sp_configure options, registry keys).
+-- ============================================================
+create table fact_control_finding (
+   rule_code      varchar2(50 char) not null,
+   entity_type    varchar2(20 char) not null,
+   entity_id      number not null,
+   item_key       varchar2(200 char) default '*' not null,
+   snapshot_date  date not null,
+   is_compliant   number(1) default 0 not null,
+   observed_value varchar2(400 char),
+   expected_value varchar2(400 char),
+   exception_id   number,
+   is_norm_exception number(1) default 0 not null,
+   is_covered     number(1) generated always as
+                     ( case when is_compliant = 1 or exception_id is not null then 1 else 0 end ) virtual,
+   constraint fact_control_finding_pk primary key ( rule_code, entity_type, entity_id, item_key, snapshot_date )
+   -- fact_ctl_finding_rule_fk / fact_ctl_finding_exc_fk added via ALTER at end of
+   -- script (ref_control_rule and ref_exception are created later)
+);
+
+comment on table fact_control_finding is 'Dated per-item verdict of each rule, and the documented exception covering it when there is one; aggregated into fact_compliance.';
+comment on column fact_control_finding.rule_code is 'Rule being evaluated (FK to ref_control_rule).';
+comment on column fact_control_finding.entity_type is 'Type of entity the rule was evaluated against (HOST, INSTANCE, DATABASE, STORAGE, ACCOUNT, PARAMETER).';
+comment on column fact_control_finding.entity_id is 'Technical id of the evaluated entity within the dimension matching entity_type (polymorphic reference, not a hard FK).';
+comment on column fact_control_finding.item_key is 'Natural key of the object evaluated inside the entity, or ''*'' when the rule is evaluated once for the whole entity.';
+comment on column fact_control_finding.snapshot_date is 'Day the rule was evaluated.';
+comment on column fact_control_finding.is_compliant is 'Raw verdict of the norm (1 = compliant), never rewritten by an exception.';
+comment on column fact_control_finding.observed_value is 'Observed value that drove the verdict.';
+comment on column fact_control_finding.expected_value is 'Expected/compliant value for the rule.';
+comment on column fact_control_finding.exception_id is 'Documented exception covering this deviation (FK to ref_exception), NULL when none applies.';
+comment on column fact_control_finding.is_norm_exception is 'Set by the norm itself, not by the SSI team: 1 when the rule accepts the situation under a documented vendor condition (today: engine surviving on extended support/ESU). Distinct from exception_id, which is a granted derogation; both feed fact_compliance.has_exception.';
+comment on column fact_control_finding.is_covered is 'Derived: 1 when the item is compliant OR covered by an exception; this is what the roll-up scores.';
+
+create index fact_ctl_finding_entity_ix
+   on fact_control_finding ( entity_type, entity_id, snapshot_date );
+
+-- Drives the RSSI review: which exceptions were actually used, and when.
+create index fact_ctl_finding_exc_ix
+   on fact_control_finding ( exception_id, snapshot_date );
+
+
+-- ============================================================
 -- fact_scoring  (grain: platform x environment x category x entity x day)
 -- entity_id = 0 when entity_type = ENVIRONMENT (fleet-level aggregate).
 -- ============================================================
@@ -551,6 +605,13 @@ create table fact_scoring (
    score_value   number(5,2),
    max_score     number(5,2),
    status        varchar2(10 char),
+   -- Relevance of the score, not its value. A score says nothing without the age
+   -- of the data behind it: the collect runs on its own schedule, and a stale
+   -- collect used to produce a score that looked as fresh as any other. Storing
+   -- the data date lets `sysdate - data_as_of` be read at any time, so a score
+   -- resting on an old collect visibly ages day after day.
+   data_as_of    date,
+   data_age_days number(6),
    constraint fact_scoring_pk primary key ( platform, environment, score_domain, entity_type, entity_id, snapshot_date )
 );
 
@@ -564,6 +625,8 @@ comment on column fact_scoring.snapshot_date is 'Day the score was computed.';
 comment on column fact_scoring.score_value is 'Computed score value.';
 comment on column fact_scoring.max_score is 'Maximum achievable score for this category/scope.';
 comment on column fact_scoring.status is 'Status derived from the score (e.g. OK, WARNING, CRITICAL).';
+comment on column fact_scoring.data_as_of is 'Collect date of the data the score rests on; NULL when it could not be resolved. Compare with sysdate to read the drift.';
+comment on column fact_scoring.data_age_days is 'Age of that data in days at snapshot_date, frozen at computation time so freshness stays comparable between snapshots.';
 
 
 -- ============================================================
@@ -587,11 +650,409 @@ comment on column ref_control.control_code is 'Unique code of the control.';
 comment on column ref_control.platform is 'Database platform the control applies to (ORACLE, MSSQL, POSTGRES, MYSQL).';
 comment on column ref_control.score_domain is 'Scoring domain the control contributes to (SECURITY, LICENSING, CAPACITY, BACKUP, LIFECYCLE).';
 comment on column ref_control.category is 'Check category the control belongs to (e.g. configoptions, logins, high_sys_privs).';
-comment on column ref_control.entity_type is 'Type of entity the control is evaluated against (HOST, INSTANCE, DATABASE, STORAGE, ACCOUNT, PARAMETER).';
+comment on column ref_control.entity_type is 'Grain at which the control is rolled up into fact_compliance (HOST, INSTANCE, DATABASE, STORAGE, ACCOUNT, PARAMETER). The finer grain at which its rules are actually evaluated is ref_control_rule.entity_type.';
 comment on column ref_control.title is 'Short human-readable title of the control.';
 comment on column ref_control.description is 'Detailed description of what the control checks.';
 comment on column ref_control.severity is 'Severity of a non-compliant result (LOW, MEDIUM, HIGH, CRITICAL).';
 comment on column ref_control.active is 'Indicates whether the control is active (1) or disabled (0).';
+
+
+-- ============================================================
+-- ref_benchmark  (the external documents the rules are transcribed from)
+-- ------------------------------------------------------------
+-- What turns "our in-house score" into "compliance with benchmark X version Y,
+-- deviations documented". Without it, a rule states a norm but not where the
+-- norm comes from, and an auditor has no way to check the transcription.
+--
+-- `version` is deliberately nullable: the rules were written against the CIS
+-- benchmarks in general, but the exact document retained as the opposable
+-- reference is an organisational decision, not a technical one. Until it is
+-- pinned here, ref_control_rule.benchmark_ref stays empty and
+-- v_benchmark_mapping_gap lists what remains to be mapped.
+--
+-- No SCD: adopting a newer edition means updating version and re-checking the
+-- mapping. What the fleet scored under the previous edition stays readable from
+-- the dated fact_control_finding rows, same as for ref_exception.
+-- ============================================================
+create table ref_benchmark (
+   benchmark_code varchar2(30 char) not null,
+   publisher      varchar2(50 char) not null,
+   title          varchar2(200 char) not null,
+   platform       varchar2(10 char) not null,
+   version        varchar2(30 char),
+   published_date date,
+   document_ref   varchar2(400 char),
+   constraint ref_benchmark_pk primary key ( benchmark_code )
+);
+
+comment on table ref_benchmark is 'External security benchmarks the rules are transcribed from; the version pinned here is what the score claims compliance with.';
+comment on column ref_benchmark.benchmark_code is 'Unique code of the benchmark.';
+comment on column ref_benchmark.publisher is 'Body publishing the benchmark (e.g. CIS).';
+comment on column ref_benchmark.title is 'Title of the document.';
+comment on column ref_benchmark.platform is 'Database platform the benchmark covers (ORACLE, MSSQL, POSTGRES, MYSQL).';
+comment on column ref_benchmark.version is 'Version of the document retained as the opposable reference; NULL until the organisation pins one.';
+comment on column ref_benchmark.published_date is 'Publication date of the retained version.';
+comment on column ref_benchmark.document_ref is 'Where the retained document lives (URL or internal reference).';
+
+
+-- ============================================================
+-- ref_control_rule  (catalog of the individual rules behind a control)
+-- ------------------------------------------------------------
+-- A control is a family (MSSQL_CONFIGOPTIONS covers 11 sp_configure options);
+-- a rule is a single norm ("clr enabled must be 0"). Rules exist as data so an
+-- exception can designate exactly what it derogates from.
+--
+-- This is a CATALOG, not a rule engine: pkg_dbinv_scoring emits the rule_code
+-- alongside each evaluated row and the predicate stays in PL/SQL. Adding a rule
+-- means one row here plus one branch in load_findings; the exception side is
+-- entirely data-driven.
+--
+-- Scope conditions belong to the RULE, not to an exception: system databases
+-- exempt from encryption, Express/Developer editions exempt from TDE,
+-- sa/monitoring exempt from the login policy check. Modelling those as
+-- exceptions would flood the list the RSSI team has to review.
+-- ============================================================
+create table ref_control_rule (
+   rule_code      varchar2(50 char) not null,
+   control_code   varchar2(40 char) not null,
+   entity_type    varchar2(20 char) not null,
+   item_key_label varchar2(100 char),
+   title          varchar2(200 char) not null,
+   description    varchar2(1000 char),
+   severity       varchar2(10 char),
+   active         number(1) default 1 not null,
+   -- Provenance. HOUSE_CONFLICT is not a nuance for its own sake: at least one
+   -- rule states the opposite of the benchmark it sits next to (the TCP port
+   -- standardised on 1433, where CIS asks for the default port to be left
+   -- behind). Scoring it silently alongside the transcribed rules is what makes
+   -- a compliance claim collapse under review.
+   origin         varchar2(20 char) default 'HOUSE' not null,
+   benchmark_code varchar2(30 char),
+   benchmark_ref  varchar2(20 char),
+   constraint ref_control_rule_pk primary key ( rule_code ),
+   constraint ref_control_rule_ctl_fk foreign key ( control_code )
+      references ref_control ( control_code ),
+   constraint ref_control_rule_bmk_fk foreign key ( benchmark_code )
+      references ref_benchmark ( benchmark_code ),
+   constraint ref_control_rule_origin_ck
+      check ( origin in ( 'BENCHMARK', 'HOUSE', 'HOUSE_CONFLICT' ) ),
+   -- a rule that claims a benchmark origin, or contradicts one, must say which
+   constraint ref_control_rule_bmk_ck
+      check ( ( origin = 'HOUSE' and benchmark_code is null )
+           or ( origin <> 'HOUSE' and benchmark_code is not null ) )
+);
+
+comment on table ref_control_rule is 'Catalog of the individual rules making up a control; an exception is always granted against a rule, never against a whole control.';
+comment on column ref_control_rule.rule_code is 'Unique code of the rule.';
+comment on column ref_control_rule.control_code is 'Control the rule belongs to (FK to ref_control).';
+comment on column ref_control_rule.entity_type is 'Grain at which the rule is evaluated into fact_control_finding, which may be finer than the roll-up grain of its control.';
+comment on column ref_control_rule.item_key_label is 'What fact_control_finding.item_key holds for this rule (e.g. ''login name''), or ''*'' when the rule is evaluated once per entity.';
+comment on column ref_control_rule.title is 'Short human-readable statement of the norm.';
+comment on column ref_control_rule.description is 'Detailed description of what the rule checks, including its scope conditions.';
+comment on column ref_control_rule.severity is 'Severity of a non-compliant result (LOW, MEDIUM, HIGH, CRITICAL).';
+comment on column ref_control_rule.active is 'Indicates whether the rule is active (1) or disabled (0).';
+comment on column ref_control_rule.origin is 'Where the norm comes from: BENCHMARK (transcribed from ref_benchmark), HOUSE (own requirement, no benchmark equivalent), HOUSE_CONFLICT (own requirement that contradicts the benchmark).';
+comment on column ref_control_rule.benchmark_code is 'Benchmark the rule is transcribed from, or the one it contradicts (FK to ref_benchmark); NULL for a pure house rule.';
+comment on column ref_control_rule.benchmark_ref is 'Identifier of the recommendation inside the benchmark (e.g. ''2.3.4''); NULL until mapped against the retained document version.';
+
+create index ref_control_rule_ctl_ix
+   on ref_control_rule ( control_code );
+
+
+-- ============================================================
+-- v_benchmark_mapping_gap
+-- ------------------------------------------------------------
+-- The worklist of the mapping pass: every rule that claims a benchmark origin
+-- but does not yet name the recommendation it transcribes. A compliance claim
+-- is only as strong as this view is empty.
+-- ============================================================
+create or replace view v_benchmark_mapping_gap as
+select rr.rule_code,
+       rc.platform,
+       rc.score_domain,
+       rr.origin,
+       rr.benchmark_code,
+       b.version benchmark_version,
+       rr.title,
+       rr.active
+  from ref_control_rule rr
+  join ref_control rc on rc.control_code = rr.control_code
+  left join ref_benchmark b on b.benchmark_code = rr.benchmark_code
+ where rr.origin in ( 'BENCHMARK', 'HOUSE_CONFLICT' )
+   and rr.benchmark_ref is null;
+
+comment on table v_benchmark_mapping_gap is 'Rules claiming a benchmark origin whose recommendation identifier is not yet mapped; drives the review that makes the score opposable.';
+
+
+-- ============================================================
+-- ref_exception  (documented derogations granted against a rule)
+-- ------------------------------------------------------------
+-- Human-entered reference data, NOT collected: a signed derogation stating that
+-- a known deviation is accepted (e.g. an application that cannot run without CLR
+-- enabled, accepted by the SSI manager and the software vendor).
+--
+-- Resolution semantics (see pkg_dbinv_scoring.apply_exceptions):
+--   * '*' in item_key / observed_value means "any", consistent with the '*'
+--     convention already used by ref_scoring_weight and ref_threshold. Using a
+--     sentinel rather than NULL keeps the unique key enforceable.
+--   * observed_value pins the derogation to the value that was accepted: the
+--     legacy rules compared the excepted row value, so a setting drifting to
+--     another value silently loses its cover. Kept, but optional.
+--   * the exception cascades DOWN: granted on a host it covers its instances,
+--     their databases and their storage units.
+--   * validity is evaluated against the snapshot date, never sysdate, so
+--     replaying an old snapshot does not apply today's derogations to it.
+--   * active = 0 neutralises the exception whatever the dates: it is the
+--     operational kill switch, while the dates carry the formal validity.
+--   * only status = 'APPROVED' is honoured. A draft, a submitted-but-unapproved,
+--     a rejected or a revoked derogation covers nothing, whatever its dates.
+--
+-- The current state of a derogation lives here; its effect over time is readable
+-- from the dated fact_control_finding rows that reference it, and the history of
+-- the decision itself from ref_exception_event. Nothing is ever deleted: a
+-- derogation that no longer applies is revoked, so the record survives for the
+-- audit that will ask about it later.
+-- ============================================================
+create table ref_exception (
+   exception_id     number generated by default on null as identity,
+   rule_code        varchar2(50 char) not null,
+   entity_type      varchar2(20 char) not null,
+   entity_id        number not null,
+   item_key         varchar2(200 char) default '*' not null,
+   observed_value   varchar2(200 char) default '*' not null,
+   start_date       date not null,
+   end_date         date,
+   active           number(1) default 1 not null,
+   justification    varchar2(1000 char) not null,
+   document_ref     varchar2(200 char),
+   -- Signature. A derogation is a decision taken by named people: who asked, who
+   -- accepted. status is what makes those signatures binding -- see the approval
+   -- gate in pkg_dbinv_scoring.apply_exceptions, which ignores anything that is
+   -- not APPROVED, so a draft can never quietly mask a deviation.
+   status           varchar2(20 char) default 'DRAFT' not null,
+   deviation_date   date,
+   submitted_by     varchar2(100 char),
+   submitted_date   date,
+   approved_by      varchar2(200 char),
+   approval_date    date,
+   rejected_reason  varchar2(1000 char),
+   revoked_by       varchar2(100 char),
+   revoked_date     date,
+   revoke_reason    varchar2(1000 char),
+   review_due_date  date,
+   last_review_date date,
+   created_by       varchar2(100 char) default on null user not null,
+   created_date     date default on null sysdate not null,
+   updated_by       varchar2(100 char),
+   updated_date     date,
+   constraint ref_exception_pk primary key ( exception_id ),
+   -- start_date is part of the key so a derogation can be renewed over a new period
+   constraint ref_exception_uk unique ( rule_code, entity_type, entity_id, item_key, observed_value, start_date ),
+   constraint ref_exception_rule_fk foreign key ( rule_code )
+      references ref_control_rule ( rule_code ),
+   constraint ref_exception_dates_ck check ( end_date is null or end_date >= start_date ),
+   constraint ref_exception_active_ck check ( active in ( 0, 1 ) ),
+   constraint ref_exception_entity_ck check ( entity_type in ( 'HOST', 'INSTANCE', 'DATABASE', 'STORAGE' ) ),
+   constraint ref_exception_status_ck check ( status in ( 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'REVOKED' ) ),
+   -- an approval that names nobody, or that is dated to nothing, is not one
+   constraint ref_exception_appr_ck check ( status <> 'APPROVED'
+                                            or ( approved_by is not null and approval_date is not null ) ),
+   constraint ref_exception_revk_ck check ( status <> 'REVOKED'
+                                            or ( revoked_by is not null and revoked_date is not null ) ),
+   -- Segregation of duties, enforced here rather than left to a convention: a
+   -- derogation granted to oneself carries no weight in front of an auditor.
+   constraint ref_exception_sod_ck check ( approved_by is null
+                                           or upper(approved_by) <> upper(created_by) )
+);
+
+comment on table ref_exception is 'Documented derogations accepted against a rule for a given entity/item; human-entered, reviewed periodically by the RSSI team.';
+comment on column ref_exception.exception_id is 'Technical primary key of the exception.';
+comment on column ref_exception.rule_code is 'Rule the derogation applies to (FK to ref_control_rule).';
+comment on column ref_exception.entity_type is 'Level the exception is granted at (HOST, INSTANCE, DATABASE, STORAGE); it cascades down to the levels below.';
+comment on column ref_exception.entity_id is 'Technical id of the entity within the dimension matching entity_type (polymorphic reference, not a hard FK).';
+comment on column ref_exception.item_key is 'Item covered inside the entity, or ''*'' for every item evaluated by the rule.';
+comment on column ref_exception.observed_value is 'Observed value the derogation was granted for, or ''*'' to cover any value.';
+comment on column ref_exception.start_date is 'First day the exception applies (compared against the snapshot date).';
+comment on column ref_exception.end_date is 'Last day the exception applies; NULL for an open-ended derogation.';
+comment on column ref_exception.active is 'Operational kill switch: 0 neutralises the exception whatever the dates.';
+comment on column ref_exception.justification is 'Why the deviation is accepted (functional or technical reason).';
+comment on column ref_exception.document_ref is 'External reference of the formalising document (ticket, mail, EDM number); distinct from the files actually attached in ref_exception_document.';
+comment on column ref_exception.status is 'Lifecycle: DRAFT, SUBMITTED, APPROVED, REJECTED, REVOKED. Only APPROVED is honoured by the scoring.';
+comment on column ref_exception.deviation_date is 'Day the deviation itself was observed/accepted, which is not the day the row was captured (created_date).';
+comment on column ref_exception.submitted_by is 'Who submitted the derogation for approval.';
+comment on column ref_exception.submitted_date is 'Date the derogation was submitted for approval.';
+comment on column ref_exception.approved_by is 'Who approved the derogation (e.g. SSI manager and software vendor).';
+comment on column ref_exception.approval_date is 'Date the derogation was formally approved.';
+comment on column ref_exception.rejected_reason is 'Why the approver refused the derogation.';
+comment on column ref_exception.revoked_by is 'Who revoked the derogation.';
+comment on column ref_exception.revoked_date is 'Date the derogation was revoked.';
+comment on column ref_exception.revoke_reason is 'Why the derogation was revoked.';
+comment on column ref_exception.review_due_date is 'Date by which the derogation must be reviewed again.';
+comment on column ref_exception.last_review_date is 'Date of the last periodic review of the derogation.';
+comment on column ref_exception.created_by is 'User who created the row.';
+comment on column ref_exception.created_date is 'Date the row was created.';
+comment on column ref_exception.updated_by is 'User who last updated the row.';
+comment on column ref_exception.updated_date is 'Date the row was last updated.';
+
+create index ref_exception_rule_ix
+   on ref_exception ( rule_code, active );
+
+create index ref_exception_entity_ix
+   on ref_exception ( entity_type, entity_id );
+
+
+-- ============================================================
+-- ref_exception_document  (files backing a derogation)
+-- ------------------------------------------------------------
+-- The evidence itself, not a reference to it: the vendor manual stating the
+-- product cannot run without the deviation, the licence, the signed approval.
+-- Several per derogation.
+--
+-- checksum_sha256 is what makes an attachment opposable: it lets an auditor
+-- prove the PDF handed over today is the one that was filed. Computed once on
+-- insert and never recomputed -- recomputing it on read would defeat the point.
+-- It is nullable only because DBMS_CRYPTO is not granted to this schema yet;
+-- pkg_dbinv_exception.add_document refuses the upload rather than storing a
+-- file it cannot fingerprint.
+-- ============================================================
+create table ref_exception_document (
+   document_id     number generated by default on null as identity,
+   exception_id    number not null,
+   doc_kind        varchar2(20 char) default 'OTHER' not null,
+   file_name       varchar2(400 char) not null,
+   mime_type       varchar2(200 char),
+   file_size       number,
+   content         blob not null,
+   checksum_sha256 varchar2(64 char),
+   uploaded_by     varchar2(100 char) default on null user not null,
+   uploaded_date   date default on null sysdate not null,
+   constraint ref_exc_doc_pk primary key ( document_id ),
+   constraint ref_exc_doc_exc_fk foreign key ( exception_id )
+      references ref_exception ( exception_id ),
+   constraint ref_exc_doc_kind_ck check ( doc_kind in ( 'LICENSE', 'VENDOR_MANUAL', 'APPROVAL', 'OTHER' ) )
+) lob ( content ) store as securefile ( compress );
+
+comment on table ref_exception_document is 'Files attached to a derogation as evidence (licence, vendor manual, signed approval); fingerprinted so an auditor can verify they were not swapped.';
+comment on column ref_exception_document.document_id is 'Technical primary key of the attachment.';
+comment on column ref_exception_document.exception_id is 'Derogation the file backs (FK to ref_exception).';
+comment on column ref_exception_document.doc_kind is 'Nature of the evidence (LICENSE, VENDOR_MANUAL, APPROVAL, OTHER).';
+comment on column ref_exception_document.file_name is 'Original file name as uploaded.';
+comment on column ref_exception_document.mime_type is 'MIME type reported at upload.';
+comment on column ref_exception_document.file_size is 'Size in bytes.';
+comment on column ref_exception_document.content is 'The file itself.';
+comment on column ref_exception_document.checksum_sha256 is 'SHA-256 of the content, computed once at upload; the proof the file was not substituted afterwards.';
+comment on column ref_exception_document.uploaded_by is 'Who uploaded the file.';
+comment on column ref_exception_document.uploaded_date is 'When the file was uploaded.';
+
+create index ref_exc_doc_exc_ix
+   on ref_exception_document ( exception_id );
+
+
+-- ============================================================
+-- ref_exception_event  (append-only journal of a derogation)
+-- ------------------------------------------------------------
+-- ref_exception keeps only updated_by/updated_date, so each change erased the
+-- previous one and "who pushed the end date back after approval, and when?" had
+-- no answer. This table answers it.
+--
+-- Append-only is enforced by a trigger rather than left as a convention: an
+-- audit trail that can be rewritten proves nothing. Every write goes through
+-- pkg_dbinv_exception, which journals each transition, so the trail cannot be
+-- bypassed from the application.
+-- ============================================================
+create table ref_exception_event (
+   event_id     number generated by default on null as identity,
+   exception_id number not null,
+   event_type   varchar2(20 char) not null,
+   event_date   date default on null sysdate not null,
+   event_by     varchar2(100 char) default on null user not null,
+   note         varchar2(1000 char),
+   old_value    varchar2(1000 char),
+   new_value    varchar2(1000 char),
+   constraint ref_exc_event_pk primary key ( event_id ),
+   constraint ref_exc_event_exc_fk foreign key ( exception_id )
+      references ref_exception ( exception_id ),
+   constraint ref_exc_event_type_ck check ( event_type in (
+      'CREATED', 'SUBMITTED', 'APPROVED', 'REJECTED', 'REVOKED', 'REVIEWED',
+      'AMENDED', 'DOCUMENT_ADDED', 'DOCUMENT_REMOVED' ) )
+);
+
+comment on table ref_exception_event is 'Append-only journal of every transition of a derogation; the audit trail, protected against update and delete by a trigger.';
+comment on column ref_exception_event.event_id is 'Technical primary key of the event.';
+comment on column ref_exception_event.exception_id is 'Derogation the event belongs to (FK to ref_exception).';
+comment on column ref_exception_event.event_type is 'What happened (CREATED, SUBMITTED, APPROVED, REJECTED, REVOKED, REVIEWED, AMENDED, DOCUMENT_ADDED, DOCUMENT_REMOVED).';
+comment on column ref_exception_event.event_date is 'When it happened.';
+comment on column ref_exception_event.event_by is 'Who did it.';
+comment on column ref_exception_event.note is 'Free-text explanation attached to the transition.';
+comment on column ref_exception_event.old_value is 'Previous value, for an amendment.';
+comment on column ref_exception_event.new_value is 'New value, for an amendment.';
+
+create index ref_exc_event_exc_ix
+   on ref_exception_event ( exception_id, event_date );
+
+create or replace trigger ref_exception_event_append_only
+   before update or delete on ref_exception_event
+begin
+   raise_application_error(-20010,
+      'ref_exception_event is the audit trail of derogations: append-only, no update or delete.');
+end;
+/
+
+
+-- ============================================================
+-- v_exception_review
+-- ------------------------------------------------------------
+-- The periodic review worklist. review_state is ordered from the most blocking
+-- to the most benign, and the row that matters most is the last one before
+-- 'Current': an approved derogation that no longer covers any finding. It costs
+-- nothing, breaks nothing, and therefore survives untouched for years -- while
+-- still standing as an accepted deviation in front of an auditor.
+-- ============================================================
+create or replace view v_exception_review as
+select e.exception_id,
+       e.status,
+       rc.platform,
+       e.rule_code,
+       r.title rule_title,
+       e.entity_type,
+       e.entity_id,
+       nvl( nvl( i.instance_name, d.db_name ), h.hostname ) scope_name,
+       e.item_key,
+       e.observed_value,
+       e.start_date,
+       e.end_date,
+       e.review_due_date,
+       e.last_review_date,
+       e.created_by,
+       e.approved_by,
+       ( select count(*)
+           from fact_control_finding f
+          where f.exception_id = e.exception_id
+            and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) covered_today,
+       case
+          when e.status = 'DRAFT'     then 'Draft, not submitted'
+          when e.status = 'SUBMITTED' then 'Awaiting approval'
+          when e.status = 'REJECTED'  then 'Rejected'
+          when e.status = 'REVOKED'   then 'Revoked'
+          when e.active = 0           then 'Disabled'
+          when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
+          when e.review_due_date is not null and e.review_due_date < trunc(sysdate) then 'Review overdue'
+          when e.end_date is not null and e.end_date <= trunc(sysdate) + 60 then 'Expiring within 60 days'
+          when ( select count(*)
+                   from fact_control_finding f
+                  where f.exception_id = e.exception_id
+                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
+             then 'Approved, covers nothing'
+          else 'Current'
+       end review_state
+  from ref_exception e
+  join ref_control_rule r on r.rule_code = e.rule_code
+  join ref_control rc on rc.control_code = r.control_code
+  left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
+  left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
+  left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id;
+
+comment on table v_exception_review is 'Every derogation with its review state; drives the periodic RSSI review and the derogations page. Platform-agnostic by construction.';
 
 
 -- ============================================================
@@ -644,3 +1105,228 @@ comment on column ref_threshold.crit_value is 'Value at or beyond which the metr
 alter table fact_compliance
    add constraint fact_compliance_control_fk foreign key ( control_code )
       references ref_control ( control_code );
+
+alter table fact_control_finding
+   add constraint fact_ctl_finding_rule_fk foreign key ( rule_code )
+      references ref_control_rule ( rule_code );
+
+alter table fact_control_finding
+   add constraint fact_ctl_finding_exc_fk foreign key ( exception_id )
+      references ref_exception ( exception_id );
+
+
+-- ============================================================
+-- v_entity_ancestry
+-- ------------------------------------------------------------
+-- Resolves any polymorphic (entity_type, entity_id) pair to the whole chain it
+-- belongs to: host > instance > database > storage unit, the entity itself
+-- included. Defined once because two very different consumers need exactly the
+-- same walk:
+--   * pkg_dbinv_scoring.apply_exceptions, to cascade an exception granted at a
+--     high level down to the findings below it;
+--   * pkg_dbinv_scoring.load_compliance, to roll findings up to the grain their
+--     control is scored at (ref_control.entity_type).
+-- ============================================================
+create or replace view v_entity_ancestry as
+   select 'HOST' entity_type, h.host_id entity_id,
+          h.host_id,
+          cast(null as number) instance_id,
+          cast(null as number) database_id,
+          cast(null as number) storage_unit_id
+     from dim_host h
+   union all
+   select 'INSTANCE', i.instance_id, i.host_id, i.instance_id, null, null
+     from dim_instance i
+   union all
+   select 'DATABASE', d.database_id, i.host_id, d.instance_id, d.database_id, null
+     from dim_database d
+     join dim_instance i on i.instance_id = d.instance_id
+   union all
+   select 'STORAGE', s.storage_unit_id, i.host_id, d.instance_id, s.database_id, s.storage_unit_id
+     from dim_storage_unit s
+     join dim_database d on d.database_id = s.database_id
+     join dim_instance i on i.instance_id = d.instance_id;
+
+comment on table v_entity_ancestry is 'Host/instance/database/storage chain of any polymorphic entity reference; used to cascade exceptions downwards and to roll findings up to their control grain.';
+
+
+-- ============================================================
+-- v_entity_collect_date
+-- ------------------------------------------------------------
+-- When was the data behind an instance actually collected. Single source of
+-- truth for the freshness columns of fact_scoring: every consumer reads this
+-- view, so changing where the date comes from stays a one-place change.
+--
+-- The date is read from collect_id, which both collect chains write as
+-- COLL_ID_YYYYMMDD. It is a real collect date, unlike date_value, which is a
+-- `default systimestamp` stamped when the row lands in Oracle and therefore
+-- dates the load, not the collect.
+--
+-- MIN across the sources, not MAX: an instance is only as fresh as its oldest
+-- input. The inventory collect and the security collect run on separate
+-- schedules, and a fresh inventory next to a three-week-old security collect
+-- must not read as fresh.
+--
+-- Two sources per platform - the inventory anchor, which defines the instance,
+-- and the security anchor, the domain most sensitive to staleness. Widening the
+-- coverage is one more UNION branch.
+--
+-- A malformed collect_id yields no date rather than a wrong one: the regexp
+-- guard drops it, and the instance ends up with NULL, which is distinguishable
+-- from a collect dated today.
+-- ============================================================
+create or replace view v_entity_collect_date as
+   select instance_id, min(collect_date) data_as_of
+     from (
+        -- MSSQL inventory
+        select di.instance_id,
+               to_date(substr(h.collect_id, 9), 'YYYYMMDD') collect_date
+          from mssql_hosts h
+          join dim_instance di on di.platform = 'MSSQL' and di.instance_name = h.hostname
+         where regexp_like(h.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- MSSQL security
+        select di.instance_id,
+               to_date(substr(c.collect_id, 9), 'YYYYMMDD')
+          from mssql_security_configoptions c
+          join dim_instance di on di.platform = 'MSSQL' and di.instance_name = c.servername
+         where regexp_like(c.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- Oracle inventory
+        select di.instance_id,
+               to_date(substr(od.collect_id, 9), 'YYYYMMDD')
+          from oracle_databases od
+          join dim_host dh on dh.platform = 'ORACLE' and dh.hostname = od.hostname
+          join dim_instance di on di.host_id = dh.host_id and di.instance_name = od.instance_name
+         where regexp_like(od.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- Oracle security, resolved through the inventory the same way the
+        -- security ETL resolves its own entities
+        select di.instance_id,
+               to_date(substr(sp.collect_id, 9), 'YYYYMMDD')
+          from oracle_security_parameter sp
+          join oracle_databases od on od.db_name = sp.db_name
+          join dim_host dh on dh.platform = 'ORACLE' and dh.hostname = od.hostname
+          join dim_instance di on di.host_id = dh.host_id and di.instance_name = od.instance_name
+         where regexp_like(sp.collect_id, '^COLL_ID_[0-9]{8}$')
+     )
+    group by instance_id;
+
+comment on table v_entity_collect_date is 'Collect date of the data behind each instance, taken as the oldest of its inputs; feeds the freshness columns of fact_scoring.';
+
+
+-- ============================================================
+-- ref_app_release  (what was installed here, and when)
+-- ------------------------------------------------------------
+-- Append-only history, one row per installation, written by
+-- V__009_initial_data.sql. The date of the last deployment falls out of it for
+-- free, and the sequence stays readable -- which is what tells you HOW two
+-- environments diverged, not merely that they did.
+--
+-- Nothing is ever deleted here, including by a reinstall: the point of the table
+-- is to survive one.
+-- ============================================================
+create table ref_app_release (
+   release_id     number generated by default on null as identity,
+   version        varchar2(30 char) not null,
+   installed_date date default on null sysdate not null,
+   installed_by   varchar2(100 char) default on null user not null,
+   note           varchar2(400 char),
+   constraint ref_app_release_pk primary key ( release_id )
+);
+
+comment on table ref_app_release is 'Append-only record of every installation of the schema; the last row dates the current deployment.';
+comment on column ref_app_release.release_id is 'Technical primary key.';
+comment on column ref_app_release.version is 'Schema version installed, as carried by the install script.';
+comment on column ref_app_release.installed_date is 'When this installation ran.';
+comment on column ref_app_release.installed_by is 'Database user that ran it.';
+comment on column ref_app_release.note is 'Free text: what this release carries, or why it was rerun.';
+
+
+-- ============================================================
+-- v_environment_identity
+-- ------------------------------------------------------------
+-- Which environment am I looking at, and is its data real. One source of truth
+-- for three consumers: the About page for a human, SQLcl for a test, a pipeline
+-- for an automated guard.
+--
+-- Shaped as name/value pairs rather than columns, deliberately. The APEX page
+-- becomes a trivial report, a pipeline extracts one value by name
+--   select value from v_environment_identity where name = 'Service name'
+-- and adding an entry later touches neither the page nor any caller.
+--
+-- Why it exists: APEX_BASE_URL and the SQLcl connection name are configured
+-- independently, so nothing guarantees a browser and a script are looking at the
+-- same database. Two environments look alike until one of them lies to you.
+-- ============================================================
+create or replace view v_environment_identity as
+with release as (
+   select version, installed_date, installed_by
+     from ( select version, installed_date, installed_by
+              from ref_app_release order by release_id desc )
+    where rownum = 1
+),
+freshness as (
+   select max(data_as_of) newest, min(data_as_of) oldest, max(snapshot_date) last_snapshot
+     from fact_scoring
+    where snapshot_date = ( select max(snapshot_date) from fact_scoring )
+)
+-- 1. Identity: where this is running.
+select 1 section_order, 'Identity' section, 10 sort_order, 'Database' name,
+       sys_context('USERENV','DB_NAME') value from dual
+union all
+select 1, 'Identity', 20, 'Container', sys_context('USERENV','CON_NAME') from dual
+union all
+select 1, 'Identity', 30, 'Service name', sys_context('USERENV','SERVICE_NAME') from dual
+union all
+select 1, 'Identity', 40, 'Database unique name', sys_context('USERENV','DB_UNIQUE_NAME') from dual
+union all
+select 1, 'Identity', 50, 'Server host', sys_context('USERENV','SERVER_HOST') from dual
+union all
+select 1, 'Identity', 60, 'Schema', sys_context('USERENV','CURRENT_SCHEMA') from dual
+union all
+-- Matched on '%Database%', not 'Oracle Database%': the product is named
+-- "Oracle AI Database 26ai Enterprise Edition" here, and a stricter pattern
+-- silently returns nothing -- an empty field looks like a missing privilege.
+select 1, 'Identity', 70, 'Database version',
+       ( select max(version_full) from product_component_version
+          where product like '%Database%' ) from dual
+-- 2. Release: what was installed, and when.
+union all
+select 2, 'Release', 10, 'Schema version',
+       nvl(( select version from release ), '(never recorded)') from dual
+union all
+select 2, 'Release', 20, 'Deployed on',
+       nvl(to_char(( select installed_date from release ), 'YYYY-MM-DD HH24:MI'), '-') from dual
+union all
+select 2, 'Release', 30, 'Deployed by', nvl(( select installed_by from release ), '-') from dual
+union all
+select 2, 'Release', 40, 'Installations recorded', to_char(( select count(*) from ref_app_release )) from dual
+-- 3. Data: is what I am looking at real and recent.
+union all
+select 3, 'Data', 10, 'Collected on',
+       nvl(to_char(( select newest from freshness ), 'YYYY-MM-DD'), '(no scoring yet)') from dual
+union all
+select 3, 'Data', 20, 'Data age (days)',
+       nvl(to_char(trunc(sysdate) - ( select newest from freshness )), '-') from dual
+union all
+select 3, 'Data', 30, 'Oldest collect in scope',
+       nvl(to_char(( select oldest from freshness ), 'YYYY-MM-DD'), '-') from dual
+union all
+select 3, 'Data', 40, 'Last scoring snapshot',
+       nvl(to_char(( select last_snapshot from freshness ), 'YYYY-MM-DD'), '(none)') from dual
+-- 4. Volume: a plausibility check at a glance.
+union all
+select 4, 'Volume', 10, 'Instances', to_char(( select count(*) from dim_instance )) from dual
+union all
+select 4, 'Volume', 20, 'Databases', to_char(( select count(*) from dim_database )) from dual
+union all
+select 4, 'Volume', 30, 'Findings (last snapshot)',
+       to_char(( select count(*) from fact_control_finding
+                  where snapshot_date = ( select max(snapshot_date) from fact_control_finding ) )) from dual
+union all
+select 4, 'Volume', 40, 'Active rules', to_char(( select count(*) from ref_control_rule where active = 1 )) from dual
+union all
+select 4, 'Volume', 50, 'Derogations', to_char(( select count(*) from ref_exception )) from dual;
+
+comment on table v_environment_identity is 'Name/value description of the environment: identity, release, data freshness and volume. Read by the About page, by SQLcl and by deployment pipelines to confirm which database they are talking to.';

@@ -1,0 +1,1205 @@
+ on en était ou ?
+
+Je regarde où on en était.
+
+  Ran 3 shell commands, recalled 2 memories
+
+On en est à la fin de l'itération 6 de la refonte du modèle applicatif (branche redesign_app_model).
+
+Dernier état validé (2026-07-23, commit b0dba94 poussé) — réactivation de la collecte backup MSSQL + Oracle :
+- MSSQL : le LOAD mssql_backup était juste commenté → décommenté, fenêtre de collecte réduite 31j → 7j.
+- Oracle : la collecte était réellement cassée (6 colonnes émises pour une table à 7, environment manquant) → corrigée, + SET LOAD TIMESTAMP_FORMAT obligatoire côté loader (sinon 100 % de rejets).
+- Modèle : nouvelle table fact_instance_backup (grain instance × jour, RMAN sauvegarde le CDB entier), ORACLE_BACKUP_FRESHNESS passe en entity_type = INSTANCE.
+- Tranché par toi : on score uniquement sur la date du dernier backup ; une instance dont rien ne remonte sort du scoring, c'est voulu.
+
+Deux choses à savoir avant de repartir :
+
+1. Ton dépôt local est 2 commits en retard sur origin/redesign_app_model. Le remote contient 7dc7994 "Discovery scripts for Linux & Windows" + un merge — des scripts de discovery Linux (detect_db_engines.sh) et une réorganisation discovery/mssql/ → discovery/windows/. Il faut faire un git pull avant de toucher à quoi que ce soit. (Note : discovery/windows/sqlserver_versions.csv a bougé — c'est la source du seed product_support de V__003.)
+2. Le merge dans main est en attente de ton feu vert — tu avais dit que tu le ferais toi-même le soir du 23/07 après validation de ton côté. Je ne l'ai pas fait.
+
+Chantier annoncé pour la suite : la gestion de la discovery — que tu voulais cadrer toi-même en début de session, sans que je code quoi que ce soit avant. Les commits distants ci-dessus laissent penser que tu as déjà commencé à poser les briques.
+
+Tu veux que je récupère les commits distants pour qu'on regarde ce qu'il y a dedans, ou tu préfères d'abord me cadrer le périmètre discovery ?
+
+✻ Churned for 33s
+
+❯ fais un git pull et regarde ce qu'il y a dedans
+
+  Searched for 1 pattern, read 2 files, listed 1 directory, ran 7 shell commands
+
+git pull fait (fast-forward b0dba94 → 4fb5f2f, working tree propre). Voici ce qu'il y a dedans.
+
+Contenu du commit 7dc7994 « Discovery scripts for Linux & Windows »
+
+Réorganisation : discovery/mssql/ → discovery/windows/, et création de discovery/linux/. L'ancien doublon Get-MSSQLInventory.ps1 (287 l.) est supprimé au profit de discovery_MSSQL.ps1 (421 l., la version aboutie).
+
+discovery/linux/detect_db_engines.sh (nouveau) — script à pousser par SALT en root sur toutes les machines Linux. Détecte Postgres / Oracle / MySQL-MariaDB par 3 angles complémentaires (paquets rpm + binaires, processus, ports en écoute) et sort une ligne ; à colonnes fixes :
+HOSTN;PG_PKG;PG_PROC;PG_PORT;ORA_PKG;ORA_PROC;ORA_SIDS;ORA_PORT;MY_PKG;MY_PROC;MY_PORT
+Détails soignés : Oracle détecté via /etc/oratab/oraInst.loc (jamais un rpm), SID extraits des ora_pmon_* avec la parade au ps qui s'auto-matche dans un pipeline, ports non mappés marqués 5432?/1521? quand seul le port standard répond.
+
+discovery/windows/discovery_MSSQL.ps1 — inventaire MSSQL sur tout le domaine AD. Lit le registre (donc voit aussi les instances arrêtées + l'édition exacte), balaie les deux vues 64-bit et Wow6432Node, croise avec Win32_Service, avec repli DCOM↔WSMan par requête. Point clé de conception : un serveur dont le port 1433 répond mais dont WMI est inaccessible est classé Suspecte plutôt que ignoré — c'est explicitement le trou de périmètre visé.
+
+discovery_MSSQL_20260715.csv — un run réel : 99 instances sur 98 serveurs, toutes en « Detecte (acces complet) ». Répartition : 52 Standard, 39 Express, 6 Developer, 2 Enterprise.
+
+Ce que ça donne comparé au périmètre collecté
+
+J'ai croisé le CSV avec collect/CHL/mssql_database_lists.lst (66 hôtes actifs, 40 lignes commentées) :
+
+┌──────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────────────────────────┐
+│                                                          │                                                                                      │
+├──────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│ Découverts totalement inconnus du .lst                   │ 6 — cladbs01-pi, diatmonsas01-ti, honlonsas02-pi, labotools, shadbsrv, wssqldbs01-ti │
+├──────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│ Découverts, présents mais commentés (donc non collectés) │ 26                                                                                   │
+├──────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│ Actifs dans le .lst non vus par la discovery             │ 0                                                                                    │
+└──────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────┘
+
+Donc : la discovery ne contredit jamais le périmètre collecté (les 66 actifs sont tous retrouvés), mais elle met en évidence 32 serveurs SQL Server réels hors inventaire, dont 39 instances en édition gratuite — exactement la population que le contrôle LICENSING différé viserait. À noter aussi labotools en Express 9.4 / 32-bit, et holtersrv en 10.52 (2008 R2), sous la barre du seed product_support.
+
+Deux détails de propreté repérés au passage, non corrigés (j'attends ton cadrage) :
+- V__003_app_model_reference_data.sql:166 cite encore discovery/mssql/sqlserver_versions.csv — chemin mort depuis le déplacement.
+- Les 3 blocs .EXAMPLE de discovery_MSSQL.ps1 (l. 23/26/29) invoquent encore .\Get-MSSQLInventory.ps1, le fichier supprimé.
+
+Le rappel du contexte : le merge de redesign_app_model dans main attend toujours ton feu vert, et tu voulais cadrer toi-même le périmètre du chantier discovery avant que je code quoi que ce soit. Je m'en tiens là.
+
+✻ Churned for 1m 32s
+
+❯ ok, fait le ménage dans le powershell pour que les examples soit bons. ensuite, on merge tout est on commence la nouvelle branche.
+
+Je commence par le PowerShell.
+
+● Update(discovery\windows\discovery_MSSQL.ps1)
+Added 3 lines, removed 3 lines
+      - Le pare-feu des cibles doit autoriser au moins un de ces canaux.
+
+.EXAMPLE
+    .\Get-MSSQLInventory.ps1 -Verbose
+    .\discovery_MSSQL.ps1 -Verbose
+
+.EXAMPLE
+    .\Get-MSSQLInventory.ps1 -SearchBase "OU=Serveurs,DC=chl,DC=lu" -OperatingSystemFilter "*Server*"
+    .\discovery_MSSQL.ps1 -SearchBase "OU=Serveurs,DC=chl,DC=lu" -OperatingSystemFilter "*Server*"
+
+.EXAMPLE
+    .\Get-MSSQLInventory.ps1 -ComputerName SRV01,SRV02 -Credential (Get-Credential)
+    .\discovery_MSSQL.ps1 -ComputerName SRV01,SRV02 -Credential (Get-Credential)
+#>
+
+#Requires -Version 5.1
+
+  Ran 1 shell command
+
+Parse OK, et Get-Help restitue bien les 3 exemples corrigés. Je commite.
+
+  Committed 63add7b, pushed to redesign_app_model, main, manage_discovery, ran 3 shell commands, recalled 1 memory, wrote 2 memories
+
+Tout est fait.
+
+1. Ménage PowerShell — commit 63add7b. Les 3 blocs .EXAMPLE invoquaient .\Get-MSSQLInventory.ps1, supprimé lors de la réorganisation. Vérifié par un parse AST (OK) et par Get-Help -Examples, qui affiche maintenant .\discovery_MSSQL.ps1 sur les trois.
+
+2. Merge dans main — commit 2de6b1e, poussé. --no-ff pour rester sur la convention du dépôt (comme realign_after_audit), donc les 11 commits de la refonte restent lisibles comme un bloc. Aucun conflit : main n'avait pas bougé depuis 212919d. Vérifié par git diff main redesign_app_model → vide, main est exactement le contenu de la branche.
+
+3. Nouvelle branche — manage_discovery, créée depuis main, poussée et trackée. C'est la branche courante.
+
+Un point resté ouvert, que je n'ai pas touché parce que ton « ménage » visait le PowerShell : V__003_app_model_reference_data.sql:166 cite toujours discovery/mssql/sqlserver_versions.csv, chemin mort depuis le déplacement vers discovery/windows/. C'est parti dans main tel quel. Un mot et j'en fais le premier commit de la nouvelle branche.
+
+Pour la suite : tu voulais cadrer toi-même le périmètre de la gestion de la discovery. Je ne code rien tant que tu ne me l'as pas décrit. Le chiffre à avoir en tête pour ce cadrage, c'est celui du croisement d'hier : 32 serveurs SQL Server réels hors collecte (6 inconnus du .lst, 26 présents mais commentés), et 0 hôte actif manqué par la discovery.
+
+✻ Brewed for 2m 10s
+
+❯ ok, je t'explique le principe. Comme nous ne sommes pas certains de ce que font certaines personnes qui installent des moteurs de bases de données au CHL (plusieurs équipes), de l'existant installé ... j'ai mis en place un script pour windows qui pour le moment collecte les instances MSSQL, mais on fera la même chose pour MySQL/Postgres à l'avenir, qui collecte des informations dans le format du CSV G:\Developpement\CHL\dbInventory\discovery\windows\discovery_MSSQL_20260715.csv . J'ai écrit un autre script qui lui est en charge de collecter sur les machines Linux si il existe potentiellement des moteurs Postgres, Oracle et MySQL d'installés. Je voudrai qu'on créé une nouvelle partie du schéma de l'application qui va stocker ces informations collectées de manière a ce qu'on puisse voir si la collecte à/doit changer de périmètre ou non. Nous allons lancer les scripts de discovery une fois par semaine pour s'assurer qu'il n'y as pas de dérive (installation sauvage) d'un moteur de base de données. L'objectif du flux de données sera : Disovery de nouveau serveur/instance/Db -> table de discovery (horodatée), on pourra dans l'application ajouter le serveur/instance/DB découverte dans la collecte (ce n'est pas a cet outil de s'assurer que le user de monitoring existe, ça sera fait ailleurs, manuellement ou par le template d'installation). Si une base n'est plus découverte, c'est qu'elle a été arrêtée/décomissionnée (on mettra une alerte dans l'application si date découverte > plus d'un mois). Si une base/instance/serveur est découverte mais qu'elle est déjà collectée, on met à jour sa date de dernière découverte. Je ne sais pas si c'est clair pour toi, et si tu comprends la finalité. Peux tu me faire un retour sur ce que serait ton approche ?
+
+Je vais explorer le code avant de te répondre — je veux ancrer la proposition dans ce qui existe déjà.
+
+  Searched for 2 patterns, ran 11 shell commands
+
+J'ai exploré. Avant de te répondre en détail, quatre points de cadrage où je suis tombé sur des choses qui changent la conception — je préfère te les soumettre plutôt que de trancher seul.
+
+Un constat en particulier : mssql_collect_list (la table) n'est alimentée par rien — ni seed, ni loader, ni page APEX. Elle est pourtant lue par l'ETL (V__004:115) pour l'environnement et la licence. Pendant ce temps, la collecte réelle lit un fichier plat, collect/CHL/mssql_database_lists.lst. Ce sont deux copies déconnectées du même périmètre, et ton « ajouter la découverte dans la collecte » depuis l'application bute exactement là-dessus.
+
+● User declined to answer questions
+· Où doit vivre le périmètre de collecte, une fois qu'on peut l'alimenter depuis l'app ? (La table devient maître, le .lst est généré (Recommandé) / Le .lst reste maître / Double écriture)
+· Jusqu'à quel niveau la discovery descend-elle ? Les scripts actuels ne descendent pas jusqu'aux bases. (Serveur + instance (Recommandé) / Descendre jusqu'aux bases)
+· Aujourd'hui, un serveur injoignable et un serveur dont SQL a été désinstallé sont tous deux ABSENTS du CSV (le script ne l'exporte pas, il ne l'affiche qu'à l'écran). Sans distinction, « plus découvert depuis 1 mois » ne veut rien dire. (Exporter aussi les échecs (Recommandé) / Enregistrer seulement la couverture du run / Ne rien changer aux scripts)
+· Le « plus découvert depuis > 1 mois » doit-il entrer dans le scoring ? (Non, écran + état dédié (Recommandé) / Oui, un contrôle dans ref_control)
+
+Noté pour les deux premiers points — je retiens : la table *_collect_list devient la source de vérité (avec génération des .lst depuis la base et un amorçage à partir des .lst actuels), et la discovery s'arrête au grain serveur + instance, le modèle laissant la place pour les bases sans les remplir.
+
+Sur quoi veux-tu qu'on revienne, pour les deux questions restantes ?
+
+Pour t'aider à situer ce sur quoi elles portent :
+
+La question des absences part d'un détail du script : discovery_MSSQL.ps1 remplit deux listes séparées. $results (exportée en CSV) et $errors (seulement affichée à l'écran, l. 414-418). Or partent dans $errors aussi bien la machine injoignable, que le DNS qui ne résout pas, que le WMI refusé, que la machine sur laquelle il n'y a plus aucune instance SQL. Les trois cas se ressemblent vus de la base : une ligne qui était là la semaine dernière et qui n'y est plus. C'est ce qui rend « plus découvert depuis 1 mois » difficile à interpréter tel quel. Peut-être que tu as déjà une idée sur la façon de lever ça, ou que le cas te paraît marginal en pratique.
+
+La question du scoring est plus une question de doctrine : est-ce qu'une entité qui disparaît de la discovery doit faire baisser un score, ou rester un état de la zone discovery qu'on traite dans un écran dédié. Je penchais pour le second à cause de ta règle « l'inventaire n'est pas un moniteur », mais tu m'as peut-être dit ça dans un contexte plus étroit que je ne l'ai retenu.
+
+Dis-moi ce que tu veux préciser, et je reformule.
+
+✻ Cogitated for 2m 47s
+
+❯ pour le moment, on ne regarde pas le scoring, on adaptera en fonction si besoin, mais pour moi le décomissionnement d'une base rends obsolète le fait qu'elle soit conforme. Si c'est une erreur de collecte (DNS/réseau), ce sont les indicateurs de "pas de backup depuis 12h" ou autre qui ne sont plus conformes. Je le redis, cet outil est un inventaire, pas du monitoring. Il faut le voir comme la source a jour pour un audit externe (politique de mots de passe, dernier backup ...) si on a pas collecté, on le verra sur la date de la dernière collecte (cet aspect sera dans la feature suivante, on va exploiter le COLL_ID ajouté il y a quelques jours déjà). Revenons donc à la discovery. Donc si c'est absent de la discovery, on a juste une indication de la dernière date de discovery ... a nous de savoir pourquoi ça fait rougir nos indicateurs de compliance. est-ce plus clair ?
+
+C'est clair, oui — et ça simplifie. Je reformule ce que je retiens :
+
+Pas de scoring sur la discovery. L'absence de découverte n'est pas un verdict : on stocke la date de dernière découverte, point. Si une base est décommissionnée, sa conformité devient caduque de fait ; si c'est un incident réseau, ce sont les contrôles existants (backup, etc.) qui rougissent d'eux-mêmes. L'interprétation reste humaine. Et la fraîcheur de la collecte est un sujet distinct, qui viendra avec l'exploitation du COLL_ID.
+
+Donc pas de logique de désambiguïsation « injoignable vs désinstallé » à construire, et pas de modification des scripts pour ça.
+
+Il me reste deux inconnues concrètes, dont une qui bloque vraiment la promotion vers la collecte. Je vérifie d'abord dans le code.
+
+  Ran 2 shell commands
+
+Une vérification a mis au jour un point dur. Dans get_info_mssql.sh:20, la cible est construite (target="${host},${port}") puis jamais utilisée : tous les appels passent sqlcmd_run "${host}" seul. Le port du .lst est donc mort, et la collecte ne parle qu'aux instances par défaut sur 1433. Ça passe inaperçu aujourd'hui (les 66 lignes actives sont toutes en 1433), mais ça compte ici : 39 des 99 instances découvertes sont des instances nommées (SQLEXPRESS, OFFICESCAN, ISACDB…), qui ne sont pas sur 1433. Les promouvoir dans la collecte ne marcherait pas en l'état — et une ligne commentée du .lst est déjà sur le port 55000.
+
+Autre détail : le CSV de discovery ne donne pas le port des instances nommées. PortSQL est un booléen qui dit seulement si 1433 répondait ; le script ne sonde que ce port ($SqlPorts = @(1433)).
+
+● User answered Claude's questions:
+· Comment traite-t-on les instances nommées découvertes, qu'on ne sait pas joindre aujourd'hui ? → Discovery lit le port en base de registre (Recommandé)
+· Comment les sorties de discovery arrivent-elles jusqu'à SQLcl pour être chargées ? → Comme le reste de la pipeline (Recommandé)
+
+Toutes les décisions sont prises. Je vérifie deux derniers points d'implémentation avant d'écrire le plan.
+
+  Ran 2 shell commands
+
+Tout est cadré. J'écris le plan.
+
+● Updated plan
+/plan to preview
+
+Le plan est écrit. Deux choses que l'exploration a fait remonter et qui pèsent sur la conception :
+
+mssql_collect_list est lue par l'ETL mais alimentée par rien. Ni seed, ni loader, ni page. La collecte réelle lit un fichier plat à côté. Ta demande de promouvoir depuis l'application n'a pas d'autre choix que de faire de la table le maître — d'où la génération des .lst depuis la base et l'amorçage à partir des fichiers actuels, lignes commentées comprises (elles portent une décision).
+
+get_info_mssql.sh:20 construit une cible host,port qu'il n'utilise jamais. Tous les appels passent l'hôte seul, donc la collecte ne parle qu'aux instances par défaut sur 1433. Tant que ce n'est pas corrigé, promouvoir une instance nommée ne produit pas une erreur : ça produit une collecte silencieusement fausse, contre l'instance par défaut de la machine. C'est corrigé dans le même mouvement que la lecture du port en registre.
+
+Et une conséquence à ne pas laisser passer : promouvoir des instances nommées met plusieurs lignes actives par hôte dans mssql_collect_list, alors que load_dim_host y fait une jointure sur le seul hostname. Non traité, ça casse le MERGE existant en ORA-30926. C'est dans le plan et dans les vérifications.
+
+Le reste suit tes décisions : disc_run / disc_finding horodatés, disc_host / disc_instance en état courant avec first_seen / last_seen, aucun verdict, aucun scoring. Le niveau hôte existe parce que le script Linux ne descend au-dessous que pour Oracle — pour Postgres et MySQL on ne sait dire que « présent sur cette machine, tel port ».
+
+● User approved Claude's plan
+Plan saved to: C:\Users\chlam\.claude\plans\harmonic-sniffing-puffin.md · /plan to edit
+Gestion de la discovery — branche manage_discovery
+
+Context
+
+Plusieurs équipes installent des moteurs de bases de données au CHL. On ne sait
+pas de façon fiable ce qui tourne réellement sur le parc, ni si le périmètre de
+collecte de dbInventory correspond encore à la réalité. Deux scripts de
+discovery existent déjà (commit 7dc7994) : discovery/windows/discovery_MSSQL.ps1
+inventorie les instances SQL Server de tout le domaine AD par lecture du
+registre, et discovery/linux/detect_db_engines.sh détecte la présence de
+Postgres / Oracle / MySQL sur les machines Linux via SALT.
+
+Ils seront lancés une fois par semaine pour détecter la dérive
+(installation sauvage). Aujourd'hui leur sortie est un CSV posé sur un disque,
+que personne n'exploite.
+
+Le run réel du 2026-07-15 donne la mesure du trou : 99 instances SQL Server
+sur 98 serveurs, alors que la collecte n'en couvre que 66. Croisé avec
+collect/CHL/mssql_database_lists.lst : 6 serveurs totalement inconnus de la
+liste, 26 présents mais commentés, et 0 hôte actif manqué par la discovery.
+
+Objectif : stocker ces découvertes de façon horodatée, pouvoir décider dans
+l'application qu'une découverte entre dans la collecte, et voir vieillir la
+date de dernière découverte de ce qui a disparu.
+
+Ce que ce chantier n'est pas : ni de la supervision, ni du scoring. Une
+entité qui n'est plus découverte n'émet aucun verdict — on stocke la date de
+dernière découverte, l'interprétation est humaine. Un décommissionnement rend
+la conformité caduque de fait ; un incident réseau fait rougir de lui-même les
+contrôles existants (backup, etc.). La fraîcheur de la collecte est un sujet
+distinct, traité au chantier suivant via le COLL_ID.
+
+Décisions actées
+
+1. Les tables *_collect_list deviennent la source de vérité du périmètre.
+Les .lst sont générés depuis la base avant chaque collecte.
+2. Grain = serveur + instance. Aucun des deux scripts ne descend aux bases,
+et sur une instance non gérée on n'a pas le compte pour les énumérer. Le
+modèle laisse la place, sans la remplir.
+3. Pas de scoring, pas de désambiguïsation « injoignable vs désinstallé ».
+4. La discovery Windows lit le port des instances nommées en base de registre,
+sans quoi 39 des 99 instances découvertes ne sont pas promouvables.
+5. Transport identique au reste de la pipeline : fichiers déposés dans
+setup/inventory/dbInventory/collect/, chargés par un load_info_discovery.sh.
+
+Flux de données
+
+discovery_MSSQL.ps1 (AD)     ──┐
+detect_db_engines.sh (SALT)  ──┴─> CSV dans collect/
+                                      │  load_info_discovery.sh (LOAD SQLcl)
+                                      v
+                          discovery_mssql_inst / discovery_linux_engines   (staging, TRUNCATE+LOAD)
+                                      │  pkg_dbinv_discovery.load_all
+                                      v
+                          disc_run ─> disc_finding (immuable, 1 ligne/run)
+                                      │
+                                      v
+                          disc_host / disc_instance   (état courant, first_seen / last_seen)
+                                      │  promotion depuis APEX
+                                      v
+                          mssql_collect_list / oracle_ / postgres_   (périmètre, maître)
+                                      │  gen_collect_lists.sh
+                                      v
+                          collect/CHL/*_database_lists.lst  ──> collecte existante, inchangée
+
+Modèle — database/dbinventory/V__006_create_discovery.sql
+
+Conventions de V__002_create_app_model.sql : PK <entité>_id en IDENTITY,
+contraintes <nom>_pk / _uk / <enfant>_<parent>_fk, clé naturelle protégée
+par un UNIQUE servant à la déduplication ETL, comment on sur table et colonnes.
+
+Staging (TRUNCATE+LOAD, calqué sur V__001, noms < 30 caractères) :
+
+- discovery_mssql_inst — colonnes du CSV telles quelles (serveur, instance,
+service, edition, version, patch, etat_service, demarrage,
+compte_service, bitness, edition_gratuite, port_sql, acces_wmi,
+protocole, statut, detail) + tcp_port ajouté par le PS1. Tout en
+varchar2, aucune contrainte : c'est du staging.
+- discovery_linux_engines — la ligne ; à colonnes fixes du script Linux :
+hostn, pg_pkg, pg_proc, pg_port, ora_pkg, ora_proc, ora_sids,
+ora_port, my_pkg, my_proc, my_port.
+
+Modèle :
+
+- disc_run — un run de discovery. run_id, run_date, source
+(MSSQL_WINDOWS / LINUX_SALT), host_count, finding_count, note.
+C'est la notion de lot côté discovery ; elle préfigure le chantier COLL_ID.
+- disc_finding — trace immuable, une ligne par (run, entité découverte), avec
+les attributs constatés ce jour-là. Volume : ~100 lignes/semaine. C'est ce qui
+permet de répondre « depuis quand » et « qu'est-ce qui a changé entre deux runs »
+(montée de version, changement d'édition), au-delà du simple état courant.
+- disc_host — état courant par (platform, hostname) : first_seen_date,
+last_seen_date, présence du moteur (is_installed, process_count,
+ports_seen), os_family, triage_status, triage_note.
+Les deux scripts ne donnent pas la même chose : Linux ne descend au-dessous de
+l'hôte que pour Oracle (les SID ora_pmon_*) ; pour Postgres et MySQL on n'a
+que « présent sur cet hôte, tel port ». D'où un niveau hôte à part entière,
+qui n'est pas un disc_instance dégradé.
+- disc_instance — état courant par (platform, hostname, instance_name),
+FK vers disc_host. first_seen_date, last_seen_date, edition,
+engine_version, patch_level, port, service_state, service_account,
+bitness, is_free_edition, triage_status, triage_note.
+Alimenté par les instances MSSQL (riche) et par les SID Oracle du Linux.
+
+Aucune FK vers dim_host / dim_instance : une découverte non collectée
+n'existe précisément pas dans les dimensions. Le rapprochement se fait par clé
+naturelle dans une vue, pas par contrainte.
+
+triage_status ne stocke que la décision humaine : NEW (défaut) ou
+IGNORED (hors périmètre volontaire — c'est le statut des 26 lignes commentées,
+sans lequel chaque run hebdomadaire les re-signalerait). Le fait d'être collecté
+n'est pas stocké : il se dérive par jointure sur *_collect_list, sinon on
+crée une deuxième vérité sur le périmètre.
+
+- v_discovery_status — vue de travail pour APEX : découvertes + statut effectif
+(NEW / COLLECTED / IGNORED / NOT_SEEN), days_since_last_seen, et le
+drapeau « plus vu depuis > 1 mois ». NOT_SEEN couvre aussi le sens inverse :
+présent dans le périmètre de collecte mais absent des derniers runs.
+
+ETL — database/dbinventory/V__007_create_discovery_etl.sql
+
+Package pkg_dbinv_discovery, aligné sur pkg_dbinv_inventory (V__004) :
+MERGE sur clé naturelle, idempotent par jour, p_run_date default trunc(sysdate).
+
+- load_run(p_source, p_run_date) → crée la ligne disc_run, renvoie run_id.
+- load_findings_mssql — 1 ligne de staging = 1 disc_finding.
+- load_findings_linux — dénormalisation : la ligne large (3 moteurs) devient
+1 à N findings, un par moteur détecté, et la liste ora_sids est éclatée en un
+finding par SID.
+- merge_hosts / merge_instances — MERGE sur la clé naturelle :
+last_seen_date = date du run, first_seen_date posée à l'insertion et jamais
+réécrite, attributs rafraîchis. Rien n'est jamais supprimé.
+- promote_instance(p_disc_instance_id, p_environment, p_license_type) — insère
+dans la *_collect_list du bon moteur. Refuse si le port est inconnu.
+- load_all — enchaîne le tout.
+
+Convention pour les moteurs sans nom d'instance (Postgres/MySQL sur Linux) :
+disc_instance n'est pas alimentée, l'information reste au niveau disc_host.
+
+Le périmètre passe en base
+
+C'est la partie qui débloque « ajouter la découverte dans la collecte », et
+c'est un point d'attention : aujourd'hui mssql_collect_list est lue par
+l'ETL (V__004:115) mais alimentée par rien — ni seed, ni loader, ni page.
+La collecte réelle, elle, lit collect/CHL/mssql_database_lists.lst.
+
+1. Amorçage : charger les .lst actuels dans les 3 tables. Les lignes
+commentées deviennent active = 0 — elles portent une décision qu'il ne faut
+pas perdre en régénérant le fichier.
+2. setup/inventory/dbInventory/bin/gen_collect_lists.sh (nouveau) —
+régénère les 3 .lst depuis la base via SQLcl, aux formats exacts attendus :
+ENV;LICENCE;host:port (MSSQL, Postgres) et ENV;LICENCE;host:port/service
+(Oracle). À appeler en tête de get_info_all.sh.
+3. Conséquence à traiter, sinon régression : mssql_collect_list a pour PK
+(hostname, port). Promouvoir des instances nommées met plusieurs lignes
+actives par hôte, alors que load_dim_host (V__004:115) fait
+left join mssql_collect_list cl on cl.hostname = h.collect_target and cl.active = 1.
+Le MERGE se retrouverait avec plusieurs lignes sources pour une même cible
+→ ORA-30926. À corriger dans le même mouvement : agréger l'environnement et
+la licence à une ligne par hôte pour load_dim_host, et ne joindre par
+(hostname, port) que là où le grain est l'instance.
+
+Scripts
+
+- discovery/windows/discovery_MSSQL.ps1 : lire TcpPort et
+TcpDynamicPorts sous
+…\<InternalId>\MSSQLServer\SuperSocketNetLib\Tcp\IPAll, via le même
+StdRegProv que le reste de la fonction Get-SqlServerInstances — aucun droit
+supplémentaire. Nouvelle colonne TcpPort dans le CSV.
+- setup/inventory/dbInventory/bin/get_info_mssql.sh:20 : target="${host},${port}"
+est construit puis jamais utilisé, tous les appels passent sqlcmd_run "${host}".
+La collecte ne parle donc qu'aux instances par défaut sur 1433. Sans correction,
+promouvoir une instance nommée produit une collecte silencieusement fausse
+(connexion à l'instance par défaut). Passer ${target} aux appels.
+Une ligne commentée du .lst est déjà sur le port 55000.
+- setup/inventory/dbInventory/bin/load_info_discovery.sh (nouveau), calqué
+sur load_info_mssql.sh. Trois pièges de format, tous vérifiés :
+  - le CSV Windows a un BOM UTF-8 (EF BB BF, confirmé à l'octet) qui
+corromprait la première colonne — à retirer au chargement ;
+  - il a un en-tête, alors que la pipeline existante travaille en
+SET LOADFORMAT COLUMN_NAMES OFF (load_info_mssql.sh:106) → bloc de
+réglages propre à la discovery ;
+  - le fichier Linux est en ; sans en-tête → DELIMITER ;.
+Voir aussi les pièges connus du LOAD SQLcl (limite 30 caractères, formats de
+date) — ici aucune colonne date n'est chargée depuis le CSV, la date vient du run.
+
+APEX
+
+Une page de revue de la discovery, sur v_discovery_status : liste filtrable
+par plateforme / statut / ancienneté, colonnes « vu pour la première fois »,
+« vu pour la dernière fois », « jours depuis ». Deux actions par ligne :
+promouvoir (demande environnement + type de licence, appelle
+promote_instance) et ignorer (pose IGNORED + une note).
+
+Conventions APEXLang de l'application : pas de fil d'ariane, région page-title
+en staticContent, parenthèses équilibrées dans le SQL des .apx, validation
+par apex validate avant commit.
+
+Vérification
+
+1. Déploiement : V__006 puis V__007 sur la base de dev
+(sql -S -name DEV_DBINVENTORY_dbinventory), en model-only — surtout pas
+X_001, qui viderait le staging non recollectable. Ajouter les deux fichiers
+à X_000_reinstall_all.sql. Vérifier que les packages compilent VALID.
+2. Chargement réel : charger discovery_MSSQL_20260715.csv tel quel (BOM et
+en-tête compris), puis load_all. Attendu : 99 findings, 98 disc_host,
+99 disc_instance, tous first_seen_date = last_seen_date.
+3. Idempotence : rejouer le même run à la même date → aucun doublon,
+les compteurs ne bougent pas.
+4. Deuxième run : rejouer le même fichier à p_run_date + 7 → last_seen_date
+avancée pour les 99, first_seen_date inchangée. Retirer 2 lignes du CSV et
+rejouer → ces 2 lignes gardent l'ancienne last_seen_date et remontent dans
+v_discovery_status avec le bon days_since_last_seen.
+5. Rapprochement : vérifier que la vue classe bien 66 COLLECTED,
+6 NEW (cladbs01-pi, diatmonsas01-ti, honlonsas02-pi, labotools,
+shadbsrv, wssqldbs01-ti) et 26 IGNORED après amorçage des
+collect_list depuis les .lst.
+6. Non-régression de l'ETL existant : après promotion d'une instance nommée
+(donc 2 lignes actives sur un même hôte), relancer
+pkg_dbinv_inventory.load_all et confirmer l'absence d'ORA-30926 et le
+nombre de dim_host inchangé.
+7. Aller-retour du périmètre : gen_collect_lists.sh puis diff avec les
+.lst d'origine — identiques aux lignes promues près, lignes commentées
+comprises.
+8. Linux : pas de machine de test disponible ; valider load_findings_linux
+sur un fichier fabriqué à la main couvrant les cas hôte multi-moteurs,
+plusieurs SID Oracle, et moteur installé mais arrêté (PKG=Y, PROC=0).
+
+Hors périmètre
+
+Discovery des bases ; MySQL/Postgres côté Windows (le modèle les accepte déjà,
+seul le script manque) ; scoring de la discovery ; soft-delete ; exploitation du
+COLL_ID et fraîcheur de collecte (chantier suivant) ; création des comptes de
+monitoring, qui reste manuelle ou faite par le template d'installation.
+
+Le plan est approuvé. Je note le chantier en mémoire, puis j'attaque le DDL.
+
+  Ran 1 shell command, wrote 2 memories
+
+Le DDL maintenant.
+
+● Write(database\dbinventory\V__006_create_discovery.sql)
+Wrote 397 lines to database\dbinventory\V__006_create_discovery.sql
+-- ============================================================================
+-- V__006_create_discovery.sql
+-- ----------------------------------------------------------------------------
+-- Discovery area: what is actually installed on the estate, as opposed to what
+-- dbInventory currently collects.
+--
+-- Two scripts feed this area, run weekly to detect drift (rogue installs):
+--   * discovery/windows/discovery_MSSQL.ps1  - enumerates SQL Server instances
+--     across the AD domain by reading the registry (so it also sees stopped
+--     instances and the exact edition).
+… +390 lines
+
+Je déploie sur la base de dev pour valider le DDL.
+
+  Ran 2 shell commands
+
+Le bootstrap est déjà fait sur dev : 106 lignes, 66 actives + 40 à active=0 (les lignes commentées). Je déploie le DDL.
+
+  Ran 1 shell command
+
+V__006 déployé sans erreur. Maintenant le package ETL.
+
+  Ran 1 shell command
+
+● Write(database\dbinventory\V__007_create_discovery_etl.sql)
+Wrote 480 lines to database\dbinventory\V__007_create_discovery_etl.sql
+-- ============================================================================
+-- V__007_create_discovery_etl.sql
+-- ----------------------------------------------------------------------------
+-- ETL package pkg_dbinv_discovery: populates the discovery area (V__006) from
+-- the discovery staging tables, and promotes a discovered instance into the
+-- collection perimeter.
+--
+-- Design, aligned on pkg_dbinv_inventory (V__004):
+--   * A run is MERGEd on (source, run_date), so loading the same day twice
+--     reuses the same run instead of duplicating it.
+… +470 lines
+
+  Ran 1 shell command
+
+Package VALID. Test de chargement avec le vrai CSV.
+
+  Ran 2 shell commands
+
+SQLcl est un binaire Windows — il lui faut un chemin Windows. Je bascule sur le scratchpad.
+
+  Ran 2 shell commands
+
+Chargement par nom : 99 lignes, 0 erreur, et tcpport à null puisque le CSV actuel n'a pas encore la colonne. Je lance l'ETL.
+
+  Ran 1 shell command
+
+99 findings, 98 hôtes, 99 instances, tous first_seen = last_seen — exactement les chiffres attendus. Avant d'aller plus loin, je vérifie le rapprochement, car le port conditionne la jointure.
+
+  Ran 1 shell command
+
+Constat important : 11 hôtes actuellement collectés font tourner une instance nommée, pas l'instance par défaut — et la collect_list les déclare tous en 1433. Le rapprochement ne peut donc pas reposer sur le seul port. Je corrige la vue.
+
+● Update(database\dbinventory\V__006_create_discovery.sql)
+Added 18 lines, removed 7 lines
+-- days_since_last_seen is the only ageing signal. It carries no verdict: a host
+-- that stops being discovered may have been decommissioned or may simply have
+-- been down on the day of the run.
+--
+-- Matching a discovered instance to its perimeter entry is done by hostname,
+-- and by port only when discovery knows the port. The collect list is keyed on
+-- (hostname, port) but is in practice one row per machine: of 98 discovered
+-- hosts a single one runs two instances. Requiring the port unconditionally
+-- would match nothing at all until the Windows discovery reads it from the
+-- registry, and would still mismatch the 11 hosts that are collected today
+-- while running a NAMED instance declared on 1433.
+-- The match is written as a scalar subquery rather than a join so that a host
+-- with several perimeter rows can never multiply the discovery rows.
+create or replace view v_discovery_status as
+   select 'INSTANCE'                                  as level_name,
+          di.disc_instance_id                         as entity_id,
+
+             else 0
+          end                                         as is_stale,
+          case
+             when cl.hostname is not null
+                  and cl.active = 1 then 'COLLECTED'
+             when m.collect_active = 1 then 'COLLECTED'
+             when di.triage_status = 'IGNORED'
+                  or cl.active = 0 then 'IGNORED'
+                  or m.collect_active = 0 then 'IGNORED'
+             else 'NEW'
+          end                                         as effective_status,
+          di.triage_note                              as triage_note
+     from disc_instance di
+     join disc_host dh
+   on dh.disc_host_id = di.disc_host_id
+     left join mssql_collect_list cl
+   on dh.platform = 'MSSQL'
+      and lower(cl.hostname) = lower(dh.hostname)
+      and cl.port = di.port
+     outer apply ( select max(cl.active) as collect_active
+                     from mssql_collect_list cl
+                    where dh.platform = 'MSSQL'
+                      and lower(cl.hostname) = lower(dh.hostname)
+                      and ( cl.port = di.port
+                            or di.port is null ) ) m
+    union all
+   select 'HOST'                                      as level_name,
+          dh.disc_host_id                             as entity_id,
+
+● Update(database\dbinventory\V__006_create_discovery.sql)
+Added 1 line, removed 3 lines
+    where cl.active = 1
+      and not exists (
+      select 1
+        from disc_instance di
+        join disc_host dh
+      on dh.disc_host_id = di.disc_host_id
+        from disc_host dh
+       where dh.platform = 'MSSQL'
+         and lower(dh.hostname) = lower(cl.hostname)
+   );
+
+  Ran 1 shell command
+
+Le rapprochement tombe juste : 6 NEW (exactement les 6 hôtes du croisement de fichiers), 26 IGNORED, 0 NOT_SEEN. Reste à expliquer 67 COLLECTED pour 66 entrées de périmètre.
+
+  Ran 1 shell command
+
+Cas révélateur : cette machine porte deux instances (MSSQLSERVER + ORGACARD), une seule ligne de périmètre, et le modèle collecté n'en contient qu'une. Le rapprochement par hôte seul marque donc ORGACARD comme collectée alors qu'elle ne l'est pas — exactement le faux négatif que la fonctionnalité doit éviter. J'affine la règle.
+
+● Update(database\dbinventory\V__006_create_discovery.sql)
+Added 14 lines, removed 9 lines
+-- that stops being discovered may have been decommissioned or may simply have
+-- been down on the day of the run.
+--
+-- Matching a discovered instance to its perimeter entry is done by hostname,
+-- and by port only when discovery knows the port. The collect list is keyed on
+-- (hostname, port) but is in practice one row per machine: of 98 discovered
+-- hosts a single one runs two instances. Requiring the port unconditionally
+-- would match nothing at all until the Windows discovery reads it from the
+-- registry, and would still mismatch the 11 hosts that are collected today
+-- while running a NAMED instance declared on 1433.
+-- The match is written as a scalar subquery rather than a join so that a host
+-- with several perimeter rows can never multiply the discovery rows.
+-- Matching a discovered instance to its perimeter entry:
+--   * on (hostname, port) whenever discovery knows the port - the only exact
+--     rule, and the one that applies once the Windows discovery reads TcpPort
+--     from the registry;
+--   * otherwise on hostname alone, but only when it cannot be ambiguous, i.e.
+--     the host runs a single instance, or the instance is the default one.
+-- The fallback exists because the collect list is keyed on (hostname, port)
+-- while holding one row per machine, all on 1433: requiring the port would
+-- match nothing before TcpPort exists, and would still miss the 11 hosts that
+-- are collected today while running a NAMED instance declared on 1433.
+-- Matching on hostname alone would be wrong the other way round: on a machine
+-- running two instances it would report both as collected when only one is.
+-- The match is a scalar subquery rather than a join so that a host with several
+-- perimeter rows can never multiply the discovery rows.
+create or replace view v_discovery_status as
+   select 'INSTANCE'                                  as level_name,
+          di.disc_instance_id                         as entity_id,
+
+● Update(database\dbinventory\V__006_create_discovery.sql)
+Added 5 lines, removed 1 line
+                    where dh.platform = 'MSSQL'
+                      and lower(cl.hostname) = lower(dh.hostname)
+                      and ( cl.port = di.port
+                            or di.port is null ) ) m
+                            or ( di.port is null
+                                 and ( di.instance_name = 'MSSQLSERVER'
+                                       or 1 = ( select count(*)
+                                                  from disc_instance x
+                                                 where x.disc_host_id = di.disc_host_id ) ) ) ) ) m
+    union all
+   select 'HOST'                                      as level_name,
+          dh.disc_host_id                             as entity_id,
+
+  Ran 1 shell command
+
+Erreur de console SQLcl (stdin), pas de SQL. Je repasse par un heredoc.
+
+  Ran 1 shell command
+
+Maintenant 66 COLLECTED (= les 66 entrées de périmètre), 26 IGNORED, 7 NEW. Le 7ᵉ est ORGACARD : une instance réellement non collectée sur une machine par ailleurs collectée — que la comparaison de fichiers ne pouvait pas voir. Tests d'idempotence et de vieillissement.
+
+  Ran 2 shell commands
+
+Idempotence et vieillissement corrects : rien n'est supprimé, 97 instances avancent au 22, les 2 disparues restent au 15 avec first_seen intact. Je passe aux scripts.
+
+● Update(discovery\windows\discovery_MSSQL.ps1)
+Added 18 lines
+    if ($InstanceName -eq 'MSSQLSERVER') { 'MSSQLSERVER' } else { "MSSQL`$$InstanceName" }
+}
+
+function Resolve-TcpPort {
+    <#
+        Choisit le port a retenir entre configuration statique et dynamique.
+        TcpPort peut contenir plusieurs ports separes par des virgules ; on garde
+        le premier. Quand il est vide, l'instance est en ports dynamiques et le
+        port courant se lit dans TcpDynamicPorts ('0' signifiant "dynamique mais
+        pas encore attribue", donc inutilisable).
+    #>
+    param([string]$Static, [string]$Dynamic)
+
+    foreach ($candidate in @($Static, $Dynamic)) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+        $first = ($candidate -split ',')[0].Trim()
+        if ($first -match '^\d+$' -and [int]$first -gt 0) { return [int]$first }
+    }
+    return $null
+}
+
+function Test-TcpPort {
+    <#
+        Teste l'ouverture d'un port TCP avec un vrai timeout (TcpClient.Connect n'en a pas).
+
+● Update(discovery\windows\discovery_MSSQL.ps1)
+Added 12 lines
+            $patch   = (Invoke-CimMethod @reg -MethodName GetStringValue -Arguments @{
+                hDefKey = $HKLM; sSubKeyName = $setupKey; sValueName = 'PatchLevel' }).sValue
+
+            # Port TCP de l'instance. Indispensable pour les instances NOMMEES :
+            # elles n'ecoutent pas sur 1433, et sans ce port l'inventaire ne peut
+            # pas les prendre en collecte. Meme acces StdRegProv que ci-dessus,
+            # donc aucun droit supplementaire.
+            $tcpKey = "$($root.Base)\$internalId\MSSQLServer\SuperSocketNetLib\Tcp\IPAll"
+
+            $tcpStatic = (Invoke-CimMethod @reg -MethodName GetStringValue -Arguments @{
+                hDefKey = $HKLM; sSubKeyName = $tcpKey; sValueName = 'TcpPort' }).sValue
+            $tcpDynamic = (Invoke-CimMethod @reg -MethodName GetStringValue -Arguments @{
+                hDefKey = $HKLM; sSubKeyName = $tcpKey; sValueName = 'TcpDynamicPorts' }).sValue
+
+            [pscustomobject]@{
+                Instance    = $instance
+                InternalId  = $internalId
+
+                Version     = $version
+                PatchLevel  = $patch
+                Bitness     = $root.Bitness
+                TcpPort     = Resolve-TcpPort -Static $tcpStatic -Dynamic $tcpDynamic
+            }
+        }
+    }
+
+● Update(discovery\windows\discovery_MSSQL.ps1)
+Added 1 line
+                Bitness         = $inst.Bitness
+                EditionGratuite = [bool]$isFree
+                PortSQL         = $sqlPortOpen
+                TcpPort         = $inst.TcpPort
+                AccesWMI        = 'OK'
+                Protocole       = $usedProto
+                Statut          = 'Detecte (acces complet)'
+
+● Update(discovery\windows\discovery_MSSQL.ps1)
+Added 1 line
+            Bitness         = $null
+            EditionGratuite = $null
+            PortSQL         = $true
+            TcpPort         = $openPort
+            AccesWMI        = $accLabel
+            Protocole       = $null
+            Statut          = $statut
+
+● Update(discovery\windows\discovery_MSSQL.ps1)
+Added 1 line, removed 1 line
+    Write-Host "--- Detail des instances identifiees ---" -ForegroundColor Cyan
+    $detected |
+        Sort-Object @{ Expression = 'EditionGratuite'; Descending = $true }, Serveur, Instance |
+        Format-Table Serveur, Instance, Edition, Version, EtatService, EditionGratuite -AutoSize
+        Format-Table Serveur, Instance, Edition, Version, TcpPort, EtatService, EditionGratuite -AutoSize
+}
+
+if ($free.Count -gt 0) {
+
+  Ran 1 shell command
+
+Resolve-TcpPort valide sur les 7 cas, y compris TcpDynamicPorts='0' (dynamique non attribué) et le repli statique→dynamique. Maintenant la cible morte dans la collecte.
+
+  Ran 1 shell command
+
+get_info_mssql_security.sh utilise déjà ${target} correctement — l'anomalie est propre à get_info_mssql.sh. Je l'aligne, en préservant ${host} dans les préfixes sed (c'est le collect_target attendu par le modèle).
+
+  Ran 1 shell command
+
+Le diff signale les 71 lignes changées — suspicion de fins de ligne modifiées par sed -i. Je vérifie.
+
+  Ran 1 shell command
+
+La modification est bien limitée aux 18 lignes voulues (git compte 18+/18−). Je vérifie la config de fins de ligne et la syntaxe.
+
+  Ran 1 shell command
+
+.gitattributes impose justement *.sh text eol=lf — le fichier était en CRLF, il est maintenant conforme. Syntaxe validée. Je regarde le loader existant pour caler le nouveau dessus.
+
+  Ran 3 shell commands
+
+J'écris le loader de discovery, sur le même moule.
+
+● Write(setup\inventory\dbInventory\bin\load_info_discovery.sh)
+Wrote 211 lines to setup\inventory\dbInventory\bin\load_info_discovery.sh
+#!/bin/bash
+# =============================================================================
+# load_info_discovery  –  Charge les sorties de discovery dans Oracle via SQLcl
+#
+# Prérequis : SQLcl 22.x+  (commande : sql)
+#
+# Entrées attendues dans ../collect/ (déposées par les scripts de discovery,
+# lancés une fois par semaine) :
+#   discovery_mssql.csv  – produit par discovery/windows/discovery_MSSQL.ps1
+#   discovery_linux.csv  – concaténation des lignes de detect_db_engines.sh
+… +201 lines
+
+Le générateur de .lst maintenant. Je vérifie d'abord le format réellement stocké côté Oracle et Postgres.
+
+  Ran 1 shell command
+
+Les trois collect_list de dev reflètent fidèlement les .lst, active=0 compris. J'écris le générateur.
+
+● Write(setup\inventory\dbInventory\bin\gen_collect_lists.sh)
+
+──────────────────────────────────────────────────────────────────────────────────────────────── 1 new message ─────────────────────────────────────────────────────────────────────────────────────────────────
+Wrote 112 lines to setup\inventory\dbInventory\bin\gen_collect_lists.sh
+#!/bin/bash
+# =============================================================================
+# gen_collect_lists  –  Régénère les fichiers .lst depuis la base
+#
+# Prérequis : SQLcl 22.x+  (commande : sql)
+#
+# Le périmètre de collecte est tenu dans les tables *_collect_list : c'est là
+# qu'écrit l'application quand on prend une instance découverte en collecte.
+# Les scripts get_info_* lisent, eux, des fichiers .lst. Ce script fait le pont,
+# et doit tourner AVANT la collecte (get_info_all.sh l'appelle en tête).
+… +102 lines
+
+Test de l'aller-retour du périmètre, avec la connexion nommée de dev.
+
+ Ran 3 shell commands
+
+Confirmé : la ligne 17 du .lst Oracle utilise : au lieu de ; comme deuxième séparateur, donc db est vide et la ligne est silencieusement ignorée — cette base Oracle n'a jamais été collectée, sans le moindre message. Je branche le générateur dans la collecte.
+
+  Ran 1 shell command
+
+● Update(setup\inventory\dbInventory\bin\get_info_all.sh)
+Added 10 lines
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Le périmètre de collecte est tenu dans les tables *_collect_list, où écrit
+# l'application. Les .lst en sont un rendu régénéré à chaque passage : sans
+# cette étape, une instance ajoutée depuis l'application ne serait jamais
+# collectée. En cas d'échec on s'arrête, plutôt que de collecter sur un
+# périmètre périmé sans le savoir.
+"${SCRIPT_DIR}/gen_collect_lists.sh" || {
+    echo "ERREUR: génération des listes de collecte impossible — collecte annulée." >&2
+    exit 1
+}
+
+"${SCRIPT_DIR}/get_info_oracle_all.sh"
+
+"${SCRIPT_DIR}/get_info_mssql_all.sh"
+
+Reste le risque ORA-30926 sur load_dim_host. Je regarde la jointure en cause.
+
+  Ran 2 shell commands
+
+load_dim_host fait déjà group by h.collect_target avec des max() — la duplication y est donc déjà neutralisée. Je vérifie les deux autres jointures.
+
+  Ran 2 shell commands
+
+Les trois jointures sont déjà sous group by avec max() : ORA-30926 n'est pas un risque — ma crainte du plan était infondée, et il valait mieux le vérifier que « corriger » du sain. En revanche max(cl.port) en ligne 165 pose un vrai problème sémantique dès qu'un hôte a deux instances. Je regarde si la collecte remonte déjà le port.
+
+  Ran 1 shell command
+
+──────────────────────────────────────────────────────────────────────────────────────────────── 1 new message ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+La collecte ne remonte pas le port de l'instance, et cette requête est la plus fragile du lot (son propre cartouche le signale). Plutôt que d'y toucher, je rends l'ETL honnête : le port n'est repris que s'il est non ambigu.
+
+● Update(database\dbinventory\V__004_create_inventory_etl.sql)
+Added 9 lines, removed 1 line
+         values ( s.host_id, s.platform, s.instance_name, s.engine_version, s.edition );
+
+      -- MSSQL instance (instance_name = hostname in this collection)
+      -- The port comes from the perimeter, not from the collection: mssql_hosts
+      -- carries no port. It is only meaningful when the machine has a single
+      -- active perimeter entry. As soon as a named instance is promoted next to
+      -- a default one, several entries share the collect_target and there is
+      -- nothing in the collected data to tell which port belongs to which
+      -- instance - so the port is left null rather than guessed.
+      merge into dim_instance di
+      using ( select ds.host_id, 'MSSQL' platform, h.hostname instance_name,
+                     max(h.mssql_product_version) engine_version, max(h.mssql_edition) edition,
+                     max(h.collation) collation, max(cl.port) port, max(h.install_date) install_date
+                     max(h.collation) collation, max(cl.port) port, max(h.install_date) install_date
+                     max(h.collation) collation,
+                     case when count(distinct cl.port) = 1 then max(cl.port) end port,
+                     max(h.install_date) install_date
+                from mssql_hosts h
+                join dim_host ds on ds.platform = 'MSSQL' and ds.hostname = h.collect_target
+                left join mssql_collect_list cl on cl.hostname = h.collect_target and cl.active = 1
+
+  Read 1 file
+
+✽ Herding… (22m 48s · ↓ 87.7k tokens)
+
+  Ran 1 shell command
+
+Non-régression validée : dimensions inchangées, 66 ports toujours renseignés, packages VALID. Je teste maintenant la promotion — le seul chemin qui crée deux lignes actives sur un même hôte.
+
+  Ran 2 shell commands
+
+Les deux chemins fonctionnent. Test décisif : relancer l'ETL d'inventaire avec deux lignes actives sur le même hôte.
+
+  Ran 2 shell commands
+
+Non-régression complète : pas d'ORA-30926, dimensions inchangées, et les ports passent de 66 à 65 — exactement l'hôte devenu ambigu. Je nettoie les artefacts de test sur dev.
+
+  Ran 1 shell command
+
+La commande dépasse 120 s (l'ETL d'inventaire est long). Je la laisse finir.
+
+  Read 1 file, ran 3 shell commands
+
+Pendant que le nettoyage tourne, j'attaque la page APEX. Je regarde les conventions de l'application.
+
+  Ran 9 shell commands
+
+Page 40 est libre. Je regarde un exemple de page avec boutons et processus pour la syntaxe APEXLang.
+
+  Ran 5 shell commands
+
+Les tables de référence licence_types et environments sont vides sur dev (V__009 n'est pas dans X_000), et 3 des 7 valeurs de licence réellement utilisées n'y figurent de toute façon pas. Je construis les LOV sur les valeurs réellement en usage.
+
+· Herding… (29m 2s · ↓ 101.8k tokens)
+
+ Write(pages\p00040-db-inv-discovery.apx)
+Wrote 412 lines to pages\p00040-db-inv-discovery.apx
+page 40 (
+    name: DB Inv. - Discovery
+    alias: DB-INV-DISCOVERY
+    title: DB Inv. - Discovery
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+… +403 lines
+
+  Ran 2 shell commands
+
+Les processus APEX ne doivent pas committer eux-mêmes. Je retire les commit des deux procédures interactives, en les gardant dans le load_all batch.
+
+● Update(G:\Developpement\CHL\dbInventory\database\dbinventory\V__007_create_discovery_etl.sql)
+Added 2 lines, removed 1 line
+             triage_note   = null
+       where disc_instance_id = p_disc_instance_id;
+
+      commit;
+      -- No commit: promotion is an interactive action, the caller owns the
+      -- transaction (APEX commits at the end of the page submit).
+   exception
+      when no_data_found then
+         raise_application_error(-20003,
+
+● Update(G:\Developpement\CHL\dbInventory\database\dbinventory\V__007_create_discovery_etl.sql)
+Added 1 line, removed 2 lines
+         raise_application_error(-20006,
+            'No ' || p_level || ' with id ' || p_entity_id || '.');
+      end if;
+
+      commit;
+      -- No commit: see promote_instance.
+   end set_triage;
+
+end pkg_dbinv_discovery;
+
+──────────────────────────────────────────────────────────────────────────────────────────────── 1 new message ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+ Write(pages\p00040-db-inv-discovery.apx)
+Wrote 412 lines to pages\p00040-db-inv-discovery.apx
+page 40 (
+    name: DB Inv. - Discovery
+    alias: DB-INV-DISCOVERY
+    title: DB Inv. - Discovery
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+… +403 lines
+
+  Ran 2 shell commands
+
+Les processus APEX ne doivent pas committer eux-mêmes. Je retire les commit des deux procédures interactives, en les gardant dans le load_all batch.
+
+● Update(G:\Developpement\CHL\dbInventory\database\dbinventory\V__007_create_discovery_etl.sql)
+Added 2 lines, removed 1 line
+             triage_note   = null
+       where disc_instance_id = p_disc_instance_id;
+
+      commit;
+      -- No commit: promotion is an interactive action, the caller owns the
+      -- transaction (APEX commits at the end of the page submit).
+   exception
+      when no_data_found then
+         raise_application_error(-20003,
+
+● Update(G:\Developpement\CHL\dbInventory\database\dbinventory\V__007_create_discovery_etl.sql)
+Added 1 line, removed 2 lines
+         raise_application_error(-20006,
+            'No ' || p_level || ' with id ' || p_entity_id || '.');
+      end if;
+
+      commit;
+      -- No commit: see promote_instance.
+   end set_triage;
+
+end pkg_dbinv_discovery;
+
+● Write(G:\Developpement\CHL\dbInventory\database\dbinventory\APEXLang\pages\p00041-db-inv-discovery-triage.apx)
+Wrote 343 lines to ..\..\..\..\database\dbinventory\APEXLang\pages\p00041-db-inv-discovery-triage.apx
+page 41 (
+    name: DB Inv. - Discovery Triage
+    alias: DB-INV-DISCOVERY-TRIAGE
+    title: Discovery Triage
+    appearance {
+        pageMode: modalDialog
+        dialogTemplate: @/modal-dialog
+        templateOptions: #DEFAULT#
+    }
+    dialog {
+… +333 lines
+
+  Ran 2 shell commands
+
+Le nettoyage n'a toujours rien écrit. Je vérifie si le processus tourne encore ou s'il est bloqué.
+
+  Ran 2 shell commands
+
+Aucun processus Java ne tourne : la session a pris fin sans écrire sa sortie. Je vérifie directement l'état de la base.
+
+  Ran 2 shell commands
+
+Le nettoyage n'avait pas tourné du tout. Je le relance, DML d'abord (rapide), en ne ciblant que la ligne créée par mon test.
+
+  Ran 1 shell command
+
+Dev est revenu à un état cohérent. Je relance l'ETL d'inventaire en tâche de fond pour restaurer le port de l'hôte concerné, et je poursuis pendant ce temps.
+
+  Ran 1 shell command
+
+● Update(shared-components\lists.apx)
+Added 15 lines
+        }
+    )
+
+    entry discovery (
+        label: Discovery
+        icon {
+            imageIconCssClasses: fa-search-plus
+        }
+        layout {
+            sequence: 70
+        }
+        link {
+            target: {
+                page: 40
+            }
+        }
+    )
+
+    entry mongodb (
+        label: MongoDB
+        icon {
+
+Background command "Re-run inventory ETL to restore the instance port" completed (exit code 0)
+
+Les 66 ports sont restaurés — dev est revenu à son état initial. Je valide les pages APEX.
+
+  Ran 2 shell commands
+
+Deux erreurs réelles remontées par apex validate (les alertes de l'audit hors-ligne sur process.source.* sont des faux positifs — il compte les propriétés à l'intérieur des blocs ```plsql, comme sur les pages préexistantes).
+
+  Ran 1 shell command
+
+lov.staticValues attend une chaîne, pas un tableau ; et warnOnUnsavedChanges n'est pas valide sur un bouton en definedByDynamicAction (les deux boutons en submitPage ne sont pas signalés).
+
+● Update(pages\p00040-db-inv-discovery.apx)
+Added 1 line, removed 6 lines
+        }
+        lov {
+            type: staticValues
+            staticValues: [
+                NEW
+                COLLECTED
+                IGNORED
+                NOT_SEEN
+            ]
+            staticValues: STATIC:New;NEW,Collected;COLLECTED,Ignored;IGNORED,Not Seen;NOT_SEEN
+            displayNullValue: true
+            nullDisplayValue: - All -
+        }
+
+● Update(pages\p00041-db-inv-discovery-triage.apx)
+Removed 1 line
+        }
+        behavior {
+            action: definedByDynamicAction
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+
+  Ran 1 shell command
+
+Erreurs corrigées. Reste un avertissement propre à la page modale : le slot doit être contentBody.
+
+● Update(pages\p00041-db-inv-discovery-triage.apx)
+Added 1 line, removed 1 line
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: body
+            slot: contentBody
+        }
+        appearance {
+            template: @/standard
+
+  Ran 2 shell commands
+
+apex validate — la porte faisant autorité — passe sans erreur ni avertissement sur mes deux pages. Les alertes de l'audit hors-ligne sont les faux positifs connus (il lit if/into à l'intérieur des blocs ```plsql), présents aussi sur les pages préexistantes. Je vérifie que les requêtes des pages s'exécutent réellement.
+
+  Ran 2 shell commands
+
+Toutes les requêtes s'exécutent, et le tri place les NEW en tête — ce qu'on attend d'un écran de tri. Dernier test du plan : la branche Linux, sur un fichier fabriqué (pas de machine de test).
+
+  Ran 2 shell commands
+
+La branche Linux se comporte exactement comme prévu : srvnothing ne produit rien, l'hôte multi-moteurs donne un disc_host par moteur, la liste de SID est éclatée en deux instances, - devient null et le marqueur 1521? est conservé. Je nettoie ces données fabriquées.
+
+● Running 1 shell command…
+
+Dev est propre et cohérent, et les dimensions collectées sont identiques à l'état initial. Contrôle final avant commit.
+
+  Ran 3 shell commands
+
+setup/instance_codage_claude.txt est une transcription de cette session, pas mon travail — je ne le commite pas. Je stage uniquement mes fichiers.
+
+  Pushed to manage_discovery, ran 3 shell commands
+
+Le sujet du commit commence par un @ parasite — j'ai utilisé une syntaxe here-string PowerShell dans le tool Bash. Je vérifie le message réel.
+
+  Ran 2 shell commands
+
+Deux artefacts : un @ en tête de sujet et un en fin de corps. Je corrige avec un fichier de message, puis force-push avec bail (branche créée par moi il y a quelques minutes, personne d'autre ne peut en dépendre).
+
+  Pushed to manage_discovery, ran 2 shell commands
+
+Commit propre et poussé. Je mets la mémoire à jour.
+
+  Wrote 1 memory
+
+La zone de discovery est livrée, validée sur dev et poussée (72827d4 sur manage_discovery).  ------------------------------------------------
+
+Ce qui est en place
+
+Le flux que tu as décrit, de bout en bout : les CSV atterrissent dans collect/, load_info_discovery.sh les charge, pkg_dbinv_discovery.load_all alimente disc_run → disc_finding (trace immuable par run) → disc_host / disc_instance (état courant avec first_seen / last_seen). Rien n'est jamais supprimé : seule la date vieillit, sans verdict. La page APEX 40 trie avec les NEW en tête, la 41 permet de promouvoir ou d'ignorer avec une note.
+
+Le périmètre est passé en base. gen_collect_lists.sh régénère les .lst depuis les collect_list et tourne en tête de get_info_all.sh. Les entrées inactives sont réécrites commentées plutôt qu'omises — une ligne commentée porte une décision.
+
+Sur les données réelles : 99 findings, 98 hôtes, 99 instances. Rapprochement 66 collectées / 26 ignorées / 7 nouvelles. Le 7ᵉ mérite ton attention : ORGACARD sur ORGCARDSAS-TI, une machine collectée qui porte deux instances dont une seule l'est réellement. La comparaison de fichiers d'hier ne pouvait pas le voir.
+
+Deux choses à trancher avant le prochain run de collecte
+
+Un bug de production, trouvé et non corrigé. Ligne 17 de collect/CHL/oracle_database_lists.lst : PRD;CPU:ORALEGACY... — un : au lieu du ;. La boucle de lecture laisse le champ base vide et continue : cette base Oracle n'a jamais été collectée, sans le moindre message d'erreur. La table oracle_collect_list a la ligne correcte.
+
+La table et le .lst Oracle ont divergé sur environ 6 entrées (environnements, actif/inactif, une entrée présente seulement dans le fichier). MSSQL et Postgres bouclent à l'identique. Comme le générateur est désormais appelé avant chaque collecte, le prochain run adoptera le contenu de la table — dont ce correctif de ligne 17. À réconcilier avant de lancer.
+
+Ce que j'ai corrigé au passage, parce que la fonctionnalité le rendait nécessaire
+
+get_info_mssql.sh construisait target="${host},${port}" sans jamais s'en servir : la collecte ne parlait qu'aux instances par défaut sur 1433. Promouvoir une instance nommée aurait collecté la mauvaise instance en silence. get_info_mssql_security.sh utilisait déjà target — les deux sont alignés.
+
+Le PowerShell lit maintenant TcpPort / TcpDynamicPorts en registre. Tant que la discovery n'a pas retourné avec cette colonne, les 39 instances nommées restent non promouvables (la promotion refuse explicitement, avec le message qui dit quoi faire) et le rapprochement s'appuie sur une règle de repli documentée.
+
+Dans V__004, dim_instance.port ne reprend le port du périmètre que s'il est non ambigu. Ma crainte d'ORA-30926 était infondée — les trois jointures sont déjà sous group by — mais max(cl.port) aurait attribué un port faux dès qu'un hôte porte deux instances.
+
+Vérifications
+
+Chargement du vrai CSV (BOM et en-tête compris), idempotence au rejeu, vieillissement correct sur un second run à J+7 avec deux hôtes retirés, branche Linux exercée sur un fichier fabriqué (hôte multi-moteurs, plusieurs SID, moteur installé mais arrêté), non-régression des ETL inventaire et scoring avec deux lignes de périmètre sur un hôte, apex validate sans erreur ni avertissement. Les données de test ont été retirées : dev est revenu à dim_host=87, dim_instance=98, 66 ports — son état d'origine.
+
+Un détail : setup/instance_codage_claude.txt est apparu dans le dépôt pendant la session (une transcription de nos échanges). Je ne l'ai pas commité, ne sachant pas si tu le veux versionné.
+
+✻ Churned for 37m 57s · 2 shells still running
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── database-discovery-management ──
+❯ montre moi la dérive Oracle entre le fichier et la table
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ auto mode on · install gh for PR status · 2 shells · ← for agents · shift+click t
+
+Session
+
+Total cost:            $20.65
+Total duration (API):  35m 48s
+Total duration (wall): 1h 19m 23s
+Total code changes:    2381 lines added, 42 lines removed
+Usage by model:
+    claude-haiku-4-5:  1.1k input, 28 output, 0 cache read, 0 cache write ($0.0012)
+     claude-opus-4-8:  1.8k input, 155.6k output, 28.0m cache read, 275.7k cache write ($20.65)
+
+Current session
+█████████████████████                              42% used
+Resets 7:30pm (Europe/Luxembourg)
+
+Current week (all models)
+██████████                                         20% used
+Resets Jul 26, 3am (Europe/Luxembourg)
++50% weekly limits promo through Aug 19 · clau.de/cc-50-promo
+
+What's contributing to your limits usage?
+
+------------------------------------------------------------
+
+
+❯ montre moi la dérive Oracle entre le fichier et la table
+
+  Ran 4 shell commands
+
+La comparaison est sensible à la casse et sépare artificiellement ora-dev / ORA-DEV. Je normalise la clé.
+
+  Ran 2 shell commands
+
+Le détail par entrée. Voici maintenant l'effet concret sur ce qui sera réellement collecté.
+
+  Ran 2 shell commands
+
+Erreur d'indice dans mon awk (le champ active est le 5ᵉ dans ce fichier, pas le 4ᵉ) — le « 0 » est faux. Je corrige.
+
+  Ran 1 shell command
+
+Voici la dérive complète.
+
+Les 6 entrées qui diffèrent
+
+┌─────────────────────────────────────────┬──────────────────────────────────────┬─────────────────────────────────┬───────────────────────────────────────────────────────┐
+│                Connexion                │             Fichier .lst             │ Table (future source de vérité) │                         Écart                         │
+├─────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ ORA-DEV.chl.lu:1521/C19NPRD1            │ DEV/CPU actif                        │ TST/CPU actif                   │ environnement, + casse de l'hôte (ora-dev vs ORA-DEV) │
+├─────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ ORALEGACY.chl.lu:1521/GINRHU.INF.CHL.LU │ ligne malformée                      │ PRD/CPU actif                   │ entre dans le périmètre                               │
+├─────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ ORAPOCDBS01-TO.chl.lu:1521/MA190D       │ DEV/CPU commentée                    │ absente                         │ disparaît du fichier                                  │
+├─────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ SAPBWL01-TI.chl.lu:1522/BJT             │ TST/SAP actif                        │ TST/SAP inactif                 │ sort du périmètre                                     │
+├─────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ SAPCHSDB.chl.lu:1521/CHS                │ PRD/SAP commentée                    │ DEV/SAP actif                   │ environnement + entre dans le périmètre               │
+├─────────────────────────────────────────┼──────────────────────────────────────┼─────────────────────────────────┼───────────────────────────────────────────────────────┤
+│ SAPCHTDB.chl.lu:1521/CHT                │ TST/SAP commentée (##, double dièse) │ TST/SAP actif                   │ entre dans le périmètre                               │
+└─────────────────────────────────────────┴──────────────────────────────────────┴─────────────────────────────────┴───────────────────────────────────────────────────────┘
+
+Effet réel sur ce qui sera collecté
+
+Aujourd'hui la collecte Oracle traite 32 bases. Après bascule sur la table, 34 :
+
++ ORALEGACY.chl.lu:1521/GINRHU.INF.CHL.LU     (c'est la ligne malformée — correction du bug)
++ SAPCHSDB.chl.lu:1521/CHS
++ SAPCHTDB.chl.lu:1521/CHT
+- SAPBWL01-TI.chl.lu:1522/BJT
+  31 inchangées
+
+Trois points qui méritent ton arbitrage
+
+La ligne malformée. Dans le fichier : PRD;CPU:ORALEGACY.chl.lu:1521/GINRHU.INF.CHL.LU — un : au lieu du ;. Le champ base ressort vide, continue s'applique, la ligne n'est jamais collectée et rien ne le signale. La table a la version correcte, donc basculer corrige le bug — mais ça veut dire qu'une base non collectée depuis longtemps va soudain remonter, avec potentiellement des indicateurs de conformité au rouge dès le premier run. Ce n'est pas une régression, c'est de la donnée qu'on ne voyait pas.
+
+SAPBWL01-TI/BJT sort du périmètre. C'est le seul changement qui retire quelque chose. À vérifier : est-ce la table qui a raison (base décommissionnée, désactivée proprement) ou le fichier (quelqu'un l'a réactivée dans le fichier sans toucher la table) ?
+
+ORAPOCDBS01-TO/MA190D disparaît complètement. Elle est commentée dans le fichier, donc pas collectée aujourd'hui — aucun impact sur la collecte. Mais la ligne commentée portait une décision (« on connaît, on ne collecte pas volontairement ») que l'absence en table perd. Si tu veux la conserver, il faut l'insérer en table avec active = 0.
+
+Les deux changements d'environnement (C19NPRD1 DEV→TST, CHS PRD→DEV) ne sont pas cosmétiques : environment alimente dim_host.environment et sert de clé d'agrégation au scoring, donc les scores de ces bases changeront de colonne.
+
+À noter enfin : SAPCHTDB est commentée avec un double dièse (##) dans le fichier. Mon générateur n'en produit qu'un seul — sans importance fonctionnelle (grep -v '^\s*#' filtre les deux), mais c'est le signe que ce fichier a été édité à la main plusieurs fois, ce qui explique la dérive.
+
+Rien n'est décidé ni modifié de mon côté : les .lst du dépôt sont intacts. Dis-moi quelles entrées corriger, et je le fais dans la table avant le premier run.

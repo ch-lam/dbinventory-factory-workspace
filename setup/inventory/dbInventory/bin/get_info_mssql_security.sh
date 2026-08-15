@@ -13,7 +13,7 @@ init_temps mssql_security_auditlevel   mssql_security_configoptions \
            mssql_security_groups       mssql_security_guestconnect  \
            mssql_security_logins       mssql_security_orphanedusers \
            mssql_security_publicpermission mssql_security_registryinfo \
-           mssql_security_sqlserveraudit
+           mssql_security_sa           mssql_security_sqlserveraudit
 rm -f "${LIST_DIR}/error_db.lst"
 
 # ── Collecte par instance ─────────────────────────────────────────────────────
@@ -64,6 +64,10 @@ while IFS=';' read -r env license server; do
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_auditlevel_temp.csv" || log_err "${target}"
 
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getsainfo.sql" \
+        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
+        >> "${LIST_DIR}/mssql_security_sa_temp.csv" || log_err "${target}"
+
     sqlcmd_run "${target}" "${SQL_DIR}/mssql_getsqlserveraudit.sql" \
         | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
         >> "${LIST_DIR}/mssql_security_sqlserveraudit_temp.csv" || log_err "${target}"
@@ -88,6 +92,7 @@ finalize_lst "${LIST_DIR}/mssql_security_logins_temp.csv"           "${LIST_DIR}
 finalize_lst "${LIST_DIR}/mssql_security_orphanedusers_temp.csv"    "${LIST_DIR}/mssql_security_orphanedusers.csv"
 finalize_lst "${LIST_DIR}/mssql_security_publicpermission_temp.csv" "${LIST_DIR}/mssql_sec_pubperm.csv"
 finalize_lst "${LIST_DIR}/mssql_security_registryinfo_temp.csv"     "${LIST_DIR}/mssql_security_registryinfo.csv"
+finalize_lst "${LIST_DIR}/mssql_security_sa_temp.csv"               "${LIST_DIR}/mssql_security_sa.csv"
 finalize_lst "${LIST_DIR}/mssql_security_sqlserveraudit_temp.csv"   "${LIST_DIR}/mssql_security_sqlserveraudit.csv"
 
 report_errors "MSSQL inventory (sécurité): erreurs de connexion"

@@ -135,6 +135,28 @@ list activity-reports (
 list navigation-bar (
     name: Navigation Bar
 
+    entry about (
+        label: About
+        icon {
+            imageIconCssClasses: fa-question-square-o
+        }
+        layout {
+            sequence: 40
+            parentEntry: @app-user
+        }
+        link {
+            target: {
+                page: 10002
+            }
+        }
+        security {
+            authorizationScheme: @administration-rights
+        }
+        comments {
+            comments: This entry must stay gated by administration-rights, like page 10002 itself. It lost that once already - moving it from the navigation menu to the navigation bar and re-exporting dropped the security block, and nothing said so. If you find the authorization missing again, this comment is the tripwire: an export round-trip keeps comments blocks and deletes // comments. Note that administration-rights currently returns true, so nothing is actually hidden until that scheme is implemented.
+        }
+    )
+
     entry app-user (
         label: &APP_USER.
         icon {
@@ -193,7 +215,7 @@ list navigation-bar (
             imageIconCssClasses: fa-sign-out
         }
         layout {
-            sequence: 40
+            sequence: 50
             parentEntry: @app-user
         }
         link {
@@ -251,7 +273,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -267,7 +289,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -283,7 +305,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -299,7 +321,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -315,7 +337,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -331,7 +353,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 31
             }
         }
     )
@@ -347,7 +369,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -363,7 +385,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -394,7 +416,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -410,7 +432,37 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
+                page: 20
+            }
+        }
+    )
+
+    entry derogations (
+        label: Derogations
+        icon {
+            imageIconCssClasses: fa-file-certificate
+        }
+        layout {
+            sequence: 95
+        }
+        link {
+            target: {
+                page: 70
+            }
+        }
+    )
+
+    entry discovery (
+        label: Discovery
+        icon {
+            imageIconCssClasses: fa-search-plus
+        }
+        layout {
+            sequence: 90
+        }
+        link {
+            target: {
+                page: 90
             }
         }
     )
@@ -425,12 +477,18 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 6
+            pages: [
+                6
+                60
+            ]
         }
         link {
             target: {
-                page: 6
+                page: 60
             }
+        }
+        serverSideCondition {
+            type: never
         }
     )
 
@@ -445,7 +503,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -460,11 +518,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 3
+            pages: [
+                3
+                30
+            ]
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -479,11 +540,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 5
+            pages: [
+                5
+                50
+            ]
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -499,7 +563,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -515,7 +579,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 5
+                page: 50
             }
         }
     )
@@ -530,11 +594,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 2
+            pages: [
+                2
+                20
+            ]
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -550,23 +617,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
-            }
-        }
-    )
-
-    entry oracle-server-identity (
-        label: Server Identity
-        icon {
-            imageIconCssClasses: fa-database-application
-        }
-        layout {
-            sequence: 24
-            parentEntry: @oracle
-        }
-        link {
-            target: {
-                page: 7
+                page: 20
             }
         }
     )
@@ -582,7 +633,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -598,7 +649,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -614,7 +665,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )
@@ -629,11 +680,14 @@ list navigation-menu (
         }
         isCurrent {
             type: pages
-            pages: 4
+            pages: [
+                4
+                40
+            ]
         }
         link {
             target: {
-                page: 4
+                page: 40
             }
         }
     )
@@ -649,7 +703,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 3
+                page: 30
             }
         }
     )
@@ -660,12 +714,12 @@ list navigation-menu (
             imageIconCssClasses: fa-accessor-more
         }
         layout {
-            sequence: 23
+            sequence: 24
             parentEntry: @oracle
         }
         link {
             target: {
-                page: 2
+                page: 20
             }
         }
     )

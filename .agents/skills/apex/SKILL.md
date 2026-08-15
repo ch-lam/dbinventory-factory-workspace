@@ -16,18 +16,21 @@ This domain contains Oracle APEX skills for Oracle APEX application development.
 
 ```text
 apex/
-├── apexlang/
+├── apexlang/      ← vendor package, versioned; do not write here, an upgrade wipes it
+└── field-notes/   ← ours: what the vendor docs do not say
 ```
 
 ## Category Routing
 
 
-| Topic                                     | Directory       |
-| ----------------------------------------- | --------------- |
-| Generate APEX applications using APEXlang | `apex/apexlang` |
+| Topic                                     | Directory          |
+| ----------------------------------------- | ------------------ |
+| Generate APEX applications using APEXlang | `apex/apexlang`    |
+| Compilation traps, environment prerequisites, validation diagnosis | `apex/field-notes` |
 
 
 ## Key Starting Points
 
+- `apex/field-notes/SKILL.md` — read this before writing or debugging any `.apx`
 - `apex/apexlang/references/workflows/apex-generation.md`
 - `apex/apexlang/references/domains/README.md`

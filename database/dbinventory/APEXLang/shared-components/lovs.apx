@@ -1,3 +1,119 @@
+lov discovery-environment (
+    name: DISCOVERY_ENVIRONMENT
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select distinct environment d,
+                   environment r
+              from mssql_collect_list
+             order by 1
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov discovery-license (
+    name: DISCOVERY_LICENSE
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select distinct license_type d,
+                   license_type r
+              from mssql_collect_list
+             order by 1
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov discovery-platform (
+    name: DISCOVERY_PLATFORM
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select d, r
+              from ( select '- All -' d, cast(null as varchar2(10)) r, 0 ord
+                       from dual
+                      union all
+                     select distinct platform d, platform r, 1 ord
+                       from disc_host )
+             order by ord, d
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov discovery-status (
+    name: DISCOVERY_STATUS
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select d, r
+              from ( select '- All -'   d, cast(null as varchar2(10)) r, 0 ord from dual
+                      union all select 'New',       'NEW',       1 from dual
+                      union all select 'Collected', 'COLLECTED', 2 from dual
+                      union all select 'Ignored',   'IGNORED',   3 from dual
+                      union all select 'Not Seen',  'NOT_SEEN',  4 from dual )
+             order by ord
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov exception-doc-kind (
+    name: EXCEPTION_DOC_KIND
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Licence' d, 'LICENSE' r, 1 o from dual
+            union all select 'Vendor manual', 'VENDOR_MANUAL', 2 from dual
+            union all select 'Signed approval', 'APPROVAL', 3 from dual
+            union all select 'Other', 'OTHER', 4 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov exception-entity-type (
+    name: EXCEPTION_ENTITY_TYPE
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Host' d, 'HOST' r, 1 o from dual
+            union all select 'Instance', 'INSTANCE', 2 from dual
+            union all select 'Database', 'DATABASE', 3 from dual
+            union all select 'Storage', 'STORAGE', 4 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
 lov timeframe-4-weeks (
     name: TIMEFRAME (4 WEEKS)
     source {

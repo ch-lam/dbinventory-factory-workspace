@@ -16,43 +16,54 @@ rm -f "${LIST_DIR}/error_db.lst"
 while IFS=';' read -r env license server; do
     [[ -z "${server:-}" ]] && continue
     host="${server%%:*}"
-    port="${server##*:}"
+    # Une entrée sans ':port' ferait renvoyer le hostname par ${server##*:} ; on
+    # retombe sur le port par défaut, celui-là même que porte mssql_collect_list.
+    if [[ "${server}" == *:* ]]; then port="${server##*:}"; else port=1433; fi
     target="${host},${port}"
-    log "Connexion : ${host} [${env}/${license}]"
+    log "Connexion : ${target} [${env}/${license}]"
 
-    status_check "${host}" || { log_err "${host}"; continue; }
+    status_check "${target}" || { log_err "${target}"; continue; }
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getinstanceinfo.sql" \
-        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_hosts_temp.csv" || log_err "${host}"
+    # Préfixes positionnels ajoutés à chaque ligne renvoyée par sqlcmd. Les tables
+    # de collecte commencent toutes par collect_id + collect_target ; mssql_hosts et
+    # mssql_databases portent en plus le périmètre (port/env/licence), comme le font
+    # oracle_hosts et oracle_databases. Sans cela l'environnement et le type de
+    # licence sont perdus dès la collecte : ils ne figurent nulle part dans ce que
+    # renvoie sqlcmd, et l'ETL ne peut plus que les deviner.
+    prefix="\"${collect_id}\",\"${host}\","
+    prefix_scope="\"${collect_id}\",\"${host}\",\"${port}\",\"${env}\",\"${license}\","
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getdbinfo.sql" \
-        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_databases_temp.csv" || log_err "${host}"
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getinstanceinfo.sql" \
+        | sed "/^[[:space:]]*\$/! s/^/${prefix_scope}/" \
+        >> "${LIST_DIR}/mssql_hosts_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getbackupinfo.sql" \
-        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_backup_temp.csv" || log_err "${host}"
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getdbinfo.sql" \
+        | sed "/^[[:space:]]*\$/! s/^/${prefix_scope}/" \
+        >> "${LIST_DIR}/mssql_databases_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getfileinfo.sql" \
-        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_files_temp.csv" || log_err "${host}"
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getbackupinfo.sql" \
+        | sed "/^[[:space:]]*\$/! s/^/${prefix}/" \
+        >> "${LIST_DIR}/mssql_backup_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getloginsinfo.sql" \
-        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_logins_temp.csv" || log_err "${host}"
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getfileinfo.sql" \
+        | sed "/^[[:space:]]*\$/! s/^/${prefix}/" \
+        >> "${LIST_DIR}/mssql_files_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_getuserinfo.sql" \
-        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_users_temp.csv" || log_err "${host}"
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getloginsinfo.sql" \
+        | sed "/^[[:space:]]*\$/! s/^/${prefix}/" \
+        >> "${LIST_DIR}/mssql_logins_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_loginwithoutperm.sql" \
-        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_loginwoperm_temp.csv" || log_err "${host}"
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_getuserinfo.sql" \
+        | sed "/^[[:space:]]*\$/! s/^/${prefix}/" \
+        >> "${LIST_DIR}/mssql_users_temp.csv" || log_err "${target}"
 
-    sqlcmd_run "${host}" "${SQL_DIR}/mssql_validatelogin.sql" \
-        | sed '/^[[:space:]]*$/! s/^/"'"${collect_id}"'","'"${host}"'",/' \
-        >> "${LIST_DIR}/mssql_validatelogin_temp.csv" || log_err "${host}"
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_loginwithoutperm.sql" \
+        | sed "/^[[:space:]]*\$/! s/^/${prefix}/" \
+        >> "${LIST_DIR}/mssql_loginwoperm_temp.csv" || log_err "${target}"
+
+    sqlcmd_run "${target}" "${SQL_DIR}/mssql_validatelogin.sql" \
+        | sed "/^[[:space:]]*\$/! s/^/${prefix}/" \
+        >> "${LIST_DIR}/mssql_validatelogin_temp.csv" || log_err "${target}"
 
 done < <(grep -v '^\s*#' "${LIST_FILE}" | grep -v '^\s*$' | sort -u)
 

@@ -1168,11 +1168,7 @@ page 10011 (
         }
         appearance {
             template: @/blank-with-attributes
-            templateOptions: [
-                #DEFAULT#
-                t-Region--hideHeader js-addHiddenHeadingRoleDesc
-                t-Region--hiddenOverflow
-            ]
+            templateOptions: #DEFAULT#
         }
         serverSideCondition {
             type: item=value

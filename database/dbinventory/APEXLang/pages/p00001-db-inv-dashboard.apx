@@ -14,22 +14,9 @@ page 1 (
         formAutoComplete: false
     }
 
-    region page-title (
-        name: DB Inv. -  Dashboard
-        type: staticContent
-        layout {
-            sequence: 1
-            slot: body
-        }
-        appearance {
-            template: @/title-bar
-            templateOptions: #DEFAULT#
-        }
-    )
-
     region compliance (
-        name: Scoring Activity
-        title: Scoring Activity
+        name: Compliance & Security
+        title: Compliance & Security
         type: cards
         source {
             location: localDatabase
@@ -61,19 +48,19 @@ page 1 (
                        score_value||'%' last_scoring_value,
                        case when score_value >= 90 then 'u-color-4-border'
                             when score_value >= 70 then 'u-color-7-border'
-                            else 'u-color-1-border' end scoring_card_class,
+                            else 'u-color-9-border' end scoring_card_class,
                        'fa fa-shield' SCORING_ICON,
                        case when score_value >= 90 then 'OK'
                             when score_value >= 70 then 'Warning'
                             else 'Critical' end scoring_status,
                        case when score_value >= 90 then 'u-color-4'
                             when score_value >= 70 then 'u-color-7'
-                            else 'u-color-1' end status_color,
+                            else 'u-color-9' end status_color,
                        initcap(score_domain)||' score is '||score_value||'%, '
                        ||case when score_value >= 90 then 'all checks passed.'
                               when score_value >= 70 then 'some checks need improvement.'
                               else 'several checks are failing.' end scoring_label,
-                       apex_page.get_url( p_page => case platform when 'ORACLE' then 2 when 'MSSQL' then 3 when 'POSTGRES' then 4 else 1 end ) details_apex_page_number,
+                       apex_page.get_url( p_page => case platform when 'ORACLE' then 21 when 'MSSQL' then 31 when 'POSTGRES' then 41 when 'MYSQL' then 51 when 'MONGODB' then 61 else 1 end ) details_apex_page_number,
                        row_number() over ( order by platform, score_domain ) scoring_order
                   from agg
                  order by scoring_order asc
@@ -94,10 +81,14 @@ page 1 (
             gridColumns: 4
         }
         card {
+            cssClasses: &SCORING_CARD_CLASS.
             primaryKeyColumn1: SCORING_TYPE
         }
         title {
             column: SCORING_TYPE
+        }
+        subtitle {
+            cssClasses: &SCORING_CARD_CLASS.
         }
         body {
             column: SCORING_LABEL
@@ -120,6 +111,136 @@ page 1 (
                 type: redirectUrl
                 targetUrl: &DETAILS_APEX_PAGE_NUMBER.
             }
+            appearance {
+                cssClasses: &SCORING_CARD_CLASS.
+            }
+        )
+
+    )
+
+    region databases (
+        name: Databases
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                Select 
+                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'ORACLE') ORACLE,
+                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'MSSQL' And db_name Not In ( 'master', 'msdb', 'tempdb', 'model')) MSSQL,
+                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'PORTGRES' ) POSTGRES,
+                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'MYSQL') MYSQL
+                From DUAL;
+                
+                ```
+        }
+        layout {
+            sequence: 30
+            slot: body
+            column: 1
+            columnSpan: 12
+        }
+        appearance {
+            template: @/blank-with-attributes-no-grid
+            templateOptions: [
+                #DEFAULT#
+                t-Form--stretchInputs
+            ]
+        }
+        reportLayout {
+            numberOfRows: 1
+        }
+        componentAppearance {
+            template: @/badge-list
+            templateOptions: [
+                #DEFAULT#
+                u-colors
+                t-BadgeList--large
+                t-BadgeList--dash
+                t-BadgeList--fixed
+                t-Report--hideNoPagination
+            ]
+        }
+
+        column MSSQL (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            type: link
+            heading {
+                heading: MSSQL
+                alignment: end
+            }
+            layout {
+                sequence: 20
+                columnAlignment: end
+            }
+            link {
+                target: {
+                    page: 30
+                }
+                linkText: #MSSQL#
+            }
+        )
+
+        column MYSQL (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            type: link
+            heading {
+                heading: MySQL
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+            link {
+                target: {
+                    page: 50
+                }
+                linkText: #MYSQL#
+            }
+        )
+
+        column ORACLE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Oracle
+                alignment: end
+            }
+            layout {
+                sequence: 10
+                columnAlignment: end
+            }
+            link {
+                target: {
+                    page: 20
+                }
+                linkText: #ORACLE#
+            }
+        )
+
+        column POSTGRES (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            type: link
+            heading {
+                heading: PostGres
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+            link {
+                target: {
+                    page: 40
+                }
+                linkText: #POSTGRES#
+            }
         )
 
     )
@@ -129,7 +250,7 @@ page 1 (
         title: Environments
         type: chart
         layout {
-            sequence: 40
+            sequence: 50
             slot: body
             startNewRow: false
             columnSpan: 4
@@ -140,14 +261,15 @@ page 1 (
                 #DEFAULT#
                 t-Region--noPadding
                 i-h320
+                t-Region--stacked
                 t-Region--scrollBody
             ]
         }
-        chart {
-            type: pie
+        tooltip {
+            show: false
         }
         legend {
-            position: bottom
+            show: false
         }
 
         series environments (
@@ -170,56 +292,21 @@ page 1 (
                 label: LABEL
                 value: VALUE
             }
+            label {
+                show: true
+            }
         )
 
-    )
+        axis x (
+            name: x
+        )
 
-    region mssql-versions (
-        name: MySQL : Versions
-        title: MySQL : Versions
-        type: chart
-        layout {
-            sequence: 90
-            slot: body
-            startNewRow: false
-            columnSpan: 4
-        }
-        appearance {
-            template: @/standard
-            templateOptions: [
-                #DEFAULT#
-                t-Region--noPadding
-                i-h320
-                t-Region--scrollBody
-            ]
-        }
-        chart {
-            type: pie
-        }
-        legend {
-            position: bottom
-        }
-
-        series mssql-versions (
-            name: MySQL Versions
-            execution {
-                sequence: 10
-            }
-            source {
-                type: sqlQuery
-                sqlQuery:
-                    ```sql
-                    select nvl(engine_version, 'UNKNOWN') as label,
-                           count(*) as value
-                      from dim_instance
-                     where platform = 'MYSQL'
-                     group by nvl(engine_version, 'UNKNOWN')
-                     order by value desc
-                    ```
-            }
-            columnMapping {
-                label: LABEL
-                value: VALUE
+        axis y (
+            name: y
+            value {
+                format: decimal
+                decimalPlaces: 0
+                formatScaling: none
             }
         )
 
@@ -244,7 +331,15 @@ page 1 (
             ]
         }
         chart {
-            type: pie
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
         }
         legend {
             position: bottom
@@ -259,12 +354,73 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    select nvl(engine_version, 'UNKNOWN') as label,
+                    With SQL_VERSIONS As
+                      ( select decode( substr( engine_version, 1, instr( engine_version, '.')-1), 10, 'SQL 2008/2008 R2', 11, 'SQL 2012', 12, 'SQL 2014', 13, 'SQL 2016', 14, 'SQL 2017', 15, 'SQL 2019', 16, 'SQL 2022', 17, 'SQL 2025', 'Unknown Yet') SQL_VERSION
+                         from dim_instance where platform = 'MSSQL' )
+                    select SQL_VERSION as label,
                            count(*) as value
-                      from dim_instance
-                     where platform = 'MSSQL'
-                     group by nvl(engine_version, 'UNKNOWN')
-                     order by value desc
+                      from SQL_VERSIONS
+                     group by SQL_VERSION order by value desc
+                    ```
+            }
+            columnMapping {
+                label: LABEL
+                value: VALUE
+            }
+        )
+
+    )
+
+    region mysql-versions (
+        name: MySQL: Versions
+        title: MySQL : Versions
+        type: chart
+        layout {
+            sequence: 90
+            slot: body
+            startNewRow: false
+            columnSpan: 4
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--noPadding
+                i-h320
+                t-Region--scrollBody
+            ]
+        }
+        chart {
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
+        }
+        legend {
+            position: bottom
+        }
+
+        series mysql-versions (
+            name: MySQL Versions
+            execution {
+                sequence: 10
+            }
+            source {
+                type: sqlQuery
+                sqlQuery:
+                    ```sql
+                    With SQL_VERSIONS As
+                      ( select decode( substr( engine_version, 1, instr( engine_version, '.')-1), 10, 'SQL 2008/2008 R2', 11, 'SQL 2012', 12, 'SQL 2014', 13, 'SQL 2016', 14, 'SQL 2017', 15, 'SQL 2019', 16, 'SQL 2022', 17, 'SQL 2025', 'Unknown Yet') SQL_VERSION
+                         from dim_instance where platform = 'MYSQL' )
+                    select SQL_VERSION as label,
+                           count(*) as value
+                      from SQL_VERSIONS
+                     group by SQL_VERSION order by value desc
                     ```
             }
             columnMapping {
@@ -295,7 +451,15 @@ page 1 (
             ]
         }
         chart {
-            type: pie
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
         }
         legend {
             position: bottom
@@ -310,11 +474,9 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    select nvl(engine_version, 'UNKNOWN') as label,
-                           count(*) as value
-                      from dim_instance
-                     where platform = 'ORACLE'
-                     group by nvl(engine_version, 'UNKNOWN')
+                    with ENG_VERSIONS As ( select nvl(substr(engine_version, 1, instr( engine_version, '.', 1, 2)-1), 'UNKNOWN') ENG_VERSION from dim_instance where platform = 'ORACLE')
+                     select eng_version label, count(*) value from ENG_VERSIONS
+                     group by ENG_VERSION
                      order by value desc
                     ```
             }
@@ -331,7 +493,7 @@ page 1 (
         title: OS Types
         type: chart
         layout {
-            sequence: 30
+            sequence: 40
             slot: body
             columnSpan: 4
         }
@@ -345,7 +507,15 @@ page 1 (
             ]
         }
         chart {
-            type: pie
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
         }
         legend {
             position: bottom
@@ -360,10 +530,10 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    select nvl(os_type, 'UNKNOWN') as label,
-                           count(*) as value
-                      from dim_host
-                     group by nvl(os_type, 'UNKNOWN')
+                    With OS_TYPES As ( select NVL(OS_TYPE, 'Unkonwn') OS_TYPE From dim_host )
+                    Select Decode ( OS_TYPE, '6.1', 'WinServer 2008 R2', '6.3', 'WinServer 2012 R2', '10.0', 'WinServer 2016+', OS_TYPE ) label, 
+                           count(*) VALUE
+                    from OS_TYPES group by os_type
                      order by value desc
                     ```
             }
@@ -376,8 +546,8 @@ page 1 (
     )
 
     region postgres-versions (
-        name: Postgres : Versions
-        title: Postgres : Versions
+        name: PostGres : Versions
+        title: PostGres : Versions
         type: chart
         layout {
             sequence: 80
@@ -395,14 +565,22 @@ page 1 (
             ]
         }
         chart {
-            type: pie
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
         }
         legend {
             position: bottom
         }
 
-        series postgres-versions (
-            name: Postgres Versions
+        series mssql-versions (
+            name: PostGres Versions
             execution {
                 sequence: 10
             }
@@ -410,12 +588,13 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    select nvl(engine_version, 'UNKNOWN') as label,
+                    With SQL_VERSIONS As
+                      ( select decode( substr( engine_version, 1, instr( engine_version, '.')-1), 10, 'SQL 2008/2008 R2', 11, 'SQL 2012', 12, 'SQL 2014', 13, 'SQL 2016', 14, 'SQL 2017', 15, 'SQL 2019', 16, 'SQL 2022', 17, 'SQL 2025', 'Unknown Yet') SQL_VERSION
+                         from dim_instance where platform = 'POSTGRES' )
+                    select SQL_VERSION as label,
                            count(*) as value
-                      from dim_instance
-                     where platform = 'POSTGRES'
-                     group by nvl(engine_version, 'UNKNOWN')
-                     order by value desc
+                      from SQL_VERSIONS
+                     group by SQL_VERSION order by value desc
                     ```
             }
             columnMapping {

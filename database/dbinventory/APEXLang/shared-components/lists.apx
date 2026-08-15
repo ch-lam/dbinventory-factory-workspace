@@ -149,6 +149,12 @@ list navigation-bar (
                 page: 10002
             }
         }
+        security {
+            authorizationScheme: @administration-rights
+        }
+        comments {
+            comments: This entry must stay gated by administration-rights, like page 10002 itself. It lost that once already - moving it from the navigation menu to the navigation bar and re-exporting dropped the security block, and nothing said so. If you find the authorization missing again, this comment is the tripwire: an export round-trip keeps comments blocks and deletes // comments. Note that administration-rights currently returns true, so nothing is actually hidden until that scheme is implemented.
+        }
     )
 
     entry app-user (

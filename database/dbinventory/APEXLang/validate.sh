@@ -32,9 +32,26 @@ if command -v cygpath >/dev/null 2>&1; then
    APP_DIR_WIN="$(cygpath -m "$APP_DIR")"
 fi
 
-JDK="${APEXLANG_JDK:-C:/Program Files/Java/jdk-24}"
-if [[ ! -x "$JDK/bin/java.exe" && ! -x "$JDK/bin/java" ]]; then
-   echo "ERROR: no JDK 17+ at '$JDK'. Set APEXLANG_JDK to one." >&2
+# Find a JDK, in order of decreasing certainty. Do NOT hardcode a version here:
+# this script used to pin C:/Program Files/Java/jdk-24, the machine was upgraded
+# to 26, and it began failing with "no JDK" on a box that had one.
+usable_jdk() { [[ -x "$1/bin/java.exe" || -x "$1/bin/java" ]]; }
+
+JDK=""
+for candidate in "${APEXLANG_JDK:-}" "${JAVA_HOME:-}"; do
+   [[ -n "$candidate" ]] && usable_jdk "$candidate" && { JDK="$candidate"; break; }
+done
+if [[ -z "$JDK" ]]; then
+   # Highest-numbered JDK under the usual install roots. Version sort, so
+   # jdk-9 does not beat jdk-24.
+   while IFS= read -r candidate; do
+      usable_jdk "$candidate" && { JDK="$candidate"; break; }
+   done < <(ls -d "/c/Program Files/Java"/jdk-* "/usr/lib/jvm"/*jdk* 2>/dev/null | sort -V -r)
+fi
+if [[ -z "$JDK" ]]; then
+   echo "ERROR: no JDK 17+ found. Set APEXLANG_JDK to one." >&2
+   echo "  The APEXlang compiler needs 17+; SQLcl may ship an older JRE, which" >&2
+   echo "  surfaces as UnsupportedClassVersionError rather than as a version." >&2
    exit 1
 fi
 

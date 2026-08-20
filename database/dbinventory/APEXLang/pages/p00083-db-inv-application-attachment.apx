@@ -1,0 +1,322 @@
+page 83 (
+    name: DB Inv. - Application Attachment
+    alias: DB-INV-APPLICATION-ATTACHMENT
+    title: DB Inv. - Application Attachment
+    appearance {
+        pageMode: modalDialog
+        dialogTemplate: @/modal-dialog
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+        warnOnUnsavedChanges: false
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region attachment (
+        name: Attachment
+        title: Attachment
+        type: staticContent
+        source {
+            htmlCode:
+                ```
+                <p>Attach at the highest level that is true. An application that
+                owns a whole instance should be attached to the <strong>instance</strong>,
+                not to each of its databases: the databases follow automatically,
+                and they keep following when a new one is created.</p>
+                <p>Attach a single database only when the instance is genuinely
+                shared between applications.</p>
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: The advice in the region body is the whole economics of this screen. There are 514 databases against 97 instances: attaching at instance level is the difference between a data-entry effort that finishes and one that never does. It is written on the page rather than left to training, because whoever uses this screen in two years will not have been trained.
+        }
+    )
+
+    pageItem P83_APP_ENTITY_ID (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @attachment
+            slot: regionBody
+        }
+    )
+
+    pageItem P83_APPLICATION_ID (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @attachment
+            slot: regionBody
+        }
+    )
+
+    pageItem P83_ENTITY (
+        type: selectList
+        label {
+            label: Attach to
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-attachable-entity
+            displayNullValue: true
+            nullDisplayValue: - select a host, an instance or a database -
+        }
+        layout {
+            sequence: 30
+            region: @attachment
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+        }
+        validation {
+            valueRequired: true
+        }
+        help {
+            helpText: One list rather than a type and an identifier, so a host cannot be picked with a database id by mistake. The entries are grouped by level and each says which it is.
+        }
+    )
+
+    pageItem P83_CURRENT (
+        type: displayOnly
+        label {
+            label: Currently attached to
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @attachment
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P83_APP_ENTITY_ID
+        }
+    )
+
+    pageItem P83_NOTE (
+        type: textarea
+        label {
+            label: Note
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @attachment
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            height: 2
+        }
+        validation {
+            maxLength: 400
+        }
+        help {
+            helpText: Why the attachment is at this level, when that is not obvious.
+        }
+    )
+
+    button cancel (
+        buttonName: CANCEL
+        label: Cancel
+        layout {
+            sequence: 10
+            region: @attachment
+            slot: close
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: definedByDynamicAction
+        }
+    )
+
+    button detach (
+        buttonName: DETACH
+        label: Detach
+        layout {
+            sequence: 20
+            region: @attachment
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+        comments {
+            comments: No confirmation prompt: APEXlang has no property for one, and confirmMessage is rejected. This one deserved a prompt more than most, since detaching an instance returns every database under it to the unclaimed list - eighteen of them in the case this was first tried on. The mitigation is that detaching deactivates rather than deletes: re-attaching restores the coverage, and the journal holds both moves.
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P83_APP_ENTITY_ID
+        }
+    )
+
+    button save (
+        buttonName: SAVE
+        label: Attach
+        layout {
+            sequence: 30
+            region: @attachment
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+        serverSideCondition {
+            type: itemIsNull
+            item: @P83_APP_ENTITY_ID
+        }
+    )
+
+    dynamicAction cancel-dialog (
+        name: Cancel Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: click
+            selectionType: button
+            button: @cancel
+        }
+
+        action native-cancel-dialog (
+            action: cancelDialog
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    process load-attachment (
+        name: Load Attachment
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P83_APP_ENTITY_ID is not null then
+                   select e.application_id,
+                          e.entity_type || ':' || e.entity_id,
+                          e.note,
+                          e.entity_type || ' ' || e.entity_id
+                     into :P83_APPLICATION_ID, :P83_ENTITY, :P83_NOTE, :P83_CURRENT
+                     from ref_application_entity e
+                    where e.app_entity_id = :P83_APP_ENTITY_ID;
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: beforeHeader
+        }
+    )
+
+    process save-attachment (
+        name: Save Attachment
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                declare
+                   l_type ref_application_entity.entity_type%type;
+                   l_id   number;
+                   l_new  number;
+                begin
+                   l_type := substr(:P83_ENTITY, 1, instr(:P83_ENTITY, ':') - 1);
+                   l_id   := to_number(substr(:P83_ENTITY, instr(:P83_ENTITY, ':') + 1));
+
+                   -- link_entity checks that the entity exists before storing it.
+                   -- No foreign key can do that on a polymorphic reference, and an
+                   -- attachment pointing at nothing resolves to no database at all
+                   -- -- which reads exactly like an application nobody attached.
+                   l_new := pkg_dbinv_application.link_entity(
+                      p_application_id => :P83_APPLICATION_ID,
+                      p_entity_type    => l_type,
+                      p_entity_id      => l_id,
+                      p_note           => :P83_NOTE );
+
+                   :P83_APP_ENTITY_ID := l_new;
+                exception
+                   when dup_val_on_index then
+                      raise_application_error(-20051,
+                         'This is already attached to the application.');
+                end;
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
+        successMessage {
+            successMessage: Attached - the databases underneath it are now covered
+        }
+    )
+
+    process detach-attachment (
+        name: Detach Attachment
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_application.unlink_entity(
+                   p_app_entity_id => :P83_APP_ENTITY_ID,
+                   p_reason        => 'detached from the attachment screen' );
+                ```
+        }
+        execution {
+            sequence: 30
+        }
+        serverSideCondition {
+            whenButtonPressed: @detach
+        }
+        successMessage {
+            successMessage: Detached - it is deactivated, not deleted, so the history survives
+        }
+    )
+
+    process close-attachment-dialog (
+        name: Close Attachment Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+    )
+
+)

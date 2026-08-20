@@ -1,3 +1,34 @@
+lov application-attachable-entity (
+    name: APPLICATION_ATTACHABLE_ENTITY
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Host: ' || h.hostname || ' (' || h.platform || ')' d,
+                   'HOST:' || h.host_id r,
+                   1 g, h.hostname s
+              from dim_host h
+            union all
+            select 'Instance: ' || i.instance_name || ' on ' || h.hostname,
+                   'INSTANCE:' || i.instance_id,
+                   2, i.instance_name
+              from dim_instance i
+              join dim_host h on h.host_id = i.host_id
+            union all
+            select 'Database: ' || d.db_name || ' on ' || i.instance_name,
+                   'DATABASE:' || d.database_id,
+                   3, d.db_name
+              from dim_database d
+              join dim_instance i on i.instance_id = d.instance_id
+             order by 3, 4
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
 lov application-criticality (
     name: APPLICATION_CRITICALITY
     source {

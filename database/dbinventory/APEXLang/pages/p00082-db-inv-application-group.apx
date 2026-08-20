@@ -1,0 +1,420 @@
+page 82 (
+    name: DB Inv. - Application Group
+    alias: DB-INV-APPLICATION-GROUP
+    title: DB Inv. - Application Group
+    appearance {
+        pageMode: modalDialog
+        dialogTemplate: @/modal-dialog
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+        warnOnUnsavedChanges: false
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region group (
+        name: Responsible group
+        title: Responsible group
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: The registry stops at the group and never names individuals: a group is expected to map to a directory group, and listing people here would create a second copy of the directory that nobody would maintain.
+        }
+    )
+
+    pageItem P82_GROUP_ID (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @group
+            slot: regionBody
+        }
+    )
+
+    pageItem P82_APPLICATION_ID (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @group
+            slot: regionBody
+        }
+    )
+
+    pageItem P82_GROUP_TYPE_CODE (
+        type: selectList
+        label {
+            label: Role
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-group-type
+            displayNullValue: false
+        }
+        layout {
+            sequence: 30
+            region: @group
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+        }
+        validation {
+            valueRequired: true
+        }
+    )
+
+    pageItem P82_GROUP_NAME (
+        type: textField
+        label {
+            label: Group name
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @group
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+            width: 60
+        }
+        validation {
+            valueRequired: true
+            maxLength: 200
+        }
+        help {
+            helpText: The name this group is known by outside this tool.
+        }
+    )
+
+    pageItem P82_CONTACT_EMAIL (
+        type: textField
+        label {
+            label: Contact address
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @group
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 60
+        }
+        validation {
+            maxLength: 400
+        }
+        help {
+            helpText: Preferably a distribution list rather than a person, so it survives someone leaving.
+        }
+    )
+
+    pageItem P82_LDAP_GROUP_NAME (
+        type: textField
+        label {
+            label: Directory group
+            alignment: right
+        }
+        layout {
+            sequence: 60
+            region: @group
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 40
+        }
+        validation {
+            maxLength: 200
+        }
+        help {
+            helpText: Short directory name, for example GRP-APP-DBA.
+        }
+    )
+
+    pageItem P82_LDAP_DN (
+        type: textField
+        label {
+            label: Directory DN
+            alignment: right
+        }
+        layout {
+            sequence: 70
+            region: @group
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 80
+        }
+        validation {
+            maxLength: 1000
+        }
+    )
+
+    pageItem P82_EXTERNAL_REF (
+        type: textField
+        label {
+            label: External reference
+            alignment: right
+        }
+        layout {
+            sequence: 80
+            region: @group
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 40
+        }
+        validation {
+            maxLength: 200
+        }
+        help {
+            helpText: Identifier of this group in a CMDB, a ticketing system or a contract.
+        }
+    )
+
+    pageItem P82_NOTE (
+        type: textarea
+        label {
+            label: Note
+            alignment: right
+        }
+        layout {
+            sequence: 90
+            region: @group
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            height: 2
+        }
+        validation {
+            maxLength: 1000
+        }
+    )
+
+    button cancel (
+        buttonName: CANCEL
+        label: Cancel
+        layout {
+            sequence: 10
+            region: @group
+            slot: close
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: definedByDynamicAction
+        }
+    )
+
+    button remove (
+        buttonName: REMOVE
+        label: Remove
+        layout {
+            sequence: 20
+            region: @group
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+        comments {
+            comments: No confirmation prompt: APEXlang has no property for one. The vendor buttons guidance lists "confirmation message/style" as a behavior specific, but the compiler metadata contains no such key and confirmMessage is rejected as an invalid property. Do not try again without checking the metadata first. It is tolerable here because Remove deactivates rather than deletes, and the journal records who did it.
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P82_GROUP_ID
+        }
+    )
+
+    button save (
+        buttonName: SAVE
+        label: Save
+        layout {
+            sequence: 30
+            region: @group
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+    )
+
+    dynamicAction cancel-dialog (
+        name: Cancel Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: click
+            selectionType: button
+            button: @cancel
+        }
+
+        action native-cancel-dialog (
+            action: cancelDialog
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    process load-group (
+        name: Load Group
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P82_GROUP_ID is not null then
+                   select g.application_id, g.group_type_code, g.group_name, g.contact_email,
+                          g.ldap_group_name, g.ldap_dn, g.external_ref, g.note
+                     into :P82_APPLICATION_ID, :P82_GROUP_TYPE_CODE, :P82_GROUP_NAME,
+                          :P82_CONTACT_EMAIL, :P82_LDAP_GROUP_NAME, :P82_LDAP_DN,
+                          :P82_EXTERNAL_REF, :P82_NOTE
+                     from ref_application_group g
+                    where g.group_id = :P82_GROUP_ID;
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: beforeHeader
+        }
+    )
+
+    process save-group (
+        name: Save Group
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                -- Said here before the database says it, because the check
+                -- constraint reports a constraint name and this reports the
+                -- decision. A group nobody can reach is refused: a contact
+                -- registry whose entries reach nobody is worse than none, since
+                -- you believe you have one.
+                if :P82_CONTACT_EMAIL is null
+                   and :P82_LDAP_GROUP_NAME is null
+                   and :P82_LDAP_DN is null
+                   and :P82_EXTERNAL_REF is null then
+                   raise_application_error(-20050,
+                      'Give at least one way of reaching this group: a contact address, '
+                      || 'a directory group, a directory DN or an external reference.');
+                end if;
+
+                if :P82_GROUP_ID is null then
+                   :P82_GROUP_ID := pkg_dbinv_application.add_group(
+                      p_application_id  => :P82_APPLICATION_ID,
+                      p_group_type_code => :P82_GROUP_TYPE_CODE,
+                      p_group_name      => :P82_GROUP_NAME,
+                      p_contact_email   => :P82_CONTACT_EMAIL,
+                      p_ldap_dn         => :P82_LDAP_DN,
+                      p_ldap_group_name => :P82_LDAP_GROUP_NAME,
+                      p_external_ref    => :P82_EXTERNAL_REF,
+                      p_note            => :P82_NOTE );
+                else
+                   -- Written directly rather than through update_group, which only
+                   -- overwrites non-null values: from a form, clearing a field is a
+                   -- deliberate act and must be able to blank it. The journal is
+                   -- written by the trigger either way.
+                   pkg_dbinv_application.set_reason('edited from the group screen');
+                   update ref_application_group
+                      set group_type_code = :P82_GROUP_TYPE_CODE,
+                          group_name      = :P82_GROUP_NAME,
+                          contact_email   = :P82_CONTACT_EMAIL,
+                          ldap_dn         = :P82_LDAP_DN,
+                          ldap_group_name = :P82_LDAP_GROUP_NAME,
+                          external_ref    = :P82_EXTERNAL_REF,
+                          note            = :P82_NOTE,
+                          updated_by      = :APP_USER,
+                          updated_date    = sysdate
+                    where group_id = :P82_GROUP_ID;
+                   pkg_dbinv_application.set_reason(null);
+                end if;
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
+        successMessage {
+            successMessage: Group saved
+        }
+    )
+
+    process remove-group (
+        name: Remove Group
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_application.remove_group(
+                   p_group_id => :P82_GROUP_ID,
+                   p_reason   => 'removed from the group screen' );
+                ```
+        }
+        execution {
+            sequence: 30
+        }
+        serverSideCondition {
+            whenButtonPressed: @remove
+        }
+        successMessage {
+            successMessage: Group removed - it is deactivated, not deleted, so the history survives
+        }
+    )
+
+    process close-group-dialog (
+        name: Close Group Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+    )
+
+)

@@ -31,6 +31,140 @@ page 81 (
         }
     )
 
+    region attachments (
+        name: Attachments
+        title: Attachments
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select case ae.entity_type
+                          when 'HOST' then 'Host'
+                          when 'INSTANCE' then 'Instance'
+                          else 'Database'
+                       end level_label,
+                       case ae.entity_type
+                          when 'HOST' then ( select h.hostname from dim_host h
+                                              where h.host_id = ae.entity_id )
+                          when 'INSTANCE' then ( select i.instance_name from dim_instance i
+                                                  where i.instance_id = ae.entity_id )
+                          else ( select d.db_name from dim_database d
+                                  where d.database_id = ae.entity_id )
+                       end entity_name,
+                       ae.note,
+                       ae.created_by,
+                       ae.created_date,
+                       ae.app_entity_id
+                  from ref_application_entity ae
+                 where ae.application_id = :P81_APPLICATION_ID
+                   and ae.active = 1
+                ```
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: The attachment rows, as opposed to the Databases region below which shows what they resolve to. Two attachments can cover thirty-six databases, so these are the rows you edit and that one is the consequence. Detaching happens here.
+        }
+        reportLayout {
+            numberOfRows: 15
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: Nothing attached - this application covers no database
+        }
+
+        column APP_ENTITY_ID (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+        )
+
+        column CREATED_BY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Attached by
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column CREATED_DATE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Attached on
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column ENTITY_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Attached to
+            }
+            layout {
+                sequence: 20
+            }
+            link {
+                target: {
+                    page: 83
+                    items: {
+                        P83_APP_ENTITY_ID: #APP_ENTITY_ID#
+                    }
+                    clearCache: 83
+                }
+                linkText: #ENTITY_NAME#
+            }
+        )
+
+        column LEVEL_LABEL (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Level
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column NOTE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Note
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+    )
+
     region databases (
         name: Databases covered
         title: Databases covered
@@ -164,7 +298,8 @@ page 81 (
                        g.contact_email,
                        g.ldap_group_name,
                        g.external_ref,
-                       t.sort_order
+                       t.sort_order,
+                       g.group_id
                   from ref_application_group g
                   join ref_application_group_type t
                     on t.group_type_code = g.group_type_code
@@ -220,11 +355,31 @@ page 81 (
         column GROUP_NAME (
             reportColumnQueryId: 2
             derivedColumn: N
+            type: link
             heading {
                 heading: Group
             }
             layout {
                 sequence: 20
+            }
+            link {
+                target: {
+                    page: 82
+                    items: {
+                        P82_GROUP_ID: #GROUP_ID#
+                    }
+                    clearCache: 82
+                }
+                linkText: #GROUP_NAME#
+            }
+        )
+
+        column GROUP_ID (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 6
             }
         )
 
@@ -769,6 +924,64 @@ page 81 (
         appearance {
             template: @/optional-floating
             templateOptions: #DEFAULT#
+        }
+    )
+
+    button add-group (
+        buttonName: ADD_GROUP
+        label: Add Group
+        layout {
+            sequence: 10
+            region: @groups
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: redirectThisApp
+            target: {
+                page: 82
+                items: {
+                    P82_APPLICATION_ID: &P81_APPLICATION_ID.
+                }
+                clearCache: 82
+            }
+            warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P81_APPLICATION_ID
+        }
+    )
+
+    button attach (
+        buttonName: ATTACH
+        label: Attach
+        layout {
+            sequence: 10
+            region: @attachments
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: redirectThisApp
+            target: {
+                page: 83
+                items: {
+                    P83_APPLICATION_ID: &P81_APPLICATION_ID.
+                }
+                clearCache: 83
+            }
+            warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P81_APPLICATION_ID
         }
     )
 

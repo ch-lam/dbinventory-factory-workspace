@@ -95,3 +95,36 @@ across APEX upgrades instead of re-implementing a protocol that moves.
 It uses Node's built-in `WebSocket` over the Chrome DevTools Protocol, so there is
 **no npm dependency** — which matters here, since the machine has no npm registry
 access.
+
+## After every import — the manual step, and why it is a list now
+
+An import resets attributes that the `.apx` cannot express. Today two items are
+affected, both `fileUpload`:
+
+| Page | Item | Set Storage Type to |
+| --- | --- | --- |
+| 71 | `P71_UPLOAD` | `APEX_APPLICATION_TEMP_FILES` |
+| 85 | `P85_UPLOAD` | `APEX_APPLICATION_TEMP_FILES` |
+
+**Do not maintain that table by hand — ask the database:**
+
+```bash
+sql -S -name "$APEX_DB_CONN" @database/dbinventory/T_001_apex_page_smoke.sql
+```
+
+Check 2 lists exactly the items that need the step, on the environment in front
+of you. A table in a README drifts; the check does not.
+
+### The browser test cannot replace it here
+
+Two items, identical metadata, opposite symptoms — the difference is the region
+they sit in:
+
+- `P71_UPLOAD` is in a **report** region: APEX tries to bind the BLOB to a column
+  and the page dies loudly at render, so the browser test catches it.
+- `P85_UPLOAD` is in a **static content** region: it renders a plain file input
+  and says nothing. The page looks perfect, the file goes nowhere, and the save
+  process finds an empty cursor in `apex_application_temp_files`.
+
+The silent one is the dangerous one. **A green browser run says nothing about
+upload items.** Run `T_001` after every import, without exception.

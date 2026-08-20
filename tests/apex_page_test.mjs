@@ -85,7 +85,7 @@ if (!user || !password) {
 // out loud what it covers, and so a page can be excluded with a reason.
 const PAGES = argOf('pages')
   ? argOf('pages').split(',').map(s => s.trim()).filter(Boolean)
-  : ['1', '20', '30', '31', '40', '70', '71', '80', '81', '82', '83', '90', '10002'];
+  : ['1', '20', '30', '31', '40', '70', '71', '80', '81', '82', '83', '84', '85', '90', '10002'];
 
 // Modal pages cannot be opened by URL. APEX answers "Dialog page N cannot be
 // rendered successfully" whatever the page actually does, which reads as a broken
@@ -107,7 +107,9 @@ const ROUTES = {
   '71': ['70'],
   '91': ['90'],
   '82': ['80', '81'],
-  '83': ['80', '81']
+  '83': ['80', '81'],
+  '84': ['80', '81'],
+  '85': ['80', '81']
 };
 
 // Click the first link on the current page that targets `page`. Friendly-URL

@@ -434,7 +434,8 @@ page 81 (
                             else r.external_url end location,
                        r.review_state,
                        r.review_due_date,
-                       r.review_rank
+                       r.review_rank,
+                       r.document_id
                   from v_application_document_review r
                  where r.application_id = :P81_APPLICATION_ID
                 ```
@@ -524,11 +525,31 @@ page 81 (
         column TITLE (
             reportColumnQueryId: 2
             derivedColumn: N
+            type: link
             heading {
                 heading: Title
             }
             layout {
                 sequence: 20
+            }
+            link {
+                target: {
+                    page: 85
+                    items: {
+                        P85_DOCUMENT_ID: #DOCUMENT_ID#
+                    }
+                    clearCache: 85
+                }
+                linkText: #TITLE#
+            }
+        )
+
+        column DOCUMENT_ID (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 6
             }
         )
 
@@ -546,7 +567,8 @@ page 81 (
                 select s.source_kind,
                        s.repo_url,
                        s.branch,
-                       s.note
+                       s.note,
+                       s.source_id
                   from ref_application_source s
                  where s.application_id = :P81_APPLICATION_ID
                    and s.active = 1
@@ -600,11 +622,31 @@ page 81 (
         column REPO_URL (
             reportColumnQueryId: 2
             derivedColumn: N
+            type: link
             heading {
                 heading: Repository
             }
             layout {
                 sequence: 20
+            }
+            link {
+                target: {
+                    page: 84
+                    items: {
+                        P84_SOURCE_ID: #SOURCE_ID#
+                    }
+                    clearCache: 84
+                }
+                linkText: #REPO_URL#
+            }
+        )
+
+        column SOURCE_ID (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 6
             }
         )
 
@@ -924,6 +966,64 @@ page 81 (
         appearance {
             template: @/optional-floating
             templateOptions: #DEFAULT#
+        }
+    )
+
+    button add-document (
+        buttonName: ADD_DOCUMENT
+        label: Add Document
+        layout {
+            sequence: 10
+            region: @documents
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: redirectThisApp
+            target: {
+                page: 85
+                items: {
+                    P85_APPLICATION_ID: &P81_APPLICATION_ID.
+                }
+                clearCache: 85
+            }
+            warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P81_APPLICATION_ID
+        }
+    )
+
+    button add-source (
+        buttonName: ADD_SOURCE
+        label: Add Repository
+        layout {
+            sequence: 10
+            region: @sources
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: redirectThisApp
+            target: {
+                page: 84
+                items: {
+                    P84_APPLICATION_ID: &P81_APPLICATION_ID.
+                }
+                clearCache: 84
+            }
+            warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P81_APPLICATION_ID
         }
     )
 

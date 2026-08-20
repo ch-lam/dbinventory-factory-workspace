@@ -7,3 +7,5 @@
 @V__007_create_discovery_etl.sql
 @V__008_create_exception_api.sql
 @V__009_initial_data.sql
+@V__010_create_application_model.sql
+@V__011_create_application_api.sql

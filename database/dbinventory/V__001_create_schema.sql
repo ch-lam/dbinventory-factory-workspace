@@ -1105,23 +1105,6 @@ comment on column oracle_capplan_exacc_usage.cluster_name is 'Name of the Exadat
 comment on column oracle_capplan_exacc_usage.date_of_month is 'Reference month for this capacity planning snapshot (YYYYMM/YYYYMMDD).';
 
 -- ============================================================
--- oracle_capplan_hist_applink
--- Note : DEFAULT '' retire (chaine vide = NULL en Oracle)
--- ============================================================
-create table oracle_capplan_hist_applink (
-   pdb_name         varchar2(50 char) not null,
-   env              varchar2(8 char) not null,
-   application_name varchar2(30 char) not null,
-   app_code         varchar2(30 char) not null
-);
-
-comment on table oracle_capplan_hist_applink is 'Mapping of Oracle PDBs to business application names/codes, used for capacity planning cost allocation.';
-comment on column oracle_capplan_hist_applink.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_capplan_hist_applink.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_capplan_hist_applink.application_name is 'Name of the business application associated with this PDB.';
-comment on column oracle_capplan_hist_applink.app_code is 'Application code associated with this PDB, used for cost allocation.';
-
--- ============================================================
 -- oracle_capplan_hist_prebuilt
 -- Notes : decimal(50,3) -> NUMBER(38,3) [precision max Oracle = 38]
 --         float -> BINARY_FLOAT

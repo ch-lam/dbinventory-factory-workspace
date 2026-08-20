@@ -6,3 +6,18 @@ ResourceUnit_old
 .env
 .env.*
 !.env.example
+
+# Claude Code's own machine-local state.
+.claude/settings.local.json
+
+# Installed skills. Derived content: the source and a content hash are recorded
+# in skills-lock.json, so this directory is reproducible with
+#   npx skills add ch-lam/apex-field-notes -a claude-code
+# Not committing it keeps one source of truth: a copy edited here is lost on the
+# next install, silently, because the installer rewrites the whole directory.
+.claude/skills/
+
+# The vendored APEXlang package under .agents/skills/apex/ is deliberately NOT
+# ignored, and the asymmetry is intentional: APEXLang/validate.sh executes
+# tools/apexctl.mjs from it. A dependency you run gets pinned and committed; one
+# you only read gets installed.

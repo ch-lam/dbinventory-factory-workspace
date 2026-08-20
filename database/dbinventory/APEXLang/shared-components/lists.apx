@@ -262,6 +262,21 @@ list navigation-menu (
         }
     )
 
+    entry applications (
+        label: Applications
+        icon {
+            imageIconCssClasses: fa-window-application
+        }
+        layout {
+            sequence: 15
+        }
+        link {
+            target: {
+                page: 80
+            }
+        }
+    )
+
     entry capacity-planning (
         label: Capacity Planning
         icon {

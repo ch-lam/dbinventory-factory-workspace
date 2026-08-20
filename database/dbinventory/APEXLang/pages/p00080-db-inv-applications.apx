@@ -1,0 +1,362 @@
+page 80 (
+    name: DB Inv. - Applications
+    alias: DB-INV-APPLICATIONS
+    title: DB Inv. - Applications
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region applications (
+        name: Applications
+        title: Applications
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select o.application_id,
+                       o.app_code,
+                       o.app_name,
+                       o.criticality,
+                       o.lifecycle_status,
+                       o.database_count,
+                       o.group_count,
+                       o.document_count,
+                       o.source_count,
+                       o.review_state,
+                       o.review_due_date,
+                       o.review_rank
+                  from v_application_overview o
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        comments {
+            comments: Ordering is carried by the hidden REVIEW_RANK column rather than by an order by in the query. APEX wraps a classic report query for pagination and discards the order by, so a query that reads correctly here would come out in an arbitrary order on screen. The same mistake was made once on the About page.
+        }
+        reportLayout {
+            numberOfRows: 30
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+                t-Report--rowHighlight
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+            displayPosition: topAndBottomRight
+        }
+        messages {
+            whenNoDataFound: No application has been registered yet - start with New Application
+        }
+
+        column APPLICATION_ID (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Code
+            }
+            layout {
+                sequence: 10
+            }
+            link {
+                target: {
+                    page: 81
+                    items: {
+                        P81_APPLICATION_ID: #APPLICATION_ID#
+                    }
+                    clearCache: 81
+                }
+                linkText: #APP_CODE#
+            }
+        )
+
+        column APP_CODE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 20
+            }
+            sorting {
+                defaultSequence: 2
+            }
+        )
+
+        column APP_NAME (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Application
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column CRITICALITY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Criticality
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column LIFECYCLE_STATUS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Lifecycle
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column DATABASE_COUNT (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Databases
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column GROUP_COUNT (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Groups
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column DOCUMENT_COUNT (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Documents
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column SOURCE_COUNT (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Repositories
+            }
+            layout {
+                sequence: 90
+            }
+        )
+
+        column REVIEW_STATE (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Review
+            }
+            layout {
+                sequence: 100
+            }
+        )
+
+        column REVIEW_DUE_DATE (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Review due
+            }
+            layout {
+                sequence: 110
+            }
+        )
+
+        column REVIEW_RANK (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+            sorting {
+                defaultSequence: 1
+            }
+        )
+
+    )
+
+    region unclaimed (
+        name: Databases with no application
+        title: Databases with no application
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select u.database_id,
+                       u.platform,
+                       u.db_name,
+                       u.environment,
+                       u.instance_name,
+                       u.hostname
+                  from v_database_without_application u
+                ```
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        comments {
+            comments: The backlog of the registry, and the reason it is on the same page as the applications rather than hidden behind a menu entry. It never falls to zero on its own: a database appears here the moment a collect discovers it, which is exactly when somebody should be asked whose it is. Attaching an instance rather than each of its databases is what makes this list shrink at a usable rate.
+        }
+        reportLayout {
+            numberOfRows: 25
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+            displayPosition: topAndBottomRight
+        }
+        messages {
+            whenNoDataFound: Every database is attached to an application
+        }
+
+        column DATABASE_ID (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 10
+            }
+        )
+
+        column DB_NAME (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column PLATFORM (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Platform
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Environment
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column HOSTNAME (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Host
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+    )
+
+    button create (
+        buttonName: CREATE
+        label: New Application
+        layout {
+            sequence: 10
+            region: @applications
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: redirectThisApp
+            target: {
+                page: 81
+                clearCache: 81
+            }
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+)

@@ -332,7 +332,53 @@ begin
    -- ---------------------------------------------------------------------
    -- 9. The rest of the API answers.
    -- ---------------------------------------------------------------------
-   dbms_output.put_line('9. Sources and reviews');
+   -- ---------------------------------------------------------------------
+   -- 9. The reason the journal lives in triggers rather than in the package.
+   --    A screen built the ordinary way -- an APEX form, an interactive grid --
+   --    writes the table with its own DML and never calls the package. If the
+   --    journal depended on the package, it would stop the day somebody builds
+   --    such a screen, and nothing would say so. So: write directly, in SQL,
+   --    exactly as a form would, and require the journal anyway.
+   -- ---------------------------------------------------------------------
+   dbms_output.put_line('9. A write that bypasses the API is still journalled');
+   declare
+      l_before pls_integer;
+      l_after  pls_integer;
+      l_gid    number;
+   begin
+      select count(*) into l_before from ref_application_event
+       where application_id = l_app and event_type = 'GROUP_ADDED';
+
+      insert into ref_application_group (
+         application_id, group_type_code, group_name, contact_email )
+      values ( l_app, 'BUSINESS', 'Written by a form, not the package',
+               'business@example.invalid' )
+      returning group_id into l_gid;
+
+      select count(*) into l_after from ref_application_event
+       where application_id = l_app and event_type = 'GROUP_ADDED';
+
+      l_checked := l_checked + 1;
+      if l_after = l_before + 1 then
+         ok('a plain INSERT was journalled without going through the package');
+      else
+         fail('trigger journalling', 'GROUP_ADDED went from ' || l_before || ' to ' || l_after);
+      end if;
+
+      -- and deactivating it directly must read as a removal, not as an update
+      update ref_application_group set active = 0 where group_id = l_gid;
+      l_checked := l_checked + 1;
+      select count(*) into l_n from ref_application_event
+       where application_id = l_app and event_type = 'GROUP_REMOVED'
+         and subject_ref = 'Written by a form, not the package';
+      if l_n = 1 then
+         ok('a direct deactivation reads as a removal, not as an edit');
+      else
+         fail('deactivation journalling', 'expected 1 GROUP_REMOVED, got ' || l_n);
+      end if;
+   end;
+
+   dbms_output.put_line('10. Sources and reviews');
    l_src := pkg_dbinv_application.add_source(l_app, 'https://github.com/example/repo.git',
                                              p_branch => 'main');
    l_checked := l_checked + 1;

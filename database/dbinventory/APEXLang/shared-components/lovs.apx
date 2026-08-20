@@ -1,3 +1,59 @@
+lov application-criticality (
+    name: APPLICATION_CRITICALITY
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Critical' d, 'CRITICAL' r, 1 o from dual
+            union all select 'High', 'HIGH', 2 from dual
+            union all select 'Standard', 'STANDARD', 3 from dual
+            union all select 'Low', 'LOW', 4 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-group-type (
+    name: APPLICATION_GROUP_TYPE
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select t.label d, t.group_type_code r, t.sort_order o
+              from ref_application_group_type t
+             where t.active = 1
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-lifecycle (
+    name: APPLICATION_LIFECYCLE
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Project' d, 'PROJECT' r, 1 o from dual
+            union all select 'Active', 'ACTIVE', 2 from dual
+            union all select 'Decommissioning', 'DECOMMISSIONING', 3 from dual
+            union all select 'Retired', 'RETIRED', 4 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
 lov discovery-environment (
     name: DISCOVERY_ENVIRONMENT
     source {

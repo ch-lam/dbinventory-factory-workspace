@@ -1,25 +1,31 @@
 -- ============================================================================
 -- V__011_create_application_api.sql
 -- ----------------------------------------------------------------------------
--- Write API for the application registry: pkg_dbinv_application. Screens never
--- write to ref_application and its satellites directly, they call these
--- procedures -- the same shape pkg_dbinv_exception gives the derogation screen.
+-- Write API for the application registry: pkg_dbinv_application, plus the
+-- triggers that journal every change to it.
 --
--- Why an API rather than APEX forms:
---   * every change journals itself into ref_application_event, so the audit
---     trail cannot be bypassed from the interface. Forms doing their own DML
---     would leave it to each page to remember;
---   * the rules that make the registry trustworthy live in one place -- that a
---     link points at something that exists, that a document is either stored or
---     linked, that a review moves the next due date;
---   * it is platform-agnostic, like the registry itself. Nothing here knows
---     about Oracle, MSSQL, Postgres or MySQL.
+-- WHERE THE GUARANTEE LIVES, AND WHY IT MOVED
+--   The derogation model puts its journal calls inside pkg_dbinv_exception and
+--   relies on every screen going through the package. That works because page 71
+--   was written that way -- 1050 lines of APEXlang doing its DML through
+--   processes.
 --
--- One rule is enforced here and NOT in the model, deliberately: link_entity
--- checks that the entity exists. The reference is polymorphic, so the database
--- cannot do it with a foreign key -- and a mistyped entity_id would otherwise
--- produce an application that silently covers nothing, which reads exactly like
--- an application nobody has attached yet.
+--   This registry does not make that bet. An ordinary APEX form or interactive
+--   grid writes the table with its own DML and will never call a package, so a
+--   journal that lives in the package is a journal that silently stops the first
+--   time somebody builds a screen the normal way. The journal therefore lives in
+--   AFTER triggers: it holds for the package, for a form, for an interactive
+--   grid, for a script, and for whatever comes next.
+--
+--   The package then exists for the things a trigger cannot do: validating a
+--   polymorphic reference before it is stored, computing the next review date,
+--   and carrying a human reason down to the trigger through current_reason.
+--
+-- WHAT THE PACKAGE STILL ENFORCES
+--   link_entity checks that the entity exists. The reference is polymorphic, so
+--   no foreign key can protect it, and a mistyped id would produce an attachment
+--   that resolves to no database at all -- indistinguishable from an application
+--   nobody has attached yet.
 --
 -- Prerequisite for stored documents: EXECUTE on SYS.DBMS_CRYPTO. A file that
 -- cannot be fingerprinted is refused rather than stored unverifiable. Documents
@@ -135,43 +141,40 @@ create or replace package pkg_dbinv_application as
 
    procedure remove_source ( p_source_id number, p_reason varchar2 default null );
 
-   -- Read by the document journal trigger; see remove_document.
-   function removal_reason return varchar2;
+   -- ---------------------------------------------------------------------
+   -- The channel between the API and the journal triggers.
+   -- ---------------------------------------------------------------------
+   -- A trigger sees what changed but never why. The package sets a reason before
+   -- its DML and the triggers read it here. A screen writing the table directly
+   -- simply leaves it null, and the change is journalled without a reason --
+   -- which is still infinitely better than not journalled at all.
+   --
+   -- set_reason is public so a page process can supply one before its own DML.
+   procedure set_reason ( p_reason varchar2 );
+   function current_reason return varchar2;
 
 end pkg_dbinv_application;
 /
 
 create or replace package body pkg_dbinv_application as
 
-   -- Set for the duration of a remove_document call, read by the journal trigger.
-   g_remove_reason varchar2(1000 char);
+   g_reason varchar2(1000 char);
 
 
    -- ---------------------------------------------------------------------
    -- Internal helpers
    -- ---------------------------------------------------------------------
 
-   function removal_reason return varchar2 is
+   procedure set_reason ( p_reason varchar2 ) is
    begin
-      return g_remove_reason;
-   end removal_reason;
+      g_reason := substr(p_reason, 1, 1000);
+   end set_reason;
 
 
-   procedure journal (
-      p_application_id number,
-      p_event_type     varchar2,
-      p_subject_ref    varchar2 default null,
-      p_note           varchar2 default null,
-      p_old_value      varchar2 default null,
-      p_new_value      varchar2 default null
-   ) is
+   function current_reason return varchar2 is
    begin
-      insert into ref_application_event (
-         application_id, event_type, subject_ref, note, old_value, new_value )
-      values (
-         p_application_id, p_event_type, substr(p_subject_ref, 1, 200),
-         substr(p_note, 1, 1000), substr(p_old_value, 1, 1000), substr(p_new_value, 1, 1000) );
-   end journal;
+      return g_reason;
+   end current_reason;
 
 
    procedure require_application ( p_application_id number ) is
@@ -253,7 +256,6 @@ create or replace package body pkg_dbinv_application as
               else add_months(trunc(sysdate), p_review_months) end )
       returning application_id into l_id;
 
-      journal(l_id, 'CREATED', upper(trim(p_app_code)), p_app_name);
       return l_id;
    end create_application;
 
@@ -266,10 +268,9 @@ create or replace package body pkg_dbinv_application as
       p_lifecycle_status varchar2 default null,
       p_note             varchar2 default null
    ) is
-      l_old ref_application%rowtype;
    begin
       require_application(p_application_id);
-      select * into l_old from ref_application where application_id = p_application_id;
+      set_reason(p_note);
 
       update ref_application
          set app_name         = nvl(p_app_name, app_name),
@@ -280,14 +281,7 @@ create or replace package body pkg_dbinv_application as
              updated_date     = sysdate
        where application_id = p_application_id;
 
-      -- Journal the lifecycle move on its own: it is the field whose history
-      -- anyone actually goes looking for afterwards.
-      if p_lifecycle_status is not null and upper(p_lifecycle_status) <> l_old.lifecycle_status then
-         journal(p_application_id, 'UPDATED', 'lifecycle_status', p_note,
-                 l_old.lifecycle_status, upper(p_lifecycle_status));
-      else
-         journal(p_application_id, 'UPDATED', 'attributes', p_note);
-      end if;
+      set_reason(null);
    end update_application;
 
 
@@ -297,12 +291,13 @@ create or replace package body pkg_dbinv_application as
       if p_reason is null then
          raise_application_error(-20035, 'Deactivating an application requires a reason.');
       end if;
+      set_reason(p_reason);
 
       update ref_application
          set active = 0, updated_by = user, updated_date = sysdate
        where application_id = p_application_id;
 
-      journal(p_application_id, 'DEACTIVATED', null, p_reason);
+      set_reason(null);
    end deactivate_application;
 
 
@@ -313,6 +308,8 @@ create or replace package body pkg_dbinv_application as
    ) is
    begin
       require_application(p_application_id);
+      set_reason(p_note);
+
       update ref_application
          set last_review_date = trunc(sysdate),
              last_review_by   = user,
@@ -322,7 +319,7 @@ create or replace package body pkg_dbinv_application as
              updated_date     = sysdate
        where application_id = p_application_id;
 
-      journal(p_application_id, 'REVIEWED', null, p_note);
+      set_reason(null);
    end record_review;
 
 
@@ -351,9 +348,6 @@ create or replace package body pkg_dbinv_application as
          p_ldap_dn, p_ldap_group_name, p_external_ref, p_note )
       returning group_id into l_id;
 
-      journal(p_application_id, 'GROUP_ADDED', p_group_name,
-              upper(p_group_type_code),
-              null, nvl(p_contact_email, nvl(p_ldap_group_name, p_external_ref)));
       return l_id;
    end add_group;
 
@@ -366,9 +360,8 @@ create or replace package body pkg_dbinv_application as
       p_external_ref    varchar2 default null,
       p_note            varchar2 default null
    ) is
-      l_old ref_application_group%rowtype;
    begin
-      select * into l_old from ref_application_group where group_id = p_group_id;
+      set_reason(p_note);
 
       update ref_application_group
          set contact_email   = nvl(p_contact_email, contact_email),
@@ -376,22 +369,21 @@ create or replace package body pkg_dbinv_application as
              ldap_group_name = nvl(p_ldap_group_name, ldap_group_name),
              external_ref    = nvl(p_external_ref, external_ref),
              note            = nvl(p_note, note),
-             updated_by      = user,
-             updated_date    = sysdate
+             updated_by       = user,
+             updated_date     = sysdate
        where group_id = p_group_id;
 
-      journal(l_old.application_id, 'GROUP_UPDATED', l_old.group_name, p_note,
-              l_old.contact_email, nvl(p_contact_email, l_old.contact_email));
-   exception
-      when no_data_found then
+      if sql%rowcount = 0 then
+         set_reason(null);
          raise_application_error(-20036, 'Group ' || p_group_id || ' does not exist.');
+      end if;
+      set_reason(null);
    end update_group;
 
 
    procedure remove_group ( p_group_id number, p_reason varchar2 default null ) is
-      l_old ref_application_group%rowtype;
    begin
-      select * into l_old from ref_application_group where group_id = p_group_id;
+      set_reason(p_reason);
 
       -- Deactivated, not deleted. Knowing who used to be responsible is most of
       -- the value of a contact registry once something has gone wrong.
@@ -399,11 +391,11 @@ create or replace package body pkg_dbinv_application as
          set active = 0, updated_by = user, updated_date = sysdate
        where group_id = p_group_id;
 
-      journal(l_old.application_id, 'GROUP_REMOVED', l_old.group_name, p_reason,
-              l_old.contact_email, null);
-   exception
-      when no_data_found then
+      if sql%rowcount = 0 then
+         set_reason(null);
          raise_application_error(-20036, 'Group ' || p_group_id || ' does not exist.');
+      end if;
+      set_reason(null);
    end remove_group;
 
 
@@ -425,26 +417,23 @@ create or replace package body pkg_dbinv_application as
          values ( p_application_id, upper(p_entity_type), p_entity_id, p_note )
       returning app_entity_id into l_id;
 
-      journal(p_application_id, 'ENTITY_LINKED',
-              upper(p_entity_type) || ' ' || p_entity_id, p_note);
       return l_id;
    end link_entity;
 
 
    procedure unlink_entity ( p_app_entity_id number, p_reason varchar2 default null ) is
-      l_old ref_application_entity%rowtype;
    begin
-      select * into l_old from ref_application_entity where app_entity_id = p_app_entity_id;
+      set_reason(p_reason);
 
       update ref_application_entity
          set active = 0
        where app_entity_id = p_app_entity_id;
 
-      journal(l_old.application_id, 'ENTITY_UNLINKED',
-              l_old.entity_type || ' ' || l_old.entity_id, p_reason);
-   exception
-      when no_data_found then
+      if sql%rowcount = 0 then
+         set_reason(null);
          raise_application_error(-20037, 'Attachment ' || p_app_entity_id || ' does not exist.');
+      end if;
+      set_reason(null);
    end unlink_entity;
 
 
@@ -484,20 +473,18 @@ create or replace package body pkg_dbinv_application as
               else add_months(trunc(sysdate), p_review_months) end )
       returning document_id into l_id;
 
-      return l_id;   -- the journal entry is written by the trigger, for every writer
+      return l_id;
    end add_document;
 
 
    procedure remove_document ( p_document_id number, p_reason varchar2 default null ) is
    begin
-      -- Read back by the journal trigger. The document row is really deleted, so
-      -- the reason has nowhere else to live.
-      g_remove_reason := p_reason;
+      set_reason(p_reason);
       delete from ref_application_document where document_id = p_document_id;
-      g_remove_reason := null;
+      set_reason(null);
    exception
       when others then
-         g_remove_reason := null;
+         set_reason(null);
          raise;
    end remove_document;
 
@@ -507,11 +494,8 @@ create or replace package body pkg_dbinv_application as
       p_note        varchar2 default null,
       p_next_months number default 12
    ) is
-      l_app  number;
-      l_title ref_application_document.title%type;
    begin
-      select application_id, title into l_app, l_title
-        from ref_application_document where document_id = p_document_id;
+      set_reason(p_note);
 
       update ref_application_document
          set last_review_date = trunc(sysdate),
@@ -522,10 +506,11 @@ create or replace package body pkg_dbinv_application as
              updated_date     = sysdate
        where document_id = p_document_id;
 
-      journal(l_app, 'DOCUMENT_REVIEWED', l_title, p_note);
-   exception
-      when no_data_found then
+      if sql%rowcount = 0 then
+         set_reason(null);
          raise_application_error(-20039, 'Document ' || p_document_id || ' does not exist.');
+      end if;
+      set_reason(null);
    end record_document_review;
 
 
@@ -547,24 +532,23 @@ create or replace package body pkg_dbinv_application as
          values ( p_application_id, upper(p_source_kind), p_repo_url, p_branch, p_note )
       returning source_id into l_id;
 
-      journal(p_application_id, 'SOURCE_ADDED', substr(p_repo_url, 1, 200), p_note);
       return l_id;
    end add_source;
 
 
    procedure remove_source ( p_source_id number, p_reason varchar2 default null ) is
-      l_old ref_application_source%rowtype;
    begin
-      select * into l_old from ref_application_source where source_id = p_source_id;
+      set_reason(p_reason);
 
       update ref_application_source
          set active = 0
        where source_id = p_source_id;
 
-      journal(l_old.application_id, 'SOURCE_REMOVED', substr(l_old.repo_url, 1, 200), p_reason);
-   exception
-      when no_data_found then
+      if sql%rowcount = 0 then
+         set_reason(null);
          raise_application_error(-20040, 'Source ' || p_source_id || ' does not exist.');
+      end if;
+      set_reason(null);
    end remove_source;
 
 end pkg_dbinv_application;
@@ -572,14 +556,126 @@ end pkg_dbinv_application;
 
 
 -- ============================================================================
+-- The journal, in triggers
+-- ----------------------------------------------------------------------------
+-- One AFTER trigger per table. They are the only place the journal is written,
+-- so there is exactly one answer to "is this change recorded" and it does not
+-- depend on which piece of software made it.
+--
+-- Deactivation is journalled as a removal rather than as an update, because that
+-- is what it means here: nothing is deleted, active = 0 is how something leaves
+-- the registry, and a reader looking for "when did this group stop being
+-- responsible" must not have to know that.
+-- ============================================================================
+
+create or replace trigger ref_application_journal
+   after insert or update on ref_application
+   for each row
+begin
+   if inserting then
+      insert into ref_application_event ( application_id, event_type, subject_ref, new_value )
+         values ( :new.application_id, 'CREATED', :new.app_code, :new.app_name );
+
+   elsif :old.active = 1 and :new.active = 0 then
+      insert into ref_application_event ( application_id, event_type, note )
+         values ( :new.application_id, 'DEACTIVATED', pkg_dbinv_application.current_reason );
+
+   elsif nvl(:new.last_review_date, date '0001-01-01')
+         <> nvl(:old.last_review_date, date '0001-01-01') then
+      insert into ref_application_event ( application_id, event_type, note, new_value )
+         values ( :new.application_id, 'REVIEWED', pkg_dbinv_application.current_reason,
+                  to_char(:new.review_due_date, 'YYYY-MM-DD') );
+
+   elsif :old.lifecycle_status <> :new.lifecycle_status then
+      -- Journalled on its own: this is the field whose history somebody actually
+      -- goes looking for later.
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, old_value, new_value )
+      values (
+         :new.application_id, 'UPDATED', 'lifecycle_status',
+         pkg_dbinv_application.current_reason, :old.lifecycle_status, :new.lifecycle_status );
+
+   else
+      insert into ref_application_event ( application_id, event_type, subject_ref, note )
+         values ( :new.application_id, 'UPDATED', 'attributes',
+                  pkg_dbinv_application.current_reason );
+   end if;
+end;
+/
+
+create or replace trigger ref_app_grp_journal
+   after insert or update or delete on ref_application_group
+   for each row
+begin
+   if inserting then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, new_value )
+      values (
+         :new.application_id, 'GROUP_ADDED', :new.group_name, :new.group_type_code,
+         nvl(:new.contact_email, nvl(:new.ldap_group_name, :new.external_ref)) );
+
+   elsif deleting or ( :old.active = 1 and :new.active = 0 ) then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, old_value )
+      values (
+         :old.application_id, 'GROUP_REMOVED', :old.group_name,
+         pkg_dbinv_application.current_reason, :old.contact_email );
+
+   else
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, old_value, new_value )
+      values (
+         :new.application_id, 'GROUP_UPDATED', :new.group_name,
+         pkg_dbinv_application.current_reason, :old.contact_email, :new.contact_email );
+   end if;
+end;
+/
+
+create or replace trigger ref_app_ent_journal
+   after insert or update or delete on ref_application_entity
+   for each row
+begin
+   if inserting then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note )
+      values (
+         :new.application_id, 'ENTITY_LINKED',
+         :new.entity_type || ' ' || :new.entity_id, :new.note );
+
+   elsif deleting or ( :old.active = 1 and :new.active = 0 ) then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note )
+      values (
+         :old.application_id, 'ENTITY_UNLINKED',
+         :old.entity_type || ' ' || :old.entity_id, pkg_dbinv_application.current_reason );
+   end if;
+end;
+/
+
+create or replace trigger ref_app_src_journal
+   after insert or update or delete on ref_application_source
+   for each row
+begin
+   if inserting then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note )
+      values (
+         :new.application_id, 'SOURCE_ADDED', substr(:new.repo_url, 1, 200), :new.note );
+
+   elsif deleting or ( :old.active = 1 and :new.active = 0 ) then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note )
+      values (
+         :old.application_id, 'SOURCE_REMOVED', substr(:old.repo_url, 1, 200),
+         pkg_dbinv_application.current_reason );
+   end if;
+end;
+/
+
+
+-- ============================================================================
 -- Enforcement on ref_application_document
 -- ----------------------------------------------------------------------------
--- The fingerprint and the journal live in triggers rather than in add_document,
--- for the same reason they do on ref_exception_document: an APEX form uploading
--- a BLOB writes the row with its own DML and never calls the package. Putting
--- the guarantees here makes them hold for every writer -- a screen, the package,
--- a script -- instead of only for callers who remembered to go through the API.
---
 -- One difference from the derogation case, and it is the whole reason this
 -- register exists: content is OPTIONAL here. A document may be a link only, and
 -- such a row must be storable on an instance with no DBMS_CRYPTO grant at all.
@@ -608,7 +704,7 @@ end;
 /
 
 create or replace trigger ref_app_doc_journal
-   after insert or delete on ref_application_document
+   after insert or update or delete on ref_application_document
    for each row
 begin
    if inserting then
@@ -618,7 +714,8 @@ begin
          :new.application_id, 'DOCUMENT_ADDED', substr(:new.title, 1, 200),
          nvl(:new.file_name, :new.external_url),
          nvl(:new.checksum_sha256, 'link only') );
-   else
+
+   elsif deleting then
       -- The document goes, the trace of it having existed does not: the journal
       -- keeps its title and fingerprint, so a reader still sees what was
       -- withdrawn and can tell a deleted file from a deleted link.
@@ -626,9 +723,18 @@ begin
          application_id, event_type, subject_ref, note, old_value )
       values (
          :old.application_id, 'DOCUMENT_REMOVED', substr(:old.title, 1, 200),
-         nvl(pkg_dbinv_application.removal_reason, 'removed')
+         nvl(pkg_dbinv_application.current_reason, 'removed')
             || ' - ' || nvl(:old.file_name, :old.external_url),
          nvl(:old.checksum_sha256, 'link only') );
+
+   elsif nvl(:new.last_review_date, date '0001-01-01')
+         <> nvl(:old.last_review_date, date '0001-01-01') then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, new_value )
+      values (
+         :new.application_id, 'DOCUMENT_REVIEWED', substr(:new.title, 1, 200),
+         pkg_dbinv_application.current_reason,
+         to_char(:new.review_due_date, 'YYYY-MM-DD') );
    end if;
 end;
 /

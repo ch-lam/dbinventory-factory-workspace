@@ -1,0 +1,930 @@
+page 81 (
+    name: DB Inv. - Application
+    alias: DB-INV-APPLICATION
+    title: DB Inv. - Application
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region identity (
+        name: Application
+        title: Application
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: A full page rather than a modal, unlike the derogation screen. The registry has four sub-registers under the header, which a modal makes cramped, and a full page is also reachable by URL - so the page test can open it directly instead of having to find and follow a link, which is where that test has lied before.
+        }
+    )
+
+    region databases (
+        name: Databases covered
+        title: Databases covered
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d.db_name,
+                       d.platform,
+                       d.environment,
+                       i.instance_name,
+                       h.hostname,
+                       ad.attached_at
+                  from v_application_database ad
+                  join dim_database d on d.database_id = ad.database_id
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join dim_host h on h.host_id = i.host_id
+                 where ad.application_id = :P81_APPLICATION_ID
+                ```
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        comments {
+            comments: Shows what the cascade resolves, not the attachment rows. attached_at is displayed on purpose: a database listed because its whole instance belongs to this application is a different statement from one named explicitly, and detaching them is a different action.
+        }
+        reportLayout {
+            numberOfRows: 25
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: No database attached yet
+        }
+
+        column ATTACHED_AT (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Attached at
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column DB_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Environment
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column HOSTNAME (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Host
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column PLATFORM (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Platform
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+    )
+
+    region groups (
+        name: Responsible groups
+        title: Responsible groups
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select t.label,
+                       g.group_name,
+                       g.contact_email,
+                       g.ldap_group_name,
+                       g.external_ref,
+                       t.sort_order
+                  from ref_application_group g
+                  join ref_application_group_type t
+                    on t.group_type_code = g.group_type_code
+                 where g.application_id = :P81_APPLICATION_ID
+                   and g.active = 1
+                ```
+        }
+        layout {
+            sequence: 40
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        reportLayout {
+            numberOfRows: 20
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: No group recorded - nobody is listed as responsible for this application
+        }
+
+        column CONTACT_EMAIL (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Contact
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column EXTERNAL_REF (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: External reference
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column GROUP_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Group
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column LABEL (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Role
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column LDAP_GROUP_NAME (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Directory group
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column SORT_ORDER (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+            sorting {
+                defaultSequence: 1
+            }
+        )
+
+    )
+
+    region documents (
+        name: Documentation
+        title: Documentation
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select r.doc_kind,
+                       r.title,
+                       case when r.file_name is not null then r.file_name
+                            else r.external_url end location,
+                       r.review_state,
+                       r.review_due_date,
+                       r.review_rank
+                  from v_application_document_review r
+                 where r.application_id = :P81_APPLICATION_ID
+                ```
+        }
+        layout {
+            sequence: 50
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: A document is stored, linked, or both. The location column shows the file name when there is one and the URL otherwise, so a reader can tell at a glance which documents live here and which only have a pointer. Upload is not yet wired on this page - see the note in the plan about the fileUpload storage type, which cannot be expressed in the .apx and is reset by every import.
+        }
+        reportLayout {
+            numberOfRows: 20
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: No documentation recorded
+        }
+
+        column DOC_KIND (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Kind
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column LOCATION (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: File or link
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column REVIEW_DUE_DATE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Review due
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column REVIEW_RANK (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+            sorting {
+                defaultSequence: 1
+            }
+        )
+
+        column REVIEW_STATE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Review
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column TITLE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Title
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+    )
+
+    region sources (
+        name: Source repositories
+        title: Source repositories
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select s.source_kind,
+                       s.repo_url,
+                       s.branch,
+                       s.note
+                  from ref_application_source s
+                 where s.application_id = :P81_APPLICATION_ID
+                   and s.active = 1
+                ```
+        }
+        layout {
+            sequence: 60
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        reportLayout {
+            numberOfRows: 15
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: No repository recorded
+        }
+
+        column BRANCH (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Branch
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column NOTE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Note
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column REPO_URL (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Repository
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column SOURCE_KIND (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Kind
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+    )
+
+    region history (
+        name: History
+        title: History
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select e.event_date,
+                       e.event_type,
+                       e.subject_ref,
+                       e.event_by,
+                       e.note,
+                       e.old_value,
+                       e.new_value,
+                       -e.event_id sort_key
+                  from ref_application_event e
+                 where e.application_id = :P81_APPLICATION_ID
+                ```
+        }
+        layout {
+            sequence: 70
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        comments {
+            comments: The append-only journal. It is written by triggers, not by this page, so it records changes made from anywhere - a page process, an interactive grid, a script. Nothing here can alter it: the table refuses update and delete outright.
+        }
+        reportLayout {
+            numberOfRows: 25
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: Nothing recorded yet
+        }
+
+        column EVENT_BY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: By
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column EVENT_DATE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: When
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column SORT_KEY (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+            sorting {
+                defaultSequence: 1
+            }
+        )
+
+        column EVENT_TYPE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: What
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column NEW_VALUE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: New value
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column NOTE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Note
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column OLD_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Previous value
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column SUBJECT_REF (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Subject
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+    )
+
+    pageItem P81_APPLICATION_ID (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @identity
+            slot: regionBody
+        }
+    )
+
+    pageItem P81_APP_CODE (
+        type: textField
+        label {
+            label: Code
+            alignment: right
+        }
+        layout {
+            sequence: 20
+            region: @identity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+            width: 30
+        }
+        validation {
+            valueRequired: true
+            maxLength: 30
+        }
+        help {
+            helpText: The code this application is known by outside this tool. It is the business key and cannot be reused.
+        }
+    )
+
+    pageItem P81_APP_NAME (
+        type: textField
+        label {
+            label: Name
+            alignment: right
+        }
+        layout {
+            sequence: 30
+            region: @identity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+            width: 60
+        }
+        validation {
+            valueRequired: true
+            maxLength: 200
+        }
+    )
+
+    pageItem P81_CRITICALITY (
+        type: selectList
+        label {
+            label: Criticality
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-criticality
+            displayNullValue: false
+        }
+        layout {
+            sequence: 40
+            region: @identity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P81_LIFECYCLE_STATUS (
+        type: selectList
+        label {
+            label: Lifecycle
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-lifecycle
+            displayNullValue: false
+        }
+        layout {
+            sequence: 50
+            region: @identity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P81_DESCRIPTION (
+        type: textarea
+        label {
+            label: Description
+            alignment: right
+        }
+        layout {
+            sequence: 60
+            region: @identity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            height: 3
+        }
+        validation {
+            maxLength: 2000
+        }
+    )
+
+    pageItem P81_REVIEW_DUE_DATE (
+        type: datePicker
+        label {
+            label: Review due
+            alignment: right
+        }
+        layout {
+            sequence: 70
+            region: @identity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: When this entry should next be checked against reality. Contacts rot faster than anything else here.
+        }
+    )
+
+    pageItem P81_LAST_REVIEW (
+        type: displayOnly
+        label {
+            label: Last reviewed
+            alignment: right
+        }
+        layout {
+            sequence: 80
+            region: @identity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    button cancel (
+        buttonName: CANCEL
+        label: Back
+        layout {
+            sequence: 10
+            region: @identity
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: redirectThisApp
+            target: {
+                page: 80
+                clearCache: 81
+            }
+            warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button record-review (
+        buttonName: RECORD_REVIEW
+        label: Record Review
+        layout {
+            sequence: 20
+            region: @identity
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P81_APPLICATION_ID
+        }
+    )
+
+    button save (
+        buttonName: SAVE
+        label: Save
+        layout {
+            sequence: 30
+            region: @identity
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+    )
+
+    process load-application (
+        name: Load Application
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P81_APPLICATION_ID is not null then
+                   select a.app_code, a.app_name, a.description, a.criticality,
+                          a.lifecycle_status, a.review_due_date,
+                          nvl(to_char(a.last_review_date, 'YYYY-MM-DD')
+                              || ' by ' || a.last_review_by, 'never')
+                     into :P81_APP_CODE, :P81_APP_NAME, :P81_DESCRIPTION, :P81_CRITICALITY,
+                          :P81_LIFECYCLE_STATUS, :P81_REVIEW_DUE_DATE, :P81_LAST_REVIEW
+                     from ref_application a
+                    where a.application_id = :P81_APPLICATION_ID;
+                else
+                   :P81_CRITICALITY := 'STANDARD';
+                   :P81_LIFECYCLE_STATUS := 'ACTIVE';
+                   :P81_LAST_REVIEW := 'never';
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: beforeHeader
+        }
+    )
+
+    process save-application (
+        name: Save Application
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                -- Writes go through the package, which validates and dates. The
+                -- journal is written by a trigger either way, so a future screen
+                -- that forgets this call still leaves a trace -- it just leaves
+                -- one without a reason attached.
+                if :P81_APPLICATION_ID is null then
+                   :P81_APPLICATION_ID := pkg_dbinv_application.create_application(
+                      p_app_code         => :P81_APP_CODE,
+                      p_app_name         => :P81_APP_NAME,
+                      p_description      => :P81_DESCRIPTION,
+                      p_criticality      => :P81_CRITICALITY,
+                      p_lifecycle_status => :P81_LIFECYCLE_STATUS );
+                else
+                   pkg_dbinv_application.update_application(
+                      p_application_id   => :P81_APPLICATION_ID,
+                      p_app_name         => :P81_APP_NAME,
+                      p_description      => :P81_DESCRIPTION,
+                      p_criticality      => :P81_CRITICALITY,
+                      p_lifecycle_status => :P81_LIFECYCLE_STATUS,
+                      p_note             => 'edited from the application screen' );
+
+                   update ref_application
+                      set review_due_date = :P81_REVIEW_DUE_DATE
+                    where application_id = :P81_APPLICATION_ID;
+                end if;
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
+        successMessage {
+            successMessage: Application saved
+        }
+    )
+
+    process review-application (
+        name: Record Review
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_application.record_review(
+                   p_application_id => :P81_APPLICATION_ID,
+                   p_note           => 'reviewed from the application screen',
+                   p_next_months    => 12 );
+                ```
+        }
+        execution {
+            sequence: 30
+        }
+        serverSideCondition {
+            whenButtonPressed: @record-review
+        }
+        successMessage {
+            successMessage: Review recorded, next one due in 12 months
+        }
+    )
+
+)

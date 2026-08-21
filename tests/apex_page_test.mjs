@@ -21,8 +21,9 @@
 //   APEX upgrades instead of re-implementing a protocol that moves.
 //
 //   Edge is driven over the Chrome DevTools Protocol using Node's built-in
-//   WebSocket: no npm dependency, which matters on a machine with no registry
-//   access.
+//   WebSocket: no npm dependency, so no install step and no lockfile to carry
+//   when this file is copied into another repository. Needs a Node exposing a
+//   global WebSocket -- stable since Node 22.
 //
 // USAGE
 //   node tests/apex_page_test.mjs                  every page in PAGES

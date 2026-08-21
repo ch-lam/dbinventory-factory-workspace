@@ -93,8 +93,14 @@ came back to the login page. Driving a browser also means the test stays correct
 across APEX upgrades instead of re-implementing a protocol that moves.
 
 It uses Node's built-in `WebSocket` over the Chrome DevTools Protocol, so there is
-**no npm dependency** — which matters here, since the machine has no npm registry
-access.
+**no npm dependency**: no install step, no lockfile, and nothing to reinstall when
+the test is copied into another repository. It needs a Node exposing a global
+`WebSocket`, stable since Node 22 (this machine runs v24.19.0).
+
+An earlier version of this note justified that choice by claiming the machine had
+no npm registry access. Re-tested on 2026-08-15: `npm ping` and a tarball lookup
+both succeed against `https://registry.npmjs.org/`, with no proxy configured. The
+claim was wrong; the design stands on its own merits.
 
 ## After every import — the manual step, and why it is a list now
 
@@ -114,6 +120,9 @@ sql -S -name "$APEX_DB_CONN" @database/dbinventory/T_001_apex_page_smoke.sql
 
 Check 2 lists exactly the items that need the step, on the environment in front
 of you. A table in a README drifts; the check does not.
+
+Why it is manual at all, and what would end it, is proven in T1 of the field
+notes: the compiler has no property for the storage type, and no API sets it.
 
 ### The browser test cannot replace it here
 

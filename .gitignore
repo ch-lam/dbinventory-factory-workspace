@@ -13,9 +13,10 @@ ResourceUnit_old
 # Installed skills. Derived content: the source and a content hash are recorded
 # in skills-lock.json, so this directory is reproducible with
 #   npx skills add ch-lam/apex-field-notes -a claude-code
-# Not committing it keeps one source of truth. Editing a copy here would be lost
-# on the next install -- which is exactly the failure this repository just moved
-# the field notes out of Oracle's tree to avoid.
+# Not committing it keeps one source of truth: a copy edited here is lost on the
+# next install, silently, because the installer rewrites the whole directory.
+# That is precisely how the field notes were nearly lost while they lived nested
+# inside the vendored Oracle skill, which is why they no longer do.
 .claude/skills/
 
 # The vendored APEXlang package under .agents/skills/apex/ is deliberately NOT

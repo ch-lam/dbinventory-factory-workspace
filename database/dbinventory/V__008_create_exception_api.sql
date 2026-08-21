@@ -237,7 +237,13 @@ create or replace package body pkg_dbinv_exception as
       l_row       ref_exception%rowtype;
       l_scope_old varchar2(1000 char);
       l_scope_new varchar2(1000 char);
-      l_material  boolean := false;
+      -- A flag, not a BOOLEAN, and the distinction is not cosmetic: this variable
+      -- is read inside the UPDATE below. SQL had no boolean type before 23ai, so a
+      -- PL/SQL BOOLEAN there compiles on a 23ai development database and fails on
+      -- anything older with ORA-00920: invalid relational operator. It was found
+      -- at a site on an earlier release, on a package that had compiled cleanly
+      -- here for weeks. Keep it a character flag.
+      l_material  varchar2(1 char) := 'N';
    begin
       select * into l_row from ref_exception where exception_id = p_exception_id for update;
 
@@ -259,7 +265,7 @@ create or replace package body pkg_dbinv_exception as
          or ( p_end_date is not null
               and ( l_row.end_date is null or trunc(p_end_date) > l_row.end_date ) )
       then
-         l_material := true;
+         l_material := 'Y';
       end if;
 
       update ref_exception
@@ -272,9 +278,9 @@ create or replace package body pkg_dbinv_exception as
              -- A material amendment on an approved derogation sends it back for
              -- approval: otherwise a derogation accepted for one case could be
              -- silently stretched to another while keeping its signature.
-             status         = case when l_material and status = 'APPROVED' then 'SUBMITTED' else status end,
-             approved_by    = case when l_material and status = 'APPROVED' then null else approved_by end,
-             approval_date  = case when l_material and status = 'APPROVED' then null else approval_date end,
+             status         = case when l_material = 'Y' and status = 'APPROVED' then 'SUBMITTED' else status end,
+             approved_by    = case when l_material = 'Y' and status = 'APPROVED' then null else approved_by end,
+             approval_date  = case when l_material = 'Y' and status = 'APPROVED' then null else approval_date end,
              updated_by     = user,
              updated_date   = sysdate
        where exception_id = p_exception_id
@@ -284,7 +290,7 @@ create or replace package body pkg_dbinv_exception as
         into l_scope_new;
 
       journal(p_exception_id, 'AMENDED',
-              case when l_material then 'Material amendment: approval reset. ' else '' end || p_note,
+              case when l_material = 'Y' then 'Material amendment: approval reset. ' else '' end || p_note,
               l_scope_old, l_scope_new);
    end amend;
 

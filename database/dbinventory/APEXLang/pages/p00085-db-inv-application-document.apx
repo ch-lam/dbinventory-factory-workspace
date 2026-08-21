@@ -1,0 +1,525 @@
+page 85 (
+    name: DB Inv. - Application Document
+    alias: DB-INV-APPLICATION-DOCUMENT
+    title: DB Inv. - Application Document
+    appearance {
+        pageMode: modalDialog
+        dialogTemplate: @/modal-dialog
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+        warnOnUnsavedChanges: false
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region document (
+        name: Document
+        title: Document
+        type: staticContent
+        source {
+            htmlCode:
+                ```
+                <p>Store the file, point at where it lives, or both. What is not
+                allowed is neither: an entry with no file and no link is a line in
+                an inventory that nobody can open, which is exactly the failure
+                this register exists to end.</p>
+                <p>Prefer a link when the document has a system of record that
+                owns it. Store a copy when the only copy is on somebody's disk.</p>
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P85_DOCUMENT_ID (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @document
+            slot: regionBody
+        }
+    )
+
+    pageItem P85_APPLICATION_ID (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @document
+            slot: regionBody
+        }
+    )
+
+    pageItem P85_TITLE (
+        type: textField
+        label {
+            label: Title
+            alignment: right
+        }
+        layout {
+            sequence: 30
+            region: @document
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+            width: 70
+        }
+        validation {
+            valueRequired: true
+            maxLength: 400
+        }
+        help {
+            helpText: What this document is, in one line. It is what a reader scans, so make it say something.
+        }
+    )
+
+    pageItem P85_DOC_KIND (
+        type: selectList
+        label {
+            label: Kind
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-doc-kind
+            displayNullValue: false
+        }
+        layout {
+            sequence: 40
+            region: @document
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+        }
+        validation {
+            valueRequired: true
+        }
+    )
+
+    pageItem P85_EXTERNAL_URL (
+        type: textField
+        label {
+            label: Link
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @document
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 80
+        }
+        validation {
+            maxLength: 2000
+        }
+        help {
+            helpText: Where the document lives when it is not stored here. A link needs no privileges to record, so it works even where storing files does not.
+        }
+    )
+
+    pageItem P85_UPLOAD (
+        type: fileUpload
+        label {
+            label: Or attach a file
+            alignment: right
+        }
+        layout {
+            sequence: 60
+            region: @document
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Stored inside the database and fingerprinted with SHA-256 on the way in, so it can later be proven to be the file that was filed. On an existing entry, attaching a new file replaces the old one; leaving this empty keeps it.
+        }
+        comments {
+            comments: KNOWN GAP - set Storage Type to "Table APEX_APPLICATION_TEMP_FILES" in the builder after EVERY import. It cannot be set from the .apx: APEXlang has no property group for plugin attributes on a page item, so a settings block is rejected. Left unset the item inherits storage_type DB_COLUMN, a BLOB column it has no source for, and the page dies at render with WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Validation does not catch it - the chain checks this file compiles, not that the page runs. T_001 check 2 catches it. The BROWSER TEST DOES NOT: this item sits in a static content region, where the bad storage type renders harmlessly, unlike P71_UPLOAD which sits in a report region and dies loudly. Same metadata, different region type, opposite symptom - and the silent one is the dangerous one, because the page looks fine while the upload lands nowhere and the save process finds nothing in apex_application_temp_files. Written as a comments block, not a // comment, because an APEX export round-trip strips // comments and keeps these. This is the second item in this application with the same gap; if a third appears, the manual step needs a checklist rather than a comment.
+        }
+    )
+
+    pageItem P85_CURRENT_FILE (
+        type: displayOnly
+        label {
+            label: Stored file
+            alignment: right
+        }
+        layout {
+            sequence: 70
+            region: @document
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P85_CURRENT_FILE
+        }
+    )
+
+    pageItem P85_DESCRIPTION (
+        type: textarea
+        label {
+            label: Description
+            alignment: right
+        }
+        layout {
+            sequence: 80
+            region: @document
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            height: 3
+        }
+        validation {
+            maxLength: 2000
+        }
+    )
+
+    pageItem P85_REVIEW_DUE_DATE (
+        type: datePicker
+        label {
+            label: Review due
+            alignment: right
+        }
+        layout {
+            sequence: 90
+            region: @document
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: When someone should check this still describes reality. A document register without review dates becomes a list of things that used to be true.
+        }
+    )
+
+    pageItem P85_LAST_REVIEW (
+        type: displayOnly
+        label {
+            label: Last reviewed
+            alignment: right
+        }
+        layout {
+            sequence: 100
+            region: @document
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    button cancel (
+        buttonName: CANCEL
+        label: Cancel
+        layout {
+            sequence: 10
+            region: @document
+            slot: close
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: definedByDynamicAction
+        }
+    )
+
+    button remove (
+        buttonName: REMOVE
+        label: Remove
+        layout {
+            sequence: 20
+            region: @document
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+        comments {
+            comments: This one really deletes the row, unlike the group and source screens which deactivate. A stored document is a BLOB, and keeping every superseded copy for ever is a different decision from keeping a contact entry. The journal keeps the title, the reason and the fingerprint, so what was withdrawn is still visible - which is the part that matters to a reader.
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P85_DOCUMENT_ID
+        }
+    )
+
+    button record-review (
+        buttonName: RECORD_REVIEW
+        label: Record Review
+        layout {
+            sequence: 30
+            region: @document
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P85_DOCUMENT_ID
+        }
+    )
+
+    button save (
+        buttonName: SAVE
+        label: Save
+        layout {
+            sequence: 40
+            region: @document
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+    )
+
+    dynamicAction cancel-dialog (
+        name: Cancel Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: click
+            selectionType: button
+            button: @cancel
+        }
+
+        action native-cancel-dialog (
+            action: cancelDialog
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    process load-document (
+        name: Load Document
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P85_DOCUMENT_ID is not null then
+                   select d.application_id, d.doc_kind, d.title, d.description,
+                          d.external_url, d.review_due_date,
+                          case when d.file_name is null then null
+                               else d.file_name || ' (' || d.file_size || ' bytes, sha256 '
+                                    || substr(d.checksum_sha256, 1, 12) || '...)' end,
+                          nvl(to_char(d.last_review_date, 'YYYY-MM-DD')
+                              || ' by ' || d.last_review_by, 'never')
+                     into :P85_APPLICATION_ID, :P85_DOC_KIND, :P85_TITLE, :P85_DESCRIPTION,
+                          :P85_EXTERNAL_URL, :P85_REVIEW_DUE_DATE, :P85_CURRENT_FILE,
+                          :P85_LAST_REVIEW
+                     from ref_application_document d
+                    where d.document_id = :P85_DOCUMENT_ID;
+                else
+                   :P85_DOC_KIND := 'PROCEDURE';
+                   :P85_LAST_REVIEW := 'never';
+                   :P85_REVIEW_DUE_DATE := add_months(trunc(sysdate), 12);
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: beforeHeader
+        }
+    )
+
+    process save-document (
+        name: Save Document
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                declare
+                   l_content   blob;
+                   l_file_name varchar2(400 char);
+                   l_mime      varchar2(200 char);
+                   l_has_file  boolean := false;
+                begin
+                   -- The instr form covers a multi-file upload too, where APEX puts
+                   -- a colon-separated list of names in the item. Only the first is
+                   -- taken: one row is one document here, unlike the derogation
+                   -- screen where several files back a single decision.
+                   for f in ( select filename, mime_type, blob_content
+                                from apex_application_temp_files
+                               where instr(':' || :P85_UPLOAD || ':', ':' || name || ':') > 0
+                               order by id
+                               fetch first 1 rows only ) loop
+                      l_content   := f.blob_content;
+                      l_file_name := f.filename;
+                      l_mime      := f.mime_type;
+                      l_has_file  := true;
+                   end loop;
+
+                   if :P85_DOCUMENT_ID is null then
+                      -- Said here before the constraint says it: the constraint
+                      -- reports a name, this reports the decision.
+                      if not l_has_file and :P85_EXTERNAL_URL is null then
+                         raise_application_error(-20060,
+                            'Give a link, a file, or both. An entry with neither cannot '
+                            || 'be opened by anyone, which is what this register exists to fix.');
+                      end if;
+
+                      :P85_DOCUMENT_ID := pkg_dbinv_application.add_document(
+                         p_application_id => :P85_APPLICATION_ID,
+                         p_title          => :P85_TITLE,
+                         p_doc_kind       => :P85_DOC_KIND,
+                         p_description    => :P85_DESCRIPTION,
+                         p_external_url   => :P85_EXTERNAL_URL,
+                         p_file_name      => l_file_name,
+                         p_mime_type      => l_mime,
+                         p_content        => l_content );
+                   else
+                      pkg_dbinv_application.set_reason('edited from the document screen');
+                      if l_has_file then
+                         -- A new file replaces the old one. The trigger recomputes
+                         -- the fingerprint and the size; neither is ever taken from
+                         -- the caller.
+                         update ref_application_document
+                            set doc_kind        = :P85_DOC_KIND,
+                                title           = :P85_TITLE,
+                                description     = :P85_DESCRIPTION,
+                                external_url    = :P85_EXTERNAL_URL,
+                                file_name       = l_file_name,
+                                mime_type       = l_mime,
+                                content         = l_content,
+                                review_due_date = :P85_REVIEW_DUE_DATE,
+                                updated_by      = :APP_USER,
+                                updated_date    = sysdate
+                          where document_id = :P85_DOCUMENT_ID;
+                      else
+                         update ref_application_document
+                            set doc_kind        = :P85_DOC_KIND,
+                                title           = :P85_TITLE,
+                                description     = :P85_DESCRIPTION,
+                                external_url    = :P85_EXTERNAL_URL,
+                                review_due_date = :P85_REVIEW_DUE_DATE,
+                                updated_by      = :APP_USER,
+                                updated_date    = sysdate
+                          where document_id = :P85_DOCUMENT_ID;
+                      end if;
+                      pkg_dbinv_application.set_reason(null);
+                   end if;
+
+                   delete from apex_application_temp_files
+                    where instr(':' || :P85_UPLOAD || ':', ':' || name || ':') > 0;
+                end;
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
+        successMessage {
+            successMessage: Document saved
+        }
+    )
+
+    process review-document (
+        name: Record Document Review
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_application.record_document_review(
+                   p_document_id => :P85_DOCUMENT_ID,
+                   p_note        => 'reviewed from the document screen',
+                   p_next_months => 12 );
+                ```
+        }
+        execution {
+            sequence: 30
+        }
+        serverSideCondition {
+            whenButtonPressed: @record-review
+        }
+        successMessage {
+            successMessage: Review recorded, next one due in 12 months
+        }
+    )
+
+    process remove-document (
+        name: Remove Document
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_application.remove_document(
+                   p_document_id => :P85_DOCUMENT_ID,
+                   p_reason      => 'removed from the document screen' );
+                ```
+        }
+        execution {
+            sequence: 40
+        }
+        serverSideCondition {
+            whenButtonPressed: @remove
+        }
+        successMessage {
+            successMessage: Document removed - the journal keeps its title and fingerprint
+        }
+    )
+
+    process close-document-dialog (
+        name: Close Document Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+    )
+
+)

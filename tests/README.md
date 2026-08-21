@@ -101,3 +101,39 @@ An earlier version of this note justified that choice by claiming the machine ha
 no npm registry access. Re-tested on 2026-08-15: `npm ping` and a tarball lookup
 both succeed against `https://registry.npmjs.org/`, with no proxy configured. The
 claim was wrong; the design stands on its own merits.
+
+## After every import — the manual step, and why it is a list now
+
+An import resets attributes that the `.apx` cannot express. Today two items are
+affected, both `fileUpload`:
+
+| Page | Item | Set Storage Type to |
+| --- | --- | --- |
+| 71 | `P71_UPLOAD` | `APEX_APPLICATION_TEMP_FILES` |
+| 85 | `P85_UPLOAD` | `APEX_APPLICATION_TEMP_FILES` |
+
+**Do not maintain that table by hand — ask the database:**
+
+```bash
+sql -S -name "$APEX_DB_CONN" @database/dbinventory/T_001_apex_page_smoke.sql
+```
+
+Check 2 lists exactly the items that need the step, on the environment in front
+of you. A table in a README drifts; the check does not.
+
+Why it is manual at all, and what would end it, is proven in T1 of the field
+notes: the compiler has no property for the storage type, and no API sets it.
+
+### The browser test cannot replace it here
+
+Two items, identical metadata, opposite symptoms — the difference is the region
+they sit in:
+
+- `P71_UPLOAD` is in a **report** region: APEX tries to bind the BLOB to a column
+  and the page dies loudly at render, so the browser test catches it.
+- `P85_UPLOAD` is in a **static content** region: it renders a plain file input
+  and says nothing. The page looks perfect, the file goes nowhere, and the save
+  process finds an empty cursor in `apex_application_temp_files`.
+
+The silent one is the dangerous one. **A green browser run says nothing about
+upload items.** Run `T_001` after every import, without exception.

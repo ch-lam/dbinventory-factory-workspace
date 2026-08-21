@@ -24,10 +24,14 @@
 --
 -- Only APPROVED is honoured by pkg_dbinv_scoring.apply_exceptions.
 --
--- Prerequisite for attachments: EXECUTE on SYS.DBMS_CRYPTO, which this schema
--- does not currently hold. add_document refuses to store a file it cannot
--- fingerprint rather than keeping an unverifiable attachment, so the grant is a
--- hard prerequisite of the upload feature (and only of that feature).
+-- Prerequisite for attachments: EXECUTE on SYS.DBMS_CRYPTO. add_document refuses
+-- to store a file it cannot fingerprint rather than keeping an unverifiable
+-- attachment, so the grant is a hard prerequisite of the upload feature (and
+-- only of that feature).
+--
+-- This note used to say the schema did not hold that grant. Re-tested on DEV,
+-- 2026-08-20: it does. Check rather than trust the sentence -- a call to
+-- sys.dbms_crypto.hash either returns a digest or raises, and takes a second.
 -- ============================================================================
 
 create or replace package pkg_dbinv_exception as

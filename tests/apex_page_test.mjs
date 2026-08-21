@@ -86,13 +86,48 @@ if (!user || !password) {
 // out loud what it covers, and so a page can be excluded with a reason.
 const PAGES = argOf('pages')
   ? argOf('pages').split(',').map(s => s.trim()).filter(Boolean)
-  : ['1', '20', '30', '31', '40', '70', '71', '90', '10002'];
+  : ['1', '20', '30', '31', '40', '70', '71', '80', '81', '82', '83', '84', '85', '90', '10002'];
 
 // Modal pages cannot be opened by URL. APEX answers "Dialog page N cannot be
 // rendered successfully" whatever the page actually does, which reads as a broken
 // page and hides the real one. They have to be reached the way a user reaches
 // them: open the parent, then follow the link.
-const MODAL_PARENT = { '71': '70', '91': '90' };
+// A route is the click path a user takes: open the first page by URL, then follow
+// a link to each page in turn. One hop is the plain modal case; more than one is
+// for a modal whose parent must itself be pointed at a row first -- editing a
+// group means opening an application, and there is no application until you pick
+// one from the list.
+//
+// Why not pass item values in the URL instead: the pages carry
+// pageAccessProtection: argumentsMustHaveChecksum, so APEX rejects
+//   f?p=100:81:SESSION::::P81_APPLICATION_ID:4
+// with "Contact your application administrator." That is the protection working,
+// not a bug -- and the checksum cannot be computed from outside. Clicking is the
+// only honest route, and it is the one a user takes anyway.
+const ROUTES = {
+  '71': ['70'],
+  '91': ['90'],
+  '82': ['80', '81'],
+  '83': ['80', '81'],
+  '84': ['80', '81'],
+  '85': ['80', '81']
+};
+
+// Click the first link on the current page that targets `page`. Friendly-URL
+// applications do not render a dialog link as f?p=...; they render an action such
+// as  #action$a-dialog-open?url=...&pageId=71&tmpl=modal-dialog  so match on the
+// page id in any of the shapes APEX emits.
+async function clickTo (send, page) {
+  return evalIn(send, `
+    (function () {
+      var re = new RegExp('(pageId=${page}\\\\b)|(:${page}:)|(p${page}_)', 'i');
+      var a = Array.from(document.querySelectorAll('a[href]'))
+        .find(function (x) { return re.test(x.getAttribute('href') || '') || re.test(x.href || ''); });
+      if (!a) return false;
+      a.click();
+      return true;
+    })()`);
+}
 
 // What counts as a broken page. The first entry is the failure that motivated
 // this test.
@@ -251,30 +286,26 @@ try {
   // ---- open each page -----------------------------------------------------
   for (const page of PAGES) {
     try {
-      const parent = MODAL_PARENT[page];
-      if (parent) {
-        // Open the parent, then click the first link that targets this page --
-        // the same route a user takes. The dialog renders into the parent
+      const route = ROUTES[page];
+      if (route) {
+        // Walk the click path a user takes. The dialog renders into the parent
         // document, so everything below still applies.
-        await goto(send, `${baseUrl}/f?p=${appId}:${parent}:${session}`);
-        // Friendly-URL applications do not render a dialog link as f?p=...; they
-        // render an action such as
-        //   #action$a-dialog-open?url=...&pageId=71&tmpl=modal-dialog
-        // so match on the page id in any of the shapes APEX emits.
-        const clicked = await evalIn(send, `
-          (function () {
-            var re = new RegExp('(pageId=${page}\\\\b)|(:${page}:)|(p${page}_)', 'i');
-            var a = Array.from(document.querySelectorAll('a[href]'))
-              .find(function (x) { return re.test(x.getAttribute('href') || '') || re.test(x.href || ''); });
-            if (!a) return false;
-            a.click();
-            return true;
-          })()`);
-        if (!clicked) {
-          record(page, 'skip', 'no link on page ' + parent + ' to open it - nothing to open it from?');
-          continue;
+        await goto(send, `${baseUrl}/f?p=${appId}:${route[0]}:${session}`);
+        const hops = route.slice(1).concat([page]);
+        let reached = true;
+        let from = route[0];
+        for (const hop of hops) {
+          if (!await clickTo(send, hop)) {
+            record(page, 'skip',
+              `no link to page ${hop} on page ${from} - is there a row to click?`);
+            reached = false;
+            break;
+          }
+          // A dialog takes longer to settle than an ordinary navigation.
+          await sleep(hop === page ? 4000 : 3000);
+          from = hop;
         }
-        await sleep(4000);
+        if (!reached) continue;
       } else {
         await goto(send, `${baseUrl}/f?p=${appId}:${page}:${session}`);
       }

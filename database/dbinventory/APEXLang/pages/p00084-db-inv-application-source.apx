@@ -1,0 +1,326 @@
+page 84 (
+    name: DB Inv. - Application Source
+    alias: DB-INV-APPLICATION-SOURCE
+    title: DB Inv. - Application Source
+    appearance {
+        pageMode: modalDialog
+        dialogTemplate: @/modal-dialog
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+        warnOnUnsavedChanges: false
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region source (
+        name: Source repository
+        title: Source repository
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Repositories are kept apart from the document register because a repository is not a document: it has a branch, it changes continuously, and reviewing it means something different from reviewing a PDF.
+        }
+    )
+
+    pageItem P84_SOURCE_ID (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @source
+            slot: regionBody
+        }
+    )
+
+    pageItem P84_APPLICATION_ID (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @source
+            slot: regionBody
+        }
+    )
+
+    pageItem P84_SOURCE_KIND (
+        type: selectList
+        label {
+            label: Kind
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-source-kind
+            displayNullValue: false
+        }
+        layout {
+            sequence: 30
+            region: @source
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+        }
+        validation {
+            valueRequired: true
+        }
+    )
+
+    pageItem P84_REPO_URL (
+        type: textField
+        label {
+            label: Repository URL
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @source
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+            width: 80
+        }
+        validation {
+            valueRequired: true
+            maxLength: 2000
+        }
+        help {
+            helpText: The clone or browse URL, whichever a colleague would need to find the code.
+        }
+    )
+
+    pageItem P84_BRANCH (
+        type: textField
+        label {
+            label: Branch
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @source
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 40
+        }
+        validation {
+            maxLength: 200
+        }
+        help {
+            helpText: Only when the branch carrying what runs in production is not the default one.
+        }
+    )
+
+    pageItem P84_NOTE (
+        type: textarea
+        label {
+            label: Note
+            alignment: right
+        }
+        layout {
+            sequence: 60
+            region: @source
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            height: 2
+        }
+        validation {
+            maxLength: 1000
+        }
+    )
+
+    button cancel (
+        buttonName: CANCEL
+        label: Cancel
+        layout {
+            sequence: 10
+            region: @source
+            slot: close
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: definedByDynamicAction
+        }
+    )
+
+    button remove (
+        buttonName: REMOVE
+        label: Remove
+        layout {
+            sequence: 20
+            region: @source
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+        comments {
+            comments: No confirmation prompt: APEXlang has no property for one, and confirmMessage is rejected as invalid. Tolerable because Remove deactivates rather than deletes, and the journal keeps who did it.
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P84_SOURCE_ID
+        }
+    )
+
+    button save (
+        buttonName: SAVE
+        label: Save
+        layout {
+            sequence: 30
+            region: @source
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+    )
+
+    dynamicAction cancel-dialog (
+        name: Cancel Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: click
+            selectionType: button
+            button: @cancel
+        }
+
+        action native-cancel-dialog (
+            action: cancelDialog
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    process load-source (
+        name: Load Source
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P84_SOURCE_ID is not null then
+                   select s.application_id, s.source_kind, s.repo_url, s.branch, s.note
+                     into :P84_APPLICATION_ID, :P84_SOURCE_KIND, :P84_REPO_URL,
+                          :P84_BRANCH, :P84_NOTE
+                     from ref_application_source s
+                    where s.source_id = :P84_SOURCE_ID;
+                else
+                   :P84_SOURCE_KIND := 'GIT';
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: beforeHeader
+        }
+    )
+
+    process save-source (
+        name: Save Source
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P84_SOURCE_ID is null then
+                   :P84_SOURCE_ID := pkg_dbinv_application.add_source(
+                      p_application_id => :P84_APPLICATION_ID,
+                      p_repo_url       => :P84_REPO_URL,
+                      p_source_kind    => :P84_SOURCE_KIND,
+                      p_branch         => :P84_BRANCH,
+                      p_note           => :P84_NOTE );
+                else
+                   -- Written directly rather than through the API: from a form,
+                   -- clearing a field is a deliberate act and must be able to blank
+                   -- it, which an nvl-based update cannot do. The journal is written
+                   -- by the trigger either way.
+                   pkg_dbinv_application.set_reason('edited from the source screen');
+                   update ref_application_source
+                      set source_kind = :P84_SOURCE_KIND,
+                          repo_url    = :P84_REPO_URL,
+                          branch      = :P84_BRANCH,
+                          note        = :P84_NOTE
+                    where source_id = :P84_SOURCE_ID;
+                   pkg_dbinv_application.set_reason(null);
+                end if;
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
+        successMessage {
+            successMessage: Repository saved
+        }
+    )
+
+    process remove-source (
+        name: Remove Source
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_application.remove_source(
+                   p_source_id => :P84_SOURCE_ID,
+                   p_reason    => 'removed from the source screen' );
+                ```
+        }
+        execution {
+            sequence: 30
+        }
+        serverSideCondition {
+            whenButtonPressed: @remove
+        }
+        successMessage {
+            successMessage: Repository removed - deactivated, not deleted, so the history survives
+        }
+    )
+
+    process close-source-dialog (
+        name: Close Source Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+    )
+
+)

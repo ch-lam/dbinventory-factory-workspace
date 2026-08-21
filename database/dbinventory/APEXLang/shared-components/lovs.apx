@@ -1,3 +1,132 @@
+lov application-attachable-entity (
+    name: APPLICATION_ATTACHABLE_ENTITY
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Host: ' || h.hostname || ' (' || h.platform || ')' d,
+                   'HOST:' || h.host_id r,
+                   1 g, h.hostname s
+              from dim_host h
+            union all
+            select 'Instance: ' || i.instance_name || ' on ' || h.hostname,
+                   'INSTANCE:' || i.instance_id,
+                   2, i.instance_name
+              from dim_instance i
+              join dim_host h on h.host_id = i.host_id
+            union all
+            select 'Database: ' || d.db_name || ' on ' || i.instance_name,
+                   'DATABASE:' || d.database_id,
+                   3, d.db_name
+              from dim_database d
+              join dim_instance i on i.instance_id = d.instance_id
+             order by 3, 4
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-criticality (
+    name: APPLICATION_CRITICALITY
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Critical' d, 'CRITICAL' r, 1 o from dual
+            union all select 'High', 'HIGH', 2 from dual
+            union all select 'Standard', 'STANDARD', 3 from dual
+            union all select 'Low', 'LOW', 4 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-doc-kind (
+    name: APPLICATION_DOC_KIND
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Procedure' d, 'PROCEDURE' r, 1 o from dual
+            union all select 'Runbook', 'RUNBOOK', 2 from dual
+            union all select 'Script', 'SCRIPT', 3 from dual
+            union all select 'Diagram', 'DIAGRAM', 4 from dual
+            union all select 'Manual', 'MANUAL', 5 from dual
+            union all select 'Contract', 'CONTRACT', 6 from dual
+            union all select 'Mail', 'MAIL', 7 from dual
+            union all select 'Other', 'OTHER', 8 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-source-kind (
+    name: APPLICATION_SOURCE_KIND
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Git' d, 'GIT' r, 1 o from dual
+            union all select 'Subversion', 'SVN', 2 from dual
+            union all select 'Archive', 'ARCHIVE', 3 from dual
+            union all select 'Other', 'OTHER', 4 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-group-type (
+    name: APPLICATION_GROUP_TYPE
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select t.label d, t.group_type_code r, t.sort_order o
+              from ref_application_group_type t
+             where t.active = 1
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-lifecycle (
+    name: APPLICATION_LIFECYCLE
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Project' d, 'PROJECT' r, 1 o from dual
+            union all select 'Active', 'ACTIVE', 2 from dual
+            union all select 'Decommissioning', 'DECOMMISSIONING', 3 from dual
+            union all select 'Retired', 'RETIRED', 4 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
 lov discovery-environment (
     name: DISCOVERY_ENVIRONMENT
     source {

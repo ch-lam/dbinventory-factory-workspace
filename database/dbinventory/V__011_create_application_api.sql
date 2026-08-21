@@ -277,7 +277,7 @@ create or replace package body pkg_dbinv_application as
              description      = nvl(p_description, description),
              criticality      = nvl(upper(p_criticality), criticality),
              lifecycle_status = nvl(upper(p_lifecycle_status), lifecycle_status),
-             updated_by       = user,
+             updated_by       = nvl(sys_context('APEX$SESSION','APP_USER'), user),
              updated_date     = sysdate
        where application_id = p_application_id;
 
@@ -294,7 +294,7 @@ create or replace package body pkg_dbinv_application as
       set_reason(p_reason);
 
       update ref_application
-         set active = 0, updated_by = user, updated_date = sysdate
+         set active = 0, updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
        where application_id = p_application_id;
 
       set_reason(null);
@@ -312,10 +312,10 @@ create or replace package body pkg_dbinv_application as
 
       update ref_application
          set last_review_date = trunc(sysdate),
-             last_review_by   = user,
+             last_review_by   = nvl(sys_context('APEX$SESSION','APP_USER'), user),
              review_due_date  = case when p_next_months is null then null
                                      else add_months(trunc(sysdate), p_next_months) end,
-             updated_by       = user,
+             updated_by       = nvl(sys_context('APEX$SESSION','APP_USER'), user),
              updated_date     = sysdate
        where application_id = p_application_id;
 
@@ -369,7 +369,7 @@ create or replace package body pkg_dbinv_application as
              ldap_group_name = nvl(p_ldap_group_name, ldap_group_name),
              external_ref    = nvl(p_external_ref, external_ref),
              note            = nvl(p_note, note),
-             updated_by       = user,
+             updated_by       = nvl(sys_context('APEX$SESSION','APP_USER'), user),
              updated_date     = sysdate
        where group_id = p_group_id;
 
@@ -388,7 +388,7 @@ create or replace package body pkg_dbinv_application as
       -- Deactivated, not deleted. Knowing who used to be responsible is most of
       -- the value of a contact registry once something has gone wrong.
       update ref_application_group
-         set active = 0, updated_by = user, updated_date = sysdate
+         set active = 0, updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
        where group_id = p_group_id;
 
       if sql%rowcount = 0 then
@@ -499,10 +499,10 @@ create or replace package body pkg_dbinv_application as
 
       update ref_application_document
          set last_review_date = trunc(sysdate),
-             last_review_by   = user,
+             last_review_by   = nvl(sys_context('APEX$SESSION','APP_USER'), user),
              review_due_date  = case when p_next_months is null then null
                                      else add_months(trunc(sysdate), p_next_months) end,
-             updated_by       = user,
+             updated_by       = nvl(sys_context('APEX$SESSION','APP_USER'), user),
              updated_date     = sysdate
        where document_id = p_document_id;
 

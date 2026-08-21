@@ -51,6 +51,26 @@ end;
 
 
 -- ============================================================
+-- ============================================================
+-- Who did it: never `user`, always the APEX session user.
+-- ------------------------------------------------------------
+-- Every audit column here defaults to
+--     nvl(sys_context('APEX$SESSION','APP_USER'), user)
+-- and not to `user`. Through APEX the database session runs as
+-- APEX_PUBLIC_USER, the pool account shared by every end user, so `user`
+-- records the same value whoever acted -- which is to say it records nothing.
+-- Outside APEX the context is empty and it falls back to `user`, which is then
+-- correct: a script really is run by the schema.
+--
+-- Found in production data: an application created through the screen was
+-- attributed to APEX_PUBLIC_USER. The same defect made the segregation-of-duties
+-- constraint on derogations meaningless, since author and approver both resolved
+-- to that one account.
+--
+-- ref_app_release.installed_by is the deliberate exception: it dates a
+-- deployment run by a script, so the schema user is the right answer there.
+-- ============================================================
+
 -- ref_application
 -- ============================================================
 create table ref_application (
@@ -64,7 +84,7 @@ create table ref_application (
    last_review_date date,
    last_review_by   varchar2(100 char),
    active           number(1) default 1 not null,
-   created_by       varchar2(100 char) default on null user not null,
+   created_by       varchar2(100 char) default on null nvl(sys_context('APEX$SESSION','APP_USER'), user) not null,
    created_date     date default on null sysdate not null,
    updated_by       varchar2(100 char),
    updated_date     date,
@@ -134,7 +154,7 @@ create table ref_application_group (
    external_ref    varchar2(200 char),
    note            varchar2(1000 char),
    active          number(1) default 1 not null,
-   created_by      varchar2(100 char) default on null user not null,
+   created_by      varchar2(100 char) default on null nvl(sys_context('APEX$SESSION','APP_USER'), user) not null,
    created_date    date default on null sysdate not null,
    updated_by      varchar2(100 char),
    updated_date    date,
@@ -191,7 +211,7 @@ create table ref_application_entity (
    entity_id      number not null,
    note           varchar2(400 char),
    active         number(1) default 1 not null,
-   created_by     varchar2(100 char) default on null user not null,
+   created_by     varchar2(100 char) default on null nvl(sys_context('APEX$SESSION','APP_USER'), user) not null,
    created_date   date default on null sysdate not null,
    constraint ref_app_ent_pk primary key ( app_entity_id ),
    constraint ref_app_ent_uk unique ( application_id, entity_type, entity_id ),
@@ -242,7 +262,7 @@ create table ref_application_document (
    last_review_date date,
    last_review_by   varchar2(100 char),
    active           number(1) default 1 not null,
-   uploaded_by      varchar2(100 char) default on null user not null,
+   uploaded_by      varchar2(100 char) default on null nvl(sys_context('APEX$SESSION','APP_USER'), user) not null,
    uploaded_date    date default on null sysdate not null,
    updated_by       varchar2(100 char),
    updated_date     date,
@@ -294,7 +314,7 @@ create table ref_application_source (
    branch         varchar2(200 char),
    note           varchar2(1000 char),
    active         number(1) default 1 not null,
-   created_by     varchar2(100 char) default on null user not null,
+   created_by     varchar2(100 char) default on null nvl(sys_context('APEX$SESSION','APP_USER'), user) not null,
    created_date   date default on null sysdate not null,
    constraint ref_app_src_pk primary key ( source_id ),
    constraint ref_app_src_app_fk foreign key ( application_id )
@@ -332,7 +352,7 @@ create table ref_application_event (
    event_type     varchar2(30 char) not null,
    subject_ref    varchar2(200 char),
    event_date     date default on null sysdate not null,
-   event_by       varchar2(100 char) default on null user not null,
+   event_by       varchar2(100 char) default on null nvl(sys_context('APEX$SESSION','APP_USER'), user) not null,
    note           varchar2(1000 char),
    old_value      varchar2(1000 char),
    new_value      varchar2(1000 char),

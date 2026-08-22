@@ -9,3 +9,9 @@
 @V__009_initial_data.sql
 @V__010_create_application_model.sql
 @V__011_create_application_api.sql
+@V__012_fix_audit_user_defaults.sql
+
+-- Last, and not optional: a package body that fails to compile does not stop the
+-- run above -- SQLcl prints the errors and carries on to "Commit complete."
+-- This turns that into an exit code.
+@T_003_no_invalid_objects.sql

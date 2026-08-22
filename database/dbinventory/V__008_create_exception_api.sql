@@ -73,7 +73,7 @@ create or replace package pkg_dbinv_exception as
    -- Approves. Refuses when the approver is the author.
    procedure approve (
       p_exception_id number,
-      p_approver     varchar2 default user,
+      p_approver     varchar2 default nvl(sys_context('APEX$SESSION','APP_USER'), user),
       p_note         varchar2 default null
    );
 
@@ -237,7 +237,13 @@ create or replace package body pkg_dbinv_exception as
       l_row       ref_exception%rowtype;
       l_scope_old varchar2(1000 char);
       l_scope_new varchar2(1000 char);
-      l_material  boolean := false;
+      -- A flag, not a BOOLEAN, and the distinction is not cosmetic: this variable
+      -- is read inside the UPDATE below. SQL had no boolean type before 23ai, so a
+      -- PL/SQL BOOLEAN there compiles on a 23ai development database and fails on
+      -- anything older with ORA-00920: invalid relational operator. It was found
+      -- at a site on an earlier release, on a package that had compiled cleanly
+      -- here for weeks. Keep it a character flag.
+      l_material  varchar2(1 char) := 'N';
    begin
       select * into l_row from ref_exception where exception_id = p_exception_id for update;
 
@@ -259,7 +265,7 @@ create or replace package body pkg_dbinv_exception as
          or ( p_end_date is not null
               and ( l_row.end_date is null or trunc(p_end_date) > l_row.end_date ) )
       then
-         l_material := true;
+         l_material := 'Y';
       end if;
 
       update ref_exception
@@ -272,10 +278,10 @@ create or replace package body pkg_dbinv_exception as
              -- A material amendment on an approved derogation sends it back for
              -- approval: otherwise a derogation accepted for one case could be
              -- silently stretched to another while keeping its signature.
-             status         = case when l_material and status = 'APPROVED' then 'SUBMITTED' else status end,
-             approved_by    = case when l_material and status = 'APPROVED' then null else approved_by end,
-             approval_date  = case when l_material and status = 'APPROVED' then null else approval_date end,
-             updated_by     = user,
+             status         = case when l_material = 'Y' and status = 'APPROVED' then 'SUBMITTED' else status end,
+             approved_by    = case when l_material = 'Y' and status = 'APPROVED' then null else approved_by end,
+             approval_date  = case when l_material = 'Y' and status = 'APPROVED' then null else approval_date end,
+             updated_by     = nvl(sys_context('APEX$SESSION','APP_USER'), user),
              updated_date   = sysdate
        where exception_id = p_exception_id
       returning item_key || ' / ' || observed_value
@@ -284,7 +290,7 @@ create or replace package body pkg_dbinv_exception as
         into l_scope_new;
 
       journal(p_exception_id, 'AMENDED',
-              case when l_material then 'Material amendment: approval reset. ' else '' end || p_note,
+              case when l_material = 'Y' then 'Material amendment: approval reset. ' else '' end || p_note,
               l_scope_old, l_scope_new);
    end amend;
 
@@ -296,8 +302,8 @@ create or replace package body pkg_dbinv_exception as
    begin
       require_status(p_exception_id, 'DRAFT,REJECTED');
       update ref_exception
-         set status = 'SUBMITTED', submitted_by = user, submitted_date = sysdate,
-             rejected_reason = null, updated_by = user, updated_date = sysdate
+         set status = 'SUBMITTED', submitted_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), submitted_date = sysdate,
+             rejected_reason = null, updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
        where exception_id = p_exception_id;
       journal(p_exception_id, 'SUBMITTED', p_note);
    end submit;
@@ -305,7 +311,7 @@ create or replace package body pkg_dbinv_exception as
 
    procedure approve (
       p_exception_id number,
-      p_approver     varchar2 default user,
+      p_approver     varchar2 default nvl(sys_context('APEX$SESSION','APP_USER'), user),
       p_note         varchar2 default null
    ) is
       l_created_by ref_exception.created_by%type;
@@ -324,7 +330,7 @@ create or replace package body pkg_dbinv_exception as
       update ref_exception
          set status = 'APPROVED', approved_by = p_approver, approval_date = sysdate,
              review_due_date = nvl(review_due_date, add_months(trunc(sysdate), c_review_months)),
-             updated_by = user, updated_date = sysdate
+             updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
        where exception_id = p_exception_id;
 
       journal(p_exception_id, 'APPROVED', p_note, null, 'approved by ' || p_approver);
@@ -336,7 +342,7 @@ create or replace package body pkg_dbinv_exception as
       require_status(p_exception_id, 'SUBMITTED');
       update ref_exception
          set status = 'REJECTED', rejected_reason = p_reason,
-             updated_by = user, updated_date = sysdate
+             updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
        where exception_id = p_exception_id;
       journal(p_exception_id, 'REJECTED', p_reason);
    end reject;
@@ -346,9 +352,9 @@ create or replace package body pkg_dbinv_exception as
    begin
       require_status(p_exception_id, 'DRAFT,SUBMITTED,APPROVED');
       update ref_exception
-         set status = 'REVOKED', revoked_by = user, revoked_date = sysdate,
+         set status = 'REVOKED', revoked_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), revoked_date = sysdate,
              revoke_reason = p_reason, active = 0,
-             updated_by = user, updated_date = sysdate
+             updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
        where exception_id = p_exception_id;
       journal(p_exception_id, 'REVOKED', p_reason);
    end revoke_exception;
@@ -368,7 +374,7 @@ create or replace package body pkg_dbinv_exception as
       l_next := nvl(p_next_review, add_months(trunc(sysdate), c_review_months));
       update ref_exception
          set last_review_date = trunc(sysdate), review_due_date = l_next,
-             updated_by = user, updated_date = sysdate
+             updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
        where exception_id = p_exception_id;
       journal(p_exception_id, 'REVIEWED', p_note, null,
               'next review ' || to_char(l_next, 'YYYY-MM-DD'));

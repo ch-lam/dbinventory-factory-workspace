@@ -1,0 +1,147 @@
+{
+  "_comment": [
+    "Définition du parc fictif. Tout ce qui rend le jeu de données reproductible",
+    "est ici : la graine, les dates, les effectifs et la part d'écarts par règle.",
+    "",
+    "Les dates sont FIGÉES et non calculées depuis aujourd'hui. L'ETL reçoit",
+    "snapshotDate explicitement : sans cela, la fraîcheur des sauvegardes, les",
+    "fins de support et data_age_days dériveraient d'un jour à l'autre et le",
+    "fichier de résultats attendus deviendrait faux tout seul.",
+    "",
+    "defects : part de la population évaluée qui doit être EN ÉCART, règle par",
+    "règle. Une valeur strictement entre 0 et 1 garantit que la règle produit",
+    "des constats des deux polarités -- une règle qui ne produit qu'un seul",
+    "verdict n'est pas testée."
+  ],
+
+  "seed": 20260901,
+  "collectDate": "2026-09-01",
+  "snapshotDate": "2026-09-01",
+
+  "org": {
+    "name": "Groupe Hospitalier Meridian",
+    "domain": "ghm.lan",
+    "adDomain": "MERIDIAN"
+  },
+
+  "oracle": {
+    "hosts": 20,
+    "databases": 25,
+    "cdbShare": 0.32,
+    "pdbsPerCdb": [1, 3],
+    "versions": ["19.3.0.0.0", "19.9.0.0.0", "19.13.0.0.0", "19.20.0.0.0", "19.31.0.0.0"],
+    "versionWeights": [1, 3, 12, 6, 3],
+    "licenses": ["CPU", "SAP"],
+    "tablespacesPerDb": [4, 9],
+    "usersPerDb": [8, 22]
+  },
+
+  "mssql": {
+    "hosts": 55,
+    "instances": 65,
+    "databasesPerInstance": [1, 7],
+    "versions": [
+      { "build": "16.0.4255.1", "edition": "Standard Edition (64-bit)",   "weight": 6 },
+      { "build": "16.0.4215.2", "edition": "Standard Edition (64-bit)",   "weight": 4 },
+      { "build": "16.0.4225.2", "edition": "Express Edition (64-bit)",    "weight": 4 },
+      { "build": "15.0.4470.1", "edition": "Standard Edition (64-bit)",   "weight": 8 },
+      { "build": "15.0.4365.2", "edition": "Standard Edition (64-bit)",   "weight": 6 },
+      { "build": "15.0.4280.7", "edition": "Express Edition (64-bit)",    "weight": 5 },
+      { "build": "14.0.3530.2", "edition": "Standard Edition (64-bit)",   "weight": 6 },
+      { "build": "14.0.3465.1", "edition": "Express Edition (64-bit)",    "weight": 5 },
+      { "build": "13.0.6490.1", "edition": "Standard Edition (64-bit)",   "weight": 4 },
+      { "build": "13.0.5893.48", "edition": "Standard Edition (64-bit)",  "weight": 3 },
+      { "build": "12.0.6449.1", "edition": "Standard Edition (64-bit)",   "weight": 2 },
+      { "build": "11.0.7512.11", "edition": "Standard Edition (64-bit)",  "weight": 1 },
+      { "build": "17.0.4055.5", "edition": "Developer Edition (64-bit)",  "weight": 2 }
+    ],
+    "licenses": ["ENTERPRISE", "STANDARD", "FREE", "PROVIDER"],
+    "namedInstanceShare": 0.28
+  },
+
+  "postgres": {
+    "hosts": 4,
+    "databasesPerHost": [1, 3],
+    "versions": ["14.12", "15.8", "16.4"]
+  },
+
+  "environments": {
+    "PRD": 0.55,
+    "TST": 0.22,
+    "DEV": 0.15,
+    "UAT": 0.08
+  },
+
+  "defects": {
+    "_comment": "part de la population évaluée qui est en écart",
+
+    "MSSQL_CFG_ADHOC_DIST_QUERIES":    0.18,
+    "MSSQL_CFG_CLR_ENABLED":           0.22,
+    "MSSQL_CFG_CLR_STRICT_SECURITY":   0.30,
+    "MSSQL_CFG_CROSS_DB_CHAINING":     0.12,
+    "MSSQL_CFG_DATABASE_MAIL_XPS":     0.34,
+    "MSSQL_CFG_DEFAULT_TRACE":         0.09,
+    "MSSQL_CFG_OLE_AUTOMATION":        0.15,
+    "MSSQL_CFG_REMOTE_ACCESS":         0.46,
+    "MSSQL_CFG_REMOTE_ADMIN_CONN":     0.20,
+    "MSSQL_CFG_SCAN_STARTUP_PROCS":    0.26,
+    "MSSQL_CFG_XP_CMDSHELL":           0.11,
+    "MSSQL_REG_HIDE_INSTANCE":         0.62,
+    "MSSQL_REG_FORCE_ENCRYPTION":      0.55,
+    "MSSQL_REG_NUM_ERRORLOG_FILES":    0.40,
+    "MSSQL_REG_TCP_PORT":              0.28,
+    "MSSQL_DBPROP_AUTO_CLOSE_OFF":     0.06,
+    "MSSQL_DBPROP_TRUSTWORTHY_OFF":    0.05,
+    "MSSQL_AUDIT_LEVEL_LOGIN_FAILURES": 0.24,
+    "MSSQL_ENC_STRONG_ALGORITHM":      0.30,
+    "MSSQL_GROUP_NO_LOCAL_PERMISSION": 0.14,
+    "MSSQL_GUEST_NO_CONNECT":          0.10,
+    "MSSQL_LOGIN_SYSADMIN_EXPIRATION": 0.35,
+    "MSSQL_LOGIN_POLICY_CHECKED":      0.28,
+    "MSSQL_SA_RENAMED":                0.70,
+    "MSSQL_SA_DISABLED":               0.45,
+    "MSSQL_AUTH_WINDOWS_ONLY":         0.60,
+    "MSSQL_NO_ORPHANED_USER":          0.16,
+    "MSSQL_PUBLIC_DEFAULT_PERMISSION": 0.12,
+    "MSSQL_SRVAUDIT_ACTION_GROUP_ON":  0.38,
+    "MSSQL_STORAGE_PCT_USED":          0.08,
+    "MSSQL_BACKUP_FRESHNESS_SLA":      0.07,
+
+    "ORACLE_PRM_O7_DICT_ACCESS":        0.08,
+    "ORACLE_PRM_REMOTE_OS_AUTHENT":     0.12,
+    "ORACLE_PRM_REMOTE_OS_ROLES":       0.08,
+    "ORACLE_PRM_OS_ROLES":              0.08,
+    "ORACLE_PRM_UTL_FILE_DIR":          0.16,
+    "ORACLE_PRM_AUDIT_TRAIL":           0.20,
+    "ORACLE_PRM_AUDIT_SYS_OPERATIONS":  0.28,
+    "ORACLE_PRM_UNIFIED_AUDITING":      0.64,
+    "ORACLE_PRM_RESOURCE_LIMIT":        0.24,
+    "ORACLE_PRM_SEC_CASE_SENSITIVE":    0.16,
+    "ORACLE_PRM_SEC_MAX_FAILED_LOGIN":  0.36,
+    "ORACLE_PRM_SEC_BANNER":            0.44,
+    "ORACLE_PRM_SEC_PROTO_ERR_TRACE":   0.32,
+    "ORACLE_PRM_SEC_PROTO_ERR_FURTHER": 0.40,
+    "ORACLE_PRM_SYS_LOGON_DELAY":       0.52,
+    "ORACLE_PRF_FAILED_LOGIN_ATTEMPTS":    0.22,
+    "ORACLE_PRF_PASSWORD_LIFE_TIME":       0.30,
+    "ORACLE_PRF_PASSWORD_LOCK_TIME":       0.18,
+    "ORACLE_PRF_PASSWORD_GRACE_TIME":      0.26,
+    "ORACLE_PRF_PASSWORD_REUSE_MAX":       0.34,
+    "ORACLE_PRF_PASSWORD_REUSE_TIME":      0.34,
+    "ORACLE_PRF_PASSWORD_VERIFY_FUNCTION": 0.42,
+    "ORACLE_PRF_SESSIONS_PER_USER":        0.20,
+    "ORACLE_PRF_INACTIVE_ACCOUNT_TIME":    0.38,
+    "ORACLE_NO_DEFAULT_PROFILE":        0.18,
+    "ORACLE_NO_DEFAULT_PASSWORD":       0.16,
+    "ORACLE_AUDIT_CIS_POLICY_ON":       0.24,
+    "ORACLE_TABLESPACE_ENCRYPTED":      0.46,
+    "ORACLE_ADMIN_PWFILE_SYS_ONLY":     0.30,
+    "ORACLE_NETWORK_ENCRYPTION_ON":     0.56,
+    "ORACLE_NO_USERMIG_TABLE":          0.12,
+    "ORACLE_HIGH_SYS_PRIVS_GRANT":      0.40,
+    "ORACLE_HIGH_ROLE_PRIVS_GRANT":     0.36,
+    "ORACLE_HIGH_TAB_PRIVS_PUBLIC":     0.28,
+    "ORACLE_STORAGE_PCT_USED":          0.09,
+    "ORACLE_BACKUP_FRESHNESS_SLA":      0.12
+  }
+}

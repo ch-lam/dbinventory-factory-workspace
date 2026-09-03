@@ -1,0 +1,4 @@
+"pgsrv-tst-01.ghm.lan","TST","FREE","15.8","5432","/var/lib/postgresql/data","2026-08-14 06:12:31","100","2048","replica","off","PRIMARY"
+"pgsrv-tst-02.ghm.lan","TST","FREE","15.8","5432","/var/lib/postgresql/data","2026-08-14 06:12:31","100","2048","replica","on","PRIMARY"
+"pgsrv-tst-03.ghm.lan","TST","FREE","14.12","5432","/var/lib/postgresql/data","2026-08-14 06:12:31","100","2048","replica","off","PRIMARY"
+"pgsrv-prd-04.ghm.lan","PRD","FREE","15.8","5432","/var/lib/postgresql/data","2026-08-14 06:12:31","100","4096","replica","on","PRIMARY"

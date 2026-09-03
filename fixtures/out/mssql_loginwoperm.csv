@@ -1,0 +1,8 @@
+"COLL_ID_20260901","sqlsrv-tst-01.ghm.lan","SQLSRV-TST-01","legacy_sqlsrvtst01","SQL_LOGIN","1","0","0","2023-05-11 08:00:00","2026-09-01 00:00:00"
+"COLL_ID_20260901","sqlsrv-dev-33.ghm.lan","SQLSRV-DEV-33","legacy_sqlsrvdev33","SQL_LOGIN","1","0","0","2023-05-11 08:00:00","2026-09-01 00:00:00"
+"COLL_ID_20260901","sqlsrv-prd-38.ghm.lan","SQLSRV-PRD-38","legacy_sqlsrvprd38","SQL_LOGIN","1","0","0","2023-05-11 08:00:00","2026-09-01 00:00:00"
+"COLL_ID_20260901","sqlsrv-prd-41.ghm.lan","SQLSRV-PRD-41","legacy_sqlsrvprd41","SQL_LOGIN","1","0","0","2023-05-11 08:00:00","2026-09-01 00:00:00"
+"COLL_ID_20260901","sqlsrv-uat-54.ghm.lan","SQLSRV-UAT-54","legacy_sqlsrvuat54","SQL_LOGIN","1","0","0","2023-05-11 08:00:00","2026-09-01 00:00:00"
+"COLL_ID_20260901","sqlsrv-prd-02.ghm.lan","SQLSRV-PRD-02/FINANCE","legacy_sqlsrvprd02","SQL_LOGIN","1","0","0","2023-05-11 08:00:00","2026-09-01 00:00:00"
+"COLL_ID_20260901","sqlsrv-prd-05.ghm.lan","SQLSRV-PRD-05/METIER","legacy_sqlsrvprd05","SQL_LOGIN","1","0","0","2023-05-11 08:00:00","2026-09-01 00:00:00"
+"COLL_ID_20260901","sqlsrv-prd-09.ghm.lan","SQLSRV-PRD-09/SQLEXPRESS","legacy_sqlsrvprd09","SQL_LOGIN","1","0","0","2023-05-11 08:00:00","2026-09-01 00:00:00"

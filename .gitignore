@@ -23,3 +23,15 @@ ResourceUnit_old
 # ignored, and the asymmetry is intentional: APEXLang/validate.sh executes
 # tools/apexctl.mjs from it. A dependency you run gets pinned and committed; one
 # you only read gets installed.
+
+# Copies de travail deposees par fixtures/load_fixtures.sh pour que les
+# load_info_*.sh les trouvent en ../collect. La source versionnee est
+# fixtures/out ; ces copies-la sont jetables.
+setup/inventory/dbInventory/collect/*.csv
+
+# Sorties d'execution des load_info_*.sh : le journal de chaque chargement, et
+# l'archive horodatee des CSV consommes que les loaders deposent apres coup.
+# C'est de la trace de run, pas de la source ; sur le serveur de production elle
+# n'est pas versionnee non plus.
+setup/inventory/dbInventory/bin/logs/
+setup/inventory/dbInventory/collect/[0-9]*/

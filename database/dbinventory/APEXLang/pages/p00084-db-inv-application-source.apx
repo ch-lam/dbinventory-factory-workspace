@@ -22,7 +22,7 @@ page 84 (
         type: staticContent
         layout {
             sequence: 10
-            slot: body
+            slot: contentBody
         }
         appearance {
             template: @/standard

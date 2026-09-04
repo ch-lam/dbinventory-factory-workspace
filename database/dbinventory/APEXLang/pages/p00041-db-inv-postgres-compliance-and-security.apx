@@ -587,13 +587,14 @@ page 41 (
 
     )
 
-    region pg-versions (
-        name: PostgreSQL : Versions
-        title: PostgreSQL : Versions
+    region pg-support-status (
+        name: PostgreSQL : Support Status
+        title: PostgreSQL : Support Status
         type: chart
         layout {
             sequence: 70
             slot: body
+            startNewRow: false
             columnSpan: 4
         }
         appearance {
@@ -620,8 +621,8 @@ page 41 (
             position: bottom
         }
 
-        series pg-versions (
-            name: PostgreSQL Major Versions
+        series pg-support-status (
+            name: PostgreSQL Support Status
             execution {
                 sequence: 10
             }
@@ -629,24 +630,33 @@ page 41 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                      -- Grouped by MAJOR version, unlike the Oracle page which
-                      -- groups by release update. Since release 10 PostgreSQL
-                      -- numbers a major with a SINGLE component (16.4 is major 16,
-                      -- minor 4), and that is also the grain of the end-of-support
-                      -- calendar in product_support -- so this donut and
-                      -- PG_ENGINE_SUPPORTED read the version the same way, and a
-                      -- slice here maps to one support date rather than several.
-                      --
-                      -- Ordered numerically, not alphabetically: as text, '9'
-                      -- sorts after '16' and would put the oldest cluster last.
-                      With PG_MAJOR As
-                        ( select nvl( regexp_substr( engine_version, '^\d+' ), 'Unknown' ) major_version
-                            from dim_instance where platform = 'POSTGRES' )
-                      select major_version as label,
-                             count(*) as value
-                        from PG_MAJOR
-                       group by major_version
-                       order by to_number( regexp_substr( major_version, '\d+' ) ) nulls last
+                    -- Lit fact_compliance et non fact_control_finding : c'est le
+                    -- verdict roule au grain instance, qui est ce que la page
+                    -- montre. has_exception porte le support etendu, remonte par
+                    -- load_findings_lifecycle via is_norm_exception -- une
+                    -- condition de l'editeur, pas une derogation accordee ici.
+                    --
+                    -- 'Not assessed' nomme les instances sans verdict de cycle de
+                    -- vie, c'est-a-dire celles dont la version est absente de
+                    -- product_support. Sans ce libelle la tranche existe quand
+                    -- meme, sans etiquette.
+                    With SUP As ( select i.instance_name,
+                                         case when fc.control_code is null then 'Not assessed'
+                                              when fc.is_compliant = 0    then 'Out of support'
+                                              when fc.has_exception = 1   then 'Extended support'
+                                              else 'Supported'
+                                         end support_status
+                                    from dim_instance i
+                                    left join fact_compliance fc
+                                      on fc.entity_type = 'INSTANCE'
+                                     and fc.entity_id = i.instance_id
+                                     and fc.control_code = 'POSTGRES_OUT_OF_SUPPORT'
+                                     and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                                   where i.platform = 'POSTGRES' )
+                    select count(distinct instance_name) value,
+                           support_status label
+                      from SUP
+                     group by support_status
                     ```
             }
             columnMapping {
@@ -846,7 +856,7 @@ page 41 (
             ]
         }
         comments {
-            comments: The Oracle page notes here that it could not carry over the MSSQL support-status donut, ORACLE_OUT_OF_SUPPORT having no rule behind it. PostgreSQL does not have that problem - PG_ENGINE_SUPPORTED is evaluated against a real calendar - but the support state is already legible on the Versions donut beside it, where each slice is exactly one support date. Keeping this slot on the by-control breakdown says something the other charts do not.
+            comments: Third of the three charts of the band, and the only one that answers "where". Support Status says whether the estate is supported, the severity donut how bad the deviations are, and this one which control carries them -- a control holding a thousand findings is fixed by one campaign, not server by server.
         }
         chart {
             type: bar

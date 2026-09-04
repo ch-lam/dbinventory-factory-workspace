@@ -14,7 +14,7 @@ page 31 (
         formAutoComplete: false
     }
 
-    region employees_1 (
+    region mssql-noncompliance (
         name: Non Compliance Issues
         title: Non Compliance Issues
         type: classicReport
@@ -594,13 +594,14 @@ page 31 (
 
     )
 
-    region mssql-versions_1 (
-        name: MSSQL : Versions
-        title: MSSQL : Versions
+    region mssql-noncompliance-by-control (
+        name: MSSQL : Open Non Compliance by Control
+        title: MSSQL : Open Non Compliance by Control
         type: chart
         layout {
-            sequence: 70
+            sequence: 80
             slot: body
+            startNewRow: false
             columnSpan: 4
         }
         appearance {
@@ -612,37 +613,67 @@ page 31 (
                 t-Region--scrollBody
             ]
         }
+        comments {
+            comments: Third of the three charts of the band, and the only one that answers "where". Support Status says whether the estate is supported, the severity donut how bad the deviations are, and this one which control carries them -- a control holding a thousand findings is fixed by one campaign, not server by server.
+        }
         chart {
-            type: donut
+            type: bar
         }
-        settings {
-            pieSelectionEffect: highlightAndExplode
-        }
-        value {
-            format: decimal
-            decimalPlaces: 0
-            formatScaling: none
+        chartAppearance {
+            orientation: horizontal
         }
         legend {
             position: bottom
         }
 
-        series mssql-versions (
-            name: MSSQL Versions
+        series mssql-noncompliance-by-control (
+            name: Open Findings by Control
             execution {
                 sequence: 10
             }
             source {
+                location: localDatabase
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    With SQL_VERSIONS As
-                      ( select decode( substr( engine_version, 1, instr( engine_version, '.')-1), 10, 'SQL 2008/2008 R2', 11, 'SQL 2012', 12, 'SQL 2014', 13, 'SQL 2016', 14, 'SQL 2017', 15, 'SQL 2019', 16, 'SQL 2022', 17, 'SQL 2025', 'Unknown Yet') SQL_VERSION
-                         from dim_instance where platform = 'MSSQL' )
-                    select SQL_VERSION as label,
+                    -- Where the problem is, as opposed to how bad it is (the
+                    -- severity chart) or how old the estate is (the release
+                    -- update chart). A control carrying a thousand findings is
+                    -- fixed by one campaign, not instance by instance, and that
+                    -- is a different decision from chasing the worst server.
+                    --
+                    -- Labelled with ref_control.title, not the control code:
+                    -- "Engine cumulative update level" reads, MSSQL_PATCH_LEVEL
+                    -- does not. Horizontal bars because the spread is wide --
+                    -- from about a thousand down to a few dozen -- and a donut
+                    -- cannot be read at that ratio.
+                    --
+                    -- "Open" means what it means on the severity chart beside
+                    -- it: a derogated finding is not a campaign to run. Without
+                    -- these two predicates the bar would keep counting findings
+                    -- the RSSI has already signed off.
+                    select rc.title as label,
                            count(*) as value
-                      from SQL_VERSIONS
-                     group by SQL_VERSION order by value desc
+                      from fact_control_finding f
+                      join ref_control_rule r
+                        on r.rule_code = f.rule_code
+                       and r.active = 1
+                      join ref_control rc
+                        on rc.control_code = r.control_code
+                       and rc.score_domain = 'SECURITY'
+                       and rc.active = 1
+                      join v_entity_ancestry a
+                        on a.entity_type = f.entity_type
+                       and a.entity_id = f.entity_id
+                      join dim_instance i
+                        on i.instance_id = a.instance_id
+                     where i.platform = 'MSSQL'
+                       and f.is_compliant = 0
+                       and f.exception_id is null
+                       and f.is_norm_exception = 0
+                       and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+                     group by rc.title
+                     order by count(*) desc
                     ```
             }
             columnMapping {
@@ -651,14 +682,25 @@ page 31 (
             }
         )
 
+        axis x (
+            name: x
+            showAxis: true
+        )
+
+        axis y (
+            name: y
+            showAxis: true
+            title: Open findings
+        )
+
     )
 
-    region new (
+    region noncompliance-criterias (
         name: Non Compliance Criterias
         title: Non Compliance Criterias
         type: facetedSearch
         source {
-            filteredRegion: @employees_1
+            filteredRegion: @mssql-noncompliance
         }
         layout {
             sequence: 100
@@ -822,12 +864,12 @@ page 31 (
 
     )
 
-    region postgres-versions (
+    region mssql-support-status (
         name: MSSQL : Support Status
         title: MSSQL : Support Status
         type: chart
         layout {
-            sequence: 80
+            sequence: 70
             slot: body
             startNewRow: false
             columnSpan: 4
@@ -856,7 +898,7 @@ page 31 (
             position: bottom
         }
 
-        series mssql-versions (
+        series mssql-support-status (
             name: MSSQL Support Status
             execution {
                 sequence: 10
@@ -865,19 +907,33 @@ page 31 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    With SUP As ( select instance_name, case when fc.control_code is null then null
-                                              when fc.is_compliant = 0 then 'Out of support'
-                                              when fc.has_exception = 1 then 'Extended (ESU)'
+                    -- Lit fact_compliance et non fact_control_finding : c'est le
+                    -- verdict roule au grain instance, qui est ce que la page
+                    -- montre. has_exception porte le support etendu, remonte par
+                    -- load_findings_lifecycle via is_norm_exception -- une
+                    -- condition de l'editeur, pas une derogation accordee ici.
+                    --
+                    -- 'Not assessed' nomme les instances sans verdict de cycle de
+                    -- vie, c'est-a-dire celles dont la version est absente de
+                    -- product_support. Sans ce libelle la tranche existe quand
+                    -- meme, sans etiquette.
+                    With SUP As ( select i.instance_name,
+                                         case when fc.control_code is null then 'Not assessed'
+                                              when fc.is_compliant = 0    then 'Out of support'
+                                              when fc.has_exception = 1   then 'Extended support'
                                               else 'Supported'
-                                              end support_status
-                                         from dim_instance i
-                                         left join fact_compliance fc
-                                           on fc.entity_type = 'INSTANCE'
-                                          and fc.entity_id = i.instance_id
-                                          and fc.control_code = 'MSSQL_OUT_OF_SUPPORT'
-                                          and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
-                                        where i.platform = 'MSSQL' )
-                    Select Count(distinct instance_name) Value, support_status label from SUP group by support_status;
+                                         end support_status
+                                    from dim_instance i
+                                    left join fact_compliance fc
+                                      on fc.entity_type = 'INSTANCE'
+                                     and fc.entity_id = i.instance_id
+                                     and fc.control_code = 'MSSQL_OUT_OF_SUPPORT'
+                                     and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                                   where i.platform = 'MSSQL' )
+                    select count(distinct instance_name) value,
+                           support_status label
+                      from SUP
+                     group by support_status
                     ```
             }
             columnMapping {

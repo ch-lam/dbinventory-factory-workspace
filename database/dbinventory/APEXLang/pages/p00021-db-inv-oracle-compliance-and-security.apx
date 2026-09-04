@@ -594,13 +594,14 @@ page 21 (
 
     )
 
-    region oracle-versions (
-        name: Oracle : Versions
-        title: Oracle : Versions
+    region oracle-support-status (
+        name: Oracle : Support Status
+        title: Oracle : Support Status
         type: chart
         layout {
             sequence: 70
             slot: body
+            startNewRow: false
             columnSpan: 4
         }
         appearance {
@@ -627,8 +628,8 @@ page 21 (
             position: bottom
         }
 
-        series oracle-versions (
-            name: Oracle Release Updates
+        series oracle-support-status (
+            name: Oracle Support Status
             execution {
                 sequence: 10
             }
@@ -636,27 +637,33 @@ page 21 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                      -- Grouped by release update, not by major version. Every
-                      -- instance here is 19.x, so the MSSQL treatment -- one bar
-                      -- per product release -- would draw a single bar and say
-                      -- nothing. What matters on Oracle is the patch spread.
-                      --
-                      -- Ordered numerically, not alphabetically: as text, 19.3
-                      -- sorts after 19.20, which puts the oldest instances in the
-                      -- middle of the chart and hides exactly what it is for.
-                      With ORACLE_RU As
-                        ( select case
-                                    when instr( engine_version, '.', 1, 2 ) > 0
-                                       then substr( engine_version, 1, instr( engine_version, '.', 1, 2 ) - 1 )
-                                    else nvl( engine_version, 'Unknown' )
-                                 end release_update
-                            from dim_instance where platform = 'ORACLE' )
-                      select release_update as label,
-                             count(*) as value
-                        from ORACLE_RU
-                       group by release_update
-                       order by to_number( regexp_substr( release_update, '\d+', 1, 1 ) ) nulls last,
-                                to_number( regexp_substr( release_update, '\d+', 1, 2 ) ) nulls last
+                    -- Lit fact_compliance et non fact_control_finding : c'est le
+                    -- verdict roule au grain instance, qui est ce que la page
+                    -- montre. has_exception porte le support etendu, remonte par
+                    -- load_findings_lifecycle via is_norm_exception -- une
+                    -- condition de l'editeur, pas une derogation accordee ici.
+                    --
+                    -- 'Not assessed' nomme les instances sans verdict de cycle de
+                    -- vie, c'est-a-dire celles dont la version est absente de
+                    -- product_support. Sans ce libelle la tranche existe quand
+                    -- meme, sans etiquette.
+                    With SUP As ( select i.instance_name,
+                                         case when fc.control_code is null then 'Not assessed'
+                                              when fc.is_compliant = 0    then 'Out of support'
+                                              when fc.has_exception = 1   then 'Extended support'
+                                              else 'Supported'
+                                         end support_status
+                                    from dim_instance i
+                                    left join fact_compliance fc
+                                      on fc.entity_type = 'INSTANCE'
+                                     and fc.entity_id = i.instance_id
+                                     and fc.control_code = 'ORACLE_OUT_OF_SUPPORT'
+                                     and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                                   where i.platform = 'ORACLE' )
+                    select count(distinct instance_name) value,
+                           support_status label
+                      from SUP
+                     group by support_status
                     ```
             }
             columnMapping {
@@ -856,7 +863,7 @@ page 21 (
             ]
         }
         comments {
-            comments: This slot held a support-status donut on the MSSQL page. It was not transposed: ORACLE_OUT_OF_SUPPORT carries no rule and product_support holds Microsoft rows only, so every instance would have fallen in one "not assessed" slice. A chart that says nothing is worse than a different chart that says something.
+            comments: Third of the three charts of the band, and the only one that answers "where". Support Status says whether the estate is supported, the severity donut how bad the deviations are, and this one which control carries them -- a control holding a thousand findings is fixed by one campaign, not server by server.
         }
         chart {
             type: bar

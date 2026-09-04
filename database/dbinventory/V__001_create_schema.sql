@@ -1802,6 +1802,7 @@ create table postgres_databases (
    datconnlimit number(10),
    is_template  varchar2(3 char),
    tablespace   varchar2(100 char),
+   xid_age      number(12),
    date_value   timestamp default on null systimestamp not null
 );
 
@@ -1816,6 +1817,7 @@ comment on column postgres_databases.size_mb is 'Size, in megabytes.';
 comment on column postgres_databases.datconnlimit is 'Maximum number of concurrent connections allowed to the database (-1 = unlimited).';
 comment on column postgres_databases.is_template is 'Indicates whether the database is flagged as a template database.';
 comment on column postgres_databases.tablespace is 'Default tablespace of the database.';
+comment on column postgres_databases.xid_age is 'Age of the database frozen transaction id (age(datfrozenxid)), in transactions; the wraparound ceiling is 2^31.';
 comment on column postgres_databases.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================

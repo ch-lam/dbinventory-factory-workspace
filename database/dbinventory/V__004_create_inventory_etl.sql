@@ -145,6 +145,28 @@ create or replace package body pkg_dbinv_inventory as
       when not matched then
          insert ( host_id, is_clustered, activenodename, clusternode1, clusternode2 )
          values ( s.host_id, s.is_clustered, s.activenodename, s.clusternode1, s.clusternode2 );
+      -- PostgreSQL: one host per collected cluster.
+      --
+      -- Every postgres_* staging table keys on hostname ALONE -- the collect never
+      -- carries the port back into the data, only into the connection -- so the
+      -- model cannot tell two clusters on one machine apart, even though the .lst
+      -- syntax (host:port) lets one declare them. Known limitation, and the reason
+      -- instance_name = hostname below.
+      --
+      -- os_type / num_cpus / memory_gb stay null: PostgreSQL exposes no OS
+      -- inventory through SQL, and nothing else collects it for these hosts.
+      -- A null there says "not collected"; a zero would say "measured, and empty".
+      merge into dim_host d
+      using ( select 'POSTGRES' platform, hostname,
+                     max(environment) environment, max(license_type) license_type
+                from postgres_hosts
+               group by hostname ) s
+      on ( d.platform = s.platform and d.hostname = s.hostname )
+      when matched then update set
+         d.environment = s.environment, d.license_type = s.license_type
+      when not matched then
+         insert ( platform, hostname, environment, license_type )
+         values ( s.platform, s.hostname, s.environment, s.license_type );
    end load_dim_host;
 
    procedure load_dim_instance is
@@ -224,6 +246,43 @@ create or replace package body pkg_dbinv_inventory as
       when not matched then
          insert ( instance_id, parallel_threshold, max_dop, min_memory, max_memory, xp_cmdshell_enabled, service_account )
          values ( s.instance_id, s.parallel_threshold, s.max_dop, s.min_memory, s.max_memory, s.xp_cmdshell_enabled, s.service_account );
+      -- PostgreSQL: instance_name = hostname, forced by the collect (see load_dim_host).
+      -- No edition either: PostgreSQL has none, and a null states that more
+      -- honestly than inventing 'Community'.
+      merge into dim_instance di
+      using ( select ds.host_id, 'POSTGRES' platform, h.hostname instance_name,
+                     max(h.pg_version) engine_version, max(h.port) port
+                from postgres_hosts h
+                join dim_host ds on ds.platform = 'POSTGRES' and ds.hostname = h.hostname
+               group by ds.host_id, h.hostname ) s
+      on ( di.host_id = s.host_id and di.instance_name = s.instance_name )
+      when matched then update set
+         di.engine_version = s.engine_version, di.port = s.port
+      when not matched then
+         insert ( host_id, platform, instance_name, engine_version, port )
+         values ( s.host_id, s.platform, s.instance_name, s.engine_version, s.port );
+
+      -- PostgreSQL instance extension (cluster configuration + replication role)
+      merge into ext_postgres_instance e
+      using ( select di.instance_id,
+                     max(h.data_directory) data_directory, max(h.start_time) start_time,
+                     max(h.max_connections) max_connections, max(h.shared_buffers_mb) shared_buffers_mb,
+                     max(h.wal_level) wal_level, max(h.archive_mode) archive_mode,
+                     max(h.db_role) db_role
+                from postgres_hosts h
+                join dim_host ds on ds.platform = 'POSTGRES' and ds.hostname = h.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = h.hostname
+               group by di.instance_id ) s
+      on ( e.instance_id = s.instance_id )
+      when matched then update set
+         e.data_directory = s.data_directory, e.start_time = s.start_time,
+         e.max_connections = s.max_connections, e.shared_buffers_mb = s.shared_buffers_mb,
+         e.wal_level = s.wal_level, e.archive_mode = s.archive_mode, e.db_role = s.db_role
+      when not matched then
+         insert ( instance_id, data_directory, start_time, max_connections,
+                  shared_buffers_mb, wal_level, archive_mode, db_role )
+         values ( s.instance_id, s.data_directory, s.start_time, s.max_connections,
+                  s.shared_buffers_mb, s.wal_level, s.archive_mode, s.db_role );
    end load_dim_instance;
 
    procedure load_dim_database is
@@ -313,6 +372,19 @@ create or replace package body pkg_dbinv_inventory as
       when not matched then
          insert ( database_id, database_id_src, recovery_model, compatibility_level, collation, is_mirroring_enabled, agtype, agname )
          values ( s.database_id, s.database_id_src, s.recovery_model, s.compatibility_level, s.collation, s.is_mirroring_enabled, s.agtype, s.agname );
+      -- PostgreSQL databases
+      merge into dim_database dd
+      using ( select di.instance_id, 'POSTGRES' platform, p.datname db_name,
+                     max(p.environment) environment
+                from postgres_databases p
+                join dim_host ds on ds.platform = 'POSTGRES' and ds.hostname = p.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = p.hostname
+               group by di.instance_id, p.datname ) s
+      on ( dd.instance_id = s.instance_id and dd.db_name = s.db_name )
+      when matched then update set dd.environment = s.environment
+      when not matched then
+         insert ( instance_id, platform, db_name, environment )
+         values ( s.instance_id, s.platform, s.db_name, s.environment );
    end load_dim_database;
 
    procedure load_dim_storage_unit is
@@ -350,6 +422,25 @@ create or replace package body pkg_dbinv_inventory as
       when not matched then
          insert ( database_id, platform, storage_type, name, physical_name, max_size_mb, autogrowth_pct, autogrowth_mb )
          values ( s.database_id, s.platform, s.storage_type, s.name, s.physical_name, s.max_size_mb, s.autogrowth_pct, s.autogrowth_mb );
+      -- PostgreSQL: the storage unit IS the database.
+      --
+      -- A PostgreSQL tablespace is a CLUSTER-level object, shared by every database
+      -- of the cluster, whereas dim_storage_unit.database_id is not null: hanging a
+      -- tablespace under one database would state something false about the grain,
+      -- and would count the same bytes once per database sharing it. The database
+      -- is the finest unit the collect actually measures (pg_database_size), so
+      -- that is what is modelled -- storage_type = 'DATABASE'.
+      merge into dim_storage_unit su
+      using ( select dd.database_id, 'POSTGRES' platform, 'DATABASE' storage_type, p.datname name
+                from postgres_databases p
+                join dim_host ds on ds.platform = 'POSTGRES' and ds.hostname = p.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = p.hostname
+                join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = p.datname
+               group by dd.database_id, p.datname ) s
+      on ( su.database_id = s.database_id and su.storage_type = s.storage_type and su.name = s.name )
+      when not matched then
+         insert ( database_id, platform, storage_type, name )
+         values ( s.database_id, s.platform, s.storage_type, s.name );
    end load_dim_storage_unit;
 
    procedure load_dim_parameter is
@@ -376,6 +467,13 @@ create or replace package body pkg_dbinv_inventory as
       merge into dim_parameter p
       using ( select distinct 'MSSQL' platform, name parameter_name, 'security' category, 'REGISTRY' source
                 from mssql_security_registryinfo ) s
+      on ( p.platform = s.platform and p.parameter_name = s.parameter_name and p.source = s.source )
+      when not matched then
+         insert ( platform, parameter_name, category, source )
+         values ( s.platform, s.parameter_name, s.category, s.source );
+      merge into dim_parameter p
+      using ( select distinct 'POSTGRES' platform, parameter_name, 'security' category, 'PG_SETTINGS' source
+                from postgres_security_parameter ) s
       on ( p.platform = s.platform and p.parameter_name = s.parameter_name and p.source = s.source )
       when not matched then
          insert ( platform, parameter_name, category, source )
@@ -426,6 +524,22 @@ create or replace package body pkg_dbinv_inventory as
                group by dd.database_id, u.name ) s
       on ( a.platform = s.platform and a.scope = s.scope and a.account_name = s.account_name
            and nvl(a.database_id, -1) = nvl(s.database_id, -1) and nvl(a.host_id, -1) = nvl(s.host_id, -1) )
+      when not matched then
+         insert ( platform, scope, host_id, database_id, account_name, account_type )
+         values ( s.platform, s.scope, s.host_id, s.database_id, s.account_name, s.account_type );
+      -- PostgreSQL roles (scope SERVER): a role is a cluster-level object, so it
+      -- attaches to the host like an MSSQL login rather than to a database.
+      -- account_type records the LOGIN attribute, the only user/group distinction
+      -- PostgreSQL actually has.
+      merge into dim_account a
+      using ( select 'POSTGRES' platform, 'SERVER' scope, ds.host_id,
+                     cast(null as number) database_id, r.rolname account_name,
+                     max(case when r.rolcanlogin = 'Y' then 'LOGIN' else 'GROUP' end) account_type
+                from postgres_security_roles r
+                join dim_host ds on ds.platform = 'POSTGRES' and ds.hostname = r.hostname
+               group by ds.host_id, r.rolname ) s
+      on ( a.platform = s.platform and a.scope = s.scope and a.account_name = s.account_name
+           and nvl(a.host_id, -1) = nvl(s.host_id, -1) and nvl(a.database_id, -1) = nvl(-1, -1) )
       when not matched then
          insert ( platform, scope, host_id, database_id, account_name, account_type )
          values ( s.platform, s.scope, s.host_id, s.database_id, s.account_name, s.account_type );
@@ -499,6 +613,41 @@ create or replace package body pkg_dbinv_inventory as
                 join dim_storage_unit su on su.database_id = dd.database_id
                      and su.storage_type = case when upper(f2.type_desc) like 'LOG%' then 'LOGFILE' else 'DATAFILE' end
                      and su.name = f2.name
+               group by su.storage_unit_id ) s
+      on ( f.storage_unit_id = s.storage_unit_id and f.snapshot_date = s.snapshot_date )
+      when matched then update set f.size_mb = s.size_mb, f.used_mb = s.used_mb, f.free_mb = s.free_mb,
+         f.max_size_mb = s.max_size_mb, f.pct_used = s.pct_used
+      when not matched then
+         insert ( storage_unit_id, snapshot_date, size_mb, used_mb, free_mb, max_size_mb, pct_used )
+         values ( s.storage_unit_id, s.snapshot_date, s.size_mb, s.used_mb, s.free_mb, s.max_size_mb, s.pct_used );
+
+      -- PostgreSQL: database size, with NO saturation ratio.
+      --
+      -- used_mb is the only honest measure available here. pg_monitor exposes
+      -- pg_database_size, but nothing tells SQL how large the underlying
+      -- filesystem is, and a PostgreSQL database carries no size ceiling of its
+      -- own -- unlike an Oracle tablespace (maxbytes) or an MSSQL file (max_size),
+      -- which are what give those two platforms a real pct_used.
+      --
+      -- size_mb / max_size_mb / pct_used therefore stay NULL rather than carry a
+      -- denominator that does not exist. That null is load-bearing twice over: it
+      -- keeps these rows out of the pct_used branch of load_findings_capacity, and
+      -- it is why the PostgreSQL saturation verdict rests on transaction id
+      -- wraparound (PG_XID_WRAPAROUND) instead. What is stored here feeds growth
+      -- history and capacity planning, not a verdict.
+      merge into fact_storage_capacity f
+      using ( select su.storage_unit_id, p_snapshot_date snapshot_date,
+                     cast(null as number) size_mb,
+                     max(p.size_mb) used_mb,
+                     cast(null as number) free_mb,
+                     cast(null as number) max_size_mb,
+                     cast(null as number) pct_used
+                from postgres_databases p
+                join dim_host ds on ds.platform = 'POSTGRES' and ds.hostname = p.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = p.hostname
+                join dim_database dd on dd.instance_id = di.instance_id and dd.db_name = p.datname
+                join dim_storage_unit su on su.database_id = dd.database_id
+                     and su.storage_type = 'DATABASE' and su.name = p.datname
                group by su.storage_unit_id ) s
       on ( f.storage_unit_id = s.storage_unit_id and f.snapshot_date = s.snapshot_date )
       when matched then update set f.size_mb = s.size_mb, f.used_mb = s.used_mb, f.free_mb = s.free_mb,
@@ -610,6 +759,43 @@ create or replace package body pkg_dbinv_inventory as
                   hours_since_backup, failed_count, status )
          values ( s.instance_id, s.snapshot_date, s.last_full_date, s.last_incr_date, s.last_log_date,
                   s.hours_since_backup, s.failed_count, s.status );
+
+      -- PostgreSQL WAL archiving (pg_stat_archiver), at instance grain because the
+      -- WAL stream belongs to the cluster, exactly as RMAN backs up a container.
+      --
+      -- The archived WAL time lands in last_log_date and NOWHERE ELSE. Writing it
+      -- into last_full_date would claim a full backup that was never taken: no
+      -- pgBackRest/Barman catalogue is collected, so the estate has no known full
+      -- backup on PostgreSQL at all. hours_since_backup is therefore hours since
+      -- the last archived segment, and PG_BACKUP_FRESHNESS_SLA judges exactly that
+      -- -- a necessary condition for point-in-time recovery, not a restorable backup.
+      --
+      -- The collect writes the string 'NA' when pg_stat_archiver has never
+      -- archived anything; safe_to_date returns null for it rather than raising,
+      -- so such an instance gets a null hours_since_backup and produces no finding
+      -- instead of a fabricated one.
+      merge into fact_instance_backup f
+      using ( select di.instance_id, p_snapshot_date snapshot_date,
+                     cast(null as date) last_full_date,
+                     cast(null as date) last_incr_date,
+                     max(pkg_dbinv_inventory.safe_to_date(b.last_archived_time)) last_log_date,
+                     round( ( cast(p_snapshot_date as date)
+                              - max(pkg_dbinv_inventory.safe_to_date(b.last_archived_time)) ) * 24, 2 ) hours_since_backup,
+                     max(b.failed_count) failed_count,
+                     max(case when lower(b.archive_mode) in ('on', 'always') then 'ARCHIVING' else 'ARCHIVING OFF' end) status
+                from postgres_backup b
+                join dim_host ds on ds.platform = 'POSTGRES' and ds.hostname = b.hostname
+                join dim_instance di on di.host_id = ds.host_id and di.instance_name = b.hostname
+               group by di.instance_id ) s
+      on ( f.instance_id = s.instance_id and f.snapshot_date = s.snapshot_date )
+      when matched then update set f.last_full_date = s.last_full_date, f.last_incr_date = s.last_incr_date,
+         f.last_log_date = s.last_log_date, f.hours_since_backup = s.hours_since_backup,
+         f.failed_count = s.failed_count, f.status = s.status
+      when not matched then
+         insert ( instance_id, snapshot_date, last_full_date, last_incr_date, last_log_date,
+                  hours_since_backup, failed_count, status )
+         values ( s.instance_id, s.snapshot_date, s.last_full_date, s.last_incr_date, s.last_log_date,
+                  s.hours_since_backup, s.failed_count, s.status );
    end load_fact_instance_backup;
 
    procedure load_fact_config_parameter ( p_snapshot_date in date ) is
@@ -654,6 +840,23 @@ create or replace package body pkg_dbinv_inventory as
                 from mssql_security_registryinfo r
                 join dim_parameter dp on dp.platform = 'MSSQL' and dp.source = 'REGISTRY' and dp.parameter_name = r.name
                 join dim_instance di on di.platform = 'MSSQL' and di.instance_name = r.servername
+               group by di.instance_id, dp.parameter_id ) s
+      on ( f.instance_id = s.instance_id and f.parameter_id = s.parameter_id and f.snapshot_date = s.snapshot_date )
+      when matched then update set f.config_value = s.config_value, f.run_value = s.run_value, f.value_text = s.value_text
+      when not matched then
+         insert ( instance_id, parameter_id, snapshot_date, config_value, run_value, value_text )
+         values ( s.instance_id, s.parameter_id, s.snapshot_date, s.config_value, s.run_value, s.value_text );
+
+      -- PostgreSQL settings (value_text): pg_settings exposes a single effective
+      -- value, with none of the config/run split sp_configure has.
+      merge into fact_config_parameter f
+      using ( select di.instance_id, dp.parameter_id, p_snapshot_date snapshot_date,
+                     cast(null as varchar2(400 char)) config_value, cast(null as varchar2(400 char)) run_value,
+                     max(sp.parameter_value) value_text
+                from postgres_security_parameter sp
+                join dim_parameter dp on dp.platform = 'POSTGRES' and dp.source = 'PG_SETTINGS'
+                     and dp.parameter_name = sp.parameter_name
+                join dim_instance di on di.platform = 'POSTGRES' and di.instance_name = sp.hostname
                group by di.instance_id, dp.parameter_id ) s
       on ( f.instance_id = s.instance_id and f.parameter_id = s.parameter_id and f.snapshot_date = s.snapshot_date )
       when matched then update set f.config_value = s.config_value, f.run_value = s.run_value, f.value_text = s.value_text

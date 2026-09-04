@@ -235,6 +235,38 @@ begin
    select count(*) into l_n from dim_host where lower(hostname) like '%chl.lu%';
    expect_zero('aucun hote residuel du parc reel', l_n, 'hote(s) en .chl.lu dans dim_host');
 
+   -- 8. Un standby PostgreSQL ne porte AUCUN constat SECURITY.
+   --    get_info_postgres_security.sh saute les standby : leur configuration est
+   --    celle de leur primaire, deja jugee. C'est le seul endroit du modele ou
+   --    une instance collectee n'a legitimement aucun verdict de securite, et
+   --    c'est donc le seul endroit ou l'absence de constat doit etre testee
+   --    comme un resultat plutot que soupconnee comme un trou.
+   select count(*) into l_n
+     from fact_control_finding f
+     join ref_control_rule r on r.rule_code = f.rule_code
+     join ref_control rc on rc.control_code = r.control_code
+          and rc.platform = 'POSTGRES' and rc.score_domain = 'SECURITY'
+     join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+     join ext_postgres_instance e on e.instance_id = a.instance_id and e.db_role = 'STANDBY';
+   expect_zero('aucun constat SECURITY sur un standby PostgreSQL', l_n, 'constat(s) sur standby');
+
+   -- 9. ... et sa moitie indispensable : tout PRIMAIRE en porte.
+   --    Sans elle, l'assertion 8 passerait aussi bien si la securite PostgreSQL
+   --    ne produisait rien du tout -- ce qui etait precisement l'etat du produit
+   --    avant ce chantier.
+   select count(*) into l_n
+     from ext_postgres_instance e
+    where e.db_role = 'PRIMARY'
+      and not exists ( select 1
+                         from fact_control_finding f
+                         join ref_control_rule r on r.rule_code = f.rule_code
+                         join ref_control rc on rc.control_code = r.control_code
+                              and rc.platform = 'POSTGRES' and rc.score_domain = 'SECURITY'
+                         join v_entity_ancestry a on a.entity_type = f.entity_type
+                              and a.entity_id = f.entity_id
+                        where a.instance_id = e.instance_id );
+   expect_zero('tout primaire PostgreSQL porte des constats SECURITY', l_n, 'primaire(s) sans constat');
+
    dbms_output.put_line('T_004 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s).');
    if l_failed > 0 then
       raise_application_error(-20903,

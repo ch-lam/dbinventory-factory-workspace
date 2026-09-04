@@ -111,6 +111,33 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
    values ( 'MSSQL_LICENSING', 'MSSQL', 'LICENSING', 'licensing', 'INSTANCE', 'MSSQL edition/licensing', 'MEDIUM' );
 
 
+-- PostgreSQL controls
+--
+-- One control per family of verdict, per the rule stated at the top of this
+-- section: two rules under one control would report a single verdict and hide
+-- the other. That is why WAL archiving and archive freshness are two controls
+-- and not two rules -- "archiving is off" would otherwise mask "the last
+-- segment is three days old", which is the more actionable of the two.
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_SECURITY_PARAMETER', 'POSTGRES', 'SECURITY', 'security_parameter', 'INSTANCE', 'PostgreSQL security settings', 'HIGH' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_ROLE_PRIVS', 'POSTGRES', 'SECURITY', 'role_privs', 'INSTANCE', 'Privileged role attributes', 'HIGH' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_PREDEF_ROLE_MEMBER', 'POSTGRES', 'SECURITY', 'predef_role_member', 'INSTANCE', 'Membership of sensitive predefined roles', 'HIGH' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_HBA_AUTH', 'POSTGRES', 'SECURITY', 'hba_auth', 'INSTANCE', 'Host-based authentication methods', 'CRITICAL' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_PUBLIC_PRIVS', 'POSTGRES', 'SECURITY', 'public_privs', 'DATABASE', 'Privileges granted to PUBLIC', 'MEDIUM' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_WAL_ARCHIVING', 'POSTGRES', 'BACKUP', 'wal_archiving', 'INSTANCE', 'WAL archiving enabled', 'HIGH' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_BACKUP_FRESHNESS', 'POSTGRES', 'BACKUP', 'backup_freshness', 'INSTANCE', 'WAL archive freshness', 'HIGH' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_OUT_OF_SUPPORT', 'POSTGRES', 'LIFECYCLE', 'out_of_support', 'INSTANCE', 'Engine version end-of-support', 'HIGH' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'POSTGRES_CAPACITY_SATURATION', 'POSTGRES', 'CAPACITY', 'capacity_saturation', 'DATABASE', 'Transaction id wraparound headroom', 'HIGH' );
+
+
 -- ============================================================
 -- ref_control_rule
 -- ------------------------------------------------------------
@@ -404,8 +431,107 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
    values ( 'MSSQL_ENGINE_SUPPORTED', 'MSSQL_OUT_OF_SUPPORT', 'INSTANCE', '*',
             'Engine version must still be supported', 'The major version must not be past its end of support. Extended support (ESU) keeps the instance compliant but is flagged as an exception on the compliance row.', 'HIGH' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_ENGINE_SUPPORTED', 'ORACLE_OUT_OF_SUPPORT', 'INSTANCE', '*',
+            'Engine release must still be supported', 'The major release must not be past its end of support. Extended Support keeps the instance compliant and raises the norm exception flag, as it does on SQL Server. Note the Innovation Releases (18c, 21c) are not eligible for Extended Support at all, so for them the Premier date is the only one there is.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_ENGINE_PATCH_CURRENT', 'MSSQL_PATCH_LEVEL', 'INSTANCE', '*',
             'Engine build must be at the latest published patch level', 'dim_instance.engine_version must be at or above product_support.current_patch_level for its major version, compared on the build and revision numbers. Note: an instance kept on the GDR-only branch reads as behind, because the reference tracks the cumulative-update train.', 'MEDIUM' );
+
+
+
+-- ============================================================
+-- PostgreSQL rules
+-- ------------------------------------------------------------
+-- Written strictly against what get_info_postgres_security.sh already collects.
+-- Three of the five security collects emit ONLY DEVIATIONS (predefined role
+-- memberships, weak pg_hba lines, PUBLIC privileges): a clean cluster produces
+-- no row at all, so load_findings_postgres_sec has to manufacture the compliant
+-- verdict per instance, the same way load_findings_oracle_sec does. Rules whose
+-- collect emits one row per evaluated item (settings, roles) need no such care.
+--
+-- Two parameters are collected but deliberately NOT judged, and are absent from
+-- this list rather than catalogued inactive: log_hostname (CIS argues both ways,
+-- and it costs a DNS lookup per connection) and log_min_duration_statement
+-- (a performance-tuning knob, not a security norm). They are collected because
+-- they are useful context on the instance page.
+-- ============================================================
+
+-- Security settings, from pg_settings. One row per instance per parameter, so
+-- the compliant verdict falls straight out of the collect.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_PRM_SSL_ON', 'POSTGRES_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'TLS must be enabled on the cluster', 'pg_settings ''ssl'' must be on. Without it no client connection can be encrypted, whatever pg_hba requires.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_PRM_PASSWORD_ENCRYPTION', 'POSTGRES_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'Passwords must be stored with SCRAM', 'pg_settings ''password_encryption'' must be scram-sha-256. md5 is the historical default and is considered broken.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_PRM_LOG_CONNECTIONS', 'POSTGRES_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'Connections must be logged', 'pg_settings ''log_connections'' must be on.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_PRM_LOG_DISCONNECTIONS', 'POSTGRES_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'Disconnections must be logged', 'pg_settings ''log_disconnections'' must be on; without it a session duration cannot be reconstructed.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_PRM_LOG_STATEMENT', 'POSTGRES_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'DDL must be logged at least', 'pg_settings ''log_statement'' must be ddl, mod or all. Scope: none is the engine default and is what this rule exists to catch.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_PRM_SSL_MIN_PROTOCOL', 'POSTGRES_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'TLS must be at least 1.2', 'pg_settings ''ssl_min_protocol_version'' must be TLSv1.2 or TLSv1.3.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_PRM_PGAUDIT_LOADED', 'POSTGRES_SECURITY_PARAMETER', 'INSTANCE', '*',
+            'pgaudit must be loaded', 'pg_settings ''shared_preload_libraries'' must list pgaudit. Native logging records statements, not who was authorised to run them.', 'MEDIUM' );
+
+-- Role attributes, from pg_roles. One row per role, so both verdicts come from
+-- the collect. The exemptions below are conditions of the norm, not derogations:
+-- the cluster owner and the collector account are privileged by construction, and
+-- listing them for review every day would bury the roles that actually matter.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_ROLE_NO_EXTRA_SUPERUSER', 'POSTGRES_ROLE_PRIVS', 'INSTANCE', 'role name',
+            'Superuser must stay exceptional', 'No role may hold rolsuper. Scope: postgres (the cluster owner) and monitoring (the collector) are exempt by construction.', 'CRITICAL' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_ROLE_NO_BYPASSRLS', 'POSTGRES_ROLE_PRIVS', 'INSTANCE', 'role name',
+            'Row level security must not be bypassable', 'No role may hold rolbypassrls. Scope: superusers bypass RLS by construction and are judged by PG_ROLE_NO_EXTRA_SUPERUSER instead, not counted twice here.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_ROLE_REPLICATION_LIMITED', 'POSTGRES_ROLE_PRIVS', 'INSTANCE', 'role name',
+            'Replication must be granted deliberately', 'No role may hold rolreplication, which allows streaming the entire cluster. Scope: postgres and monitoring are exempt. A legitimate replication account is expected to carry a documented derogation -- that is the point of listing it.', 'HIGH' );
+
+-- Membership of sensitive predefined roles. The collect emits only the rows that
+-- exist, so a cluster with no such grant produces nothing at all.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_MEMBER_NO_SERVER_PROGRAM', 'POSTGRES_PREDEF_ROLE_MEMBER', 'INSTANCE', 'role:member',
+            'pg_execute_server_program must have no member', 'Membership grants command execution as the postgres OS user; it is a straight path from database access to the server.', 'CRITICAL' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_MEMBER_NO_SERVER_FILES', 'POSTGRES_PREDEF_ROLE_MEMBER', 'INSTANCE', 'role:member',
+            'Server file roles must have no member', 'No role may be a member of pg_read_server_files or pg_write_server_files.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_MEMBER_NO_WRITE_ALL_DATA', 'POSTGRES_PREDEF_ROLE_MEMBER', 'INSTANCE', 'role:member',
+            'pg_write_all_data must have no member', 'Membership grants write access to every table of every database, bypassing per-object grants. Scope: pg_monitor and pg_read_all_data are collected but not judged -- the collector itself holds pg_monitor.', 'HIGH' );
+
+-- pg_hba.conf. Only the offending lines are collected.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_HBA_NO_TRUST', 'POSTGRES_HBA_AUTH', 'INSTANCE', 'pg_hba line number',
+            'No trust authentication', 'No pg_hba.conf rule may use auth_method trust, which authenticates anyone who can reach the port.', 'CRITICAL' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_HBA_NO_WEAK_METHOD', 'POSTGRES_HBA_AUTH', 'INSTANCE', 'pg_hba line number',
+            'No weak authentication method', 'No pg_hba.conf rule may use md5 or password. Scope: peer and ident on local sockets are not weak and are not judged here.', 'HIGH' );
+
+-- PUBLIC privileges on databases.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_PUBLIC_NO_CREATE', 'POSTGRES_PUBLIC_PRIVS', 'DATABASE', '*',
+            'PUBLIC must not hold CREATE', 'PUBLIC must not be granted CREATE on a database. Scope: CONNECT is the engine default and is not judged -- revoking it is a per-database decision, not a fleet norm.', 'MEDIUM' );
+
+-- Backup, lifecycle and capacity: one rule each, evaluated once per entity.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_ARCHIVE_MODE_ON', 'POSTGRES_WAL_ARCHIVING', 'INSTANCE', '*',
+            'WAL archiving must be enabled', 'archive_mode must be on or always. NOTE: WAL archiving is not a backup -- no pgBackRest/Barman catalogue is collected, so this control attests a necessary condition for point-in-time recovery, never a restorable backup.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_BACKUP_FRESHNESS_SLA', 'POSTGRES_BACKUP_FRESHNESS', 'INSTANCE', '*',
+            'Last archived WAL must be within the SLA', 'hours_since_backup, measured from pg_stat_archiver.last_archived_time, must not exceed ref_threshold.crit_value for metric hours_since_archived. Same caveat as PG_ARCHIVE_MODE_ON: this dates a WAL segment, not a backup.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_ENGINE_SUPPORTED', 'POSTGRES_OUT_OF_SUPPORT', 'INSTANCE', '*',
+            'Engine major version must still be supported', 'The major version must not be past its community end of support. There is no extended support for PostgreSQL: end_of_ext_support_date is null and the ESU branch of the scoring is inert here.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'PG_XID_WRAPAROUND', 'POSTGRES_CAPACITY_SATURATION', 'DATABASE', '*',
+            'Transaction id headroom must stay above its threshold', 'age(datfrozenxid) expressed as a percentage of the 2^31 wraparound ceiling must stay below ref_threshold.crit_value for metric pct_xid_used. This is the only hard capacity ceiling PostgreSQL exposes to SQL: a database has no size limit of its own, and no filesystem size is reachable from the engine.', 'HIGH' );
 
 
 -- ============================================================
@@ -423,6 +549,8 @@ insert into ref_benchmark ( benchmark_code, publisher, title, platform )
    values ( 'CIS_MSSQL', 'CIS', 'CIS Microsoft SQL Server Benchmark', 'MSSQL' );
 insert into ref_benchmark ( benchmark_code, publisher, title, platform )
    values ( 'CIS_ORACLE_DB', 'CIS', 'CIS Oracle Database Benchmark', 'ORACLE' );
+insert into ref_benchmark ( benchmark_code, publisher, title, platform )
+   values ( 'CIS_POSTGRESQL', 'CIS', 'CIS PostgreSQL Benchmark', 'POSTGRES' );
 
 
 -- ============================================================
@@ -475,11 +603,21 @@ update ref_control_rule set origin = 'BENCHMARK', benchmark_code = 'CIS_ORACLE_D
 -- fleet standardises on port 1433, CIS asks for the default port to be left
 -- behind. Kept as the norm the organisation actually applies, but no longer
 -- counted as benchmark compliance.
+update ref_control_rule set origin = 'BENCHMARK', benchmark_code = 'CIS_POSTGRESQL'
+ where rule_code in (
+   'PG_PRM_SSL_ON', 'PG_PRM_PASSWORD_ENCRYPTION', 'PG_PRM_LOG_CONNECTIONS',
+   'PG_PRM_LOG_DISCONNECTIONS', 'PG_PRM_LOG_STATEMENT', 'PG_PRM_SSL_MIN_PROTOCOL',
+   'PG_PRM_PGAUDIT_LOADED',
+   'PG_ROLE_NO_EXTRA_SUPERUSER', 'PG_ROLE_NO_BYPASSRLS',
+   'PG_MEMBER_NO_SERVER_PROGRAM', 'PG_MEMBER_NO_SERVER_FILES', 'PG_MEMBER_NO_WRITE_ALL_DATA',
+   'PG_HBA_NO_TRUST', 'PG_HBA_NO_WEAK_METHOD',
+   'PG_PUBLIC_NO_CREATE' );
+
 update ref_control_rule set origin = 'HOUSE_CONFLICT', benchmark_code = 'CIS_MSSQL'
  where rule_code = 'MSSQL_REG_TCP_PORT';
 
 -- Left as HOUSE, and worth re-examining during the mapping review:
---   MSSQL_ENGINE_SUPPORTED, *_BACKUP_FRESHNESS_SLA, *_STORAGE_PCT_USED
+--   *_ENGINE_SUPPORTED, *_BACKUP_FRESHNESS_SLA, *_STORAGE_PCT_USED
 --     - service-level commitments, no benchmark equivalent.
 --   ORACLE_PRM_SYS_LOGON_DELAY, ORACLE_NO_USERMIG_TABLE
 --     - real hardening, but not traced to a published recommendation here.
@@ -535,6 +673,23 @@ insert into ref_scoring_weight ( platform, score_domain, category, weight ) valu
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'MSSQL', 'LICENSING', 'licensing', 100 );
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'LICENSING', 'licensing', 100 );
 
+-- POSTGRES SECURITY  (sum = 100)
+-- Weighted by what a deviation actually opens up rather than by how many rules
+-- sit in each family: one trust line in pg_hba defeats every setting above it.
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'SECURITY', 'security_parameter', 30 );
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'SECURITY', 'hba_auth', 20 );
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'SECURITY', 'role_privs', 20 );
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'SECURITY', 'predef_role_member', 20 );
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'SECURITY', 'public_privs', 10 );
+
+-- POSTGRES BACKUP: archiving off is worse than archiving late, but not by much
+-- -- both mean the recovery window is not what it is believed to be.
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'BACKUP', 'wal_archiving', 40 );
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'BACKUP', 'backup_freshness', 60 );
+
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'LIFECYCLE', 'out_of_support', 100 );
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'POSTGRES', 'CAPACITY', 'capacity_saturation', 100 );
+
 
 -- ============================================================
 -- ref_threshold   (environment defaults to '*' = all environments)
@@ -553,6 +708,17 @@ insert into ref_threshold ( control_code, metric, warn_value, crit_value )
    values ( 'MSSQL_BACKUP_FRESHNESS', 'hours_since_log', 2, 6 );
 insert into ref_threshold ( control_code, metric, warn_value, crit_value )
    values ( 'ORACLE_BACKUP_FRESHNESS', 'hours_since_backup', 24, 48 );
+insert into ref_threshold ( control_code, metric, warn_value, crit_value )
+   values ( 'POSTGRES_BACKUP_FRESHNESS', 'hours_since_archived', 24, 48 );
+
+-- Transaction id wraparound, as a percentage of the 2^31 ceiling. 50/80 rather
+-- than the 80/90 used for storage: past the ceiling PostgreSQL refuses writes
+-- cluster-wide, and the remedy is a VACUUM FREEZE whose duration grows with the
+-- table -- reaching 80% already means the autovacuum settings need revisiting,
+-- not that a disk needs extending. autovacuum_freeze_max_age defaults to 200M,
+-- i.e. about 9% of the ceiling, so a healthy database sits far below the warning.
+insert into ref_threshold ( control_code, metric, warn_value, crit_value )
+   values ( 'POSTGRES_CAPACITY_SATURATION', 'pct_xid_used', 50, 80 );
 
 
 -- ============================================================
@@ -611,5 +777,93 @@ insert into product_support ( product_company, product_type, product_version, co
                               current_patch_name, current_patch_level, edition_date, end_of_support_date, end_of_ext_support_date )
    values ( 'MICROSOFT', 'MSSQL', '9.0', 'SQL Server 2005 (Yukon)', 'SQL Server 2005',
             'SP4 QFE', '9.0.5324.0', date '2005-11-07', date '2011-04-12', date '2016-04-12' );
+
+
+-- PostgreSQL, keyed on the MAJOR version alone: since release 10 PostgreSQL
+-- numbers a major with a single component (16.4 is major 16, minor 4), so the
+-- major.minor split used for SQL Server does not apply and must not be copied.
+--
+-- The community policy is five years of support from the initial release, with
+-- NO extended support: end_of_ext_support_date stays null, and the ESU branch of
+-- load_findings_lifecycle is inert for PostgreSQL by construction rather than by
+-- omission. current_patch_level is left null too: there is no PG_ENGINE_PATCH_
+-- CURRENT rule, and publishing a minor version here that nobody refreshes would
+-- make instances read as behind for as long as the file went untouched.
+--
+-- Transcribed by hand from postgresql.org/support/versioning, like the Microsoft
+-- rows above. Recheck it against that page when a new major ships.
+
+delete from product_support where product_company = 'POSTGRESQL' and product_type = 'POSTGRES';
+
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '18', 'PostgreSQL 18', 'PostgreSQL 18', date '2025-09-25', date '2030-11-14' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '17', 'PostgreSQL 17', 'PostgreSQL 17', date '2024-09-26', date '2029-11-08' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '16', 'PostgreSQL 16', 'PostgreSQL 16', date '2023-09-14', date '2028-11-09' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '15', 'PostgreSQL 15', 'PostgreSQL 15', date '2022-10-13', date '2027-11-11' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '14', 'PostgreSQL 14', 'PostgreSQL 14', date '2021-09-30', date '2026-11-12' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '13', 'PostgreSQL 13', 'PostgreSQL 13', date '2020-09-24', date '2025-11-13' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '12', 'PostgreSQL 12', 'PostgreSQL 12', date '2019-10-03', date '2024-11-14' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '11', 'PostgreSQL 11', 'PostgreSQL 11', date '2018-10-18', date '2023-11-09' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date )
+   values ( 'POSTGRESQL', 'POSTGRES', '10', 'PostgreSQL 10', 'PostgreSQL 10', date '2017-10-05', date '2022-11-10' );
+
+
+-- Oracle, keyed on the MAJOR release alone. An Oracle banner version carries
+-- five components (19.20.0.0.0) but the support dates depend only on the first:
+-- every release update of 19c shares them. Same cut as PostgreSQL, and NOT the
+-- major.minor cut used for SQL Server -- '19.20' matches nothing here.
+--
+-- Two release kinds, and the difference is load-bearing. A Long Term Release
+-- (19c, and the 23 line) gets Premier then Extended Support; an Innovation
+-- Release (18c, 21c) is not eligible for Extended Support AT ALL, so its
+-- end_of_ext_support_date is null and the Premier date is the only one there is.
+-- A null there means "none exists", not "not filled in yet".
+--
+-- The 23 line is branded Oracle AI Database 26ai since the October 2025 release
+-- update, but the internal version stays 23.x (26ai reports 23.26.1.0.0), which
+-- is what an instance banner returns and what this table must therefore be
+-- keyed on. Only versions from 18c are listed: nothing older runs on the estate.
+--
+-- current_patch_level is left null, as for PostgreSQL: there is no Oracle patch
+-- reference here and no *_ENGINE_PATCH_CURRENT rule to consume one.
+--
+-- Transcribed by hand from Oracle's Lifetime Support Policy, like the Microsoft
+-- rows above; 19c and 23ai/26ai were both extended after their original dates,
+-- so recheck rather than assume when a release changes status.
+
+delete from product_support where product_company = 'ORACLE' and product_type = 'ORACLE';
+
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'ORACLE', 'ORACLE', '23', 'Oracle AI Database 26ai (formerly 23ai)', 'Oracle 26ai (23.x)',
+            date '2023-09-19', date '2031-12-31', null );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'ORACLE', 'ORACLE', '21', 'Oracle Database 21c (Innovation Release)', 'Oracle 21c',
+            date '2021-08-13', date '2027-07-31', null );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'ORACLE', 'ORACLE', '19', 'Oracle Database 19c (Long Term Release)', 'Oracle 19c',
+            date '2019-04-25', date '2029-12-31', date '2032-12-31' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'ORACLE', 'ORACLE', '18', 'Oracle Database 18c (Innovation Release)', 'Oracle 18c',
+            date '2018-07-23', date '2021-06-30', null );
 
 commit;

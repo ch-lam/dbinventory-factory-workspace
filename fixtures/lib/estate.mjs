@@ -161,8 +161,29 @@ export function buildEstate (world, rng) {
          license: 'FREE',
          version: rng.pick(world.postgres.versions),
          port: 5432,
+         role: 'PRIMARY',
          databases: rng.sample(APPS, n).map(a => a.toLowerCase())
       });
+   }
+
+   // Les derniers hôtes basculent en standby. Ce n'est pas de la décoration :
+   // get_info_postgres_security.sh saute les standby, donc une instance standby
+   // ne porte AUCUN constat SECURITY. Sans standby dans le jeu, ce comportement
+   // -- voulu, et le seul endroit du modèle où une instance collectée n'a pas de
+   // verdict de sécurité -- ne serait jamais exercé.
+   //
+   // Un standby reprend la version ET les bases de son primaire : la réplication
+   // est physique, elle copie les blocs. Lui laisser son tirage propre aurait
+   // produit un standby portant d'autres bases que celles qu'il réplique, et la
+   // page 40 aurait affiché une topologie que rien ne peut produire.
+   const nStandby = Math.min(world.postgres.standbys || 0, Math.floor(pgHosts.length / 2));
+   for (let k = 0; k < nStandby; k++) {
+      const standby = pgHosts[pgHosts.length - 1 - k];
+      const primary = pgHosts[k];
+      standby.role = 'STANDBY';
+      standby.version = primary.version;
+      standby.databases = primary.databases.slice();
+      standby.replicatesFrom = primary;
    }
 
    return {

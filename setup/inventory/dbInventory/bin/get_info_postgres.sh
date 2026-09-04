@@ -47,7 +47,8 @@ while IFS=';' read -r env lic server; do
                round(pg_database_size(d.datname)/1024/1024),
                d.datconnlimit,
                CASE WHEN d.datistemplate THEN 'YES' ELSE 'NO' END,
-               t.spcname
+               t.spcname,
+               age(d.datfrozenxid)
         FROM   pg_database d
         JOIN   pg_tablespace t ON t.oid = d.dattablespace
         WHERE  d.datname NOT IN ('template0','template1')

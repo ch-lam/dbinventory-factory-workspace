@@ -1,6 +1,19 @@
 #!/bin/bash
 # =============================================================================
 # get_info_postgres_security — collecte securite PostgreSQL
+# -----------------------------------------------------------------------------
+# Deux limites assumees, qui se lisent dans les constats produits en aval par
+# pkg_dbinv_scoring.load_findings_postgres_sec :
+#
+#   * Les STANDBY sont ignores (garde plus bas). Leur configuration de securite
+#     est heritee du primaire par la replication physique : la collecter serait
+#     dupliquer le verdict du primaire sous une autre instance. Consequence
+#     assumee : une instance STANDBY n'a AUCUN constat du domaine SECURITY.
+#
+#   * pg_hba_file_rules n'est lisible integralement par un role non superuser
+#     qu'a partir de PG15 ; avant, les colonnes sensibles sont masquees et la
+#     regle PG_HBA_NO_TRUST peut donc conclure a tort a l'absence de trust.
+#     Cf. database/targets/postgres/POSTGRES_create_monitoring_user.sql.
 # =============================================================================
 set -euo pipefail
 

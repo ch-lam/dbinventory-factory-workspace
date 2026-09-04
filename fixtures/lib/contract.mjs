@@ -667,6 +667,7 @@ export const CONTRACT = {
       { name: "datconnlimit", type: "number", prec: 10, scale: 0 },
       { name: "is_template", type: "varchar2", len: 12 },
       { name: "tablespace", type: "varchar2", len: 400 },
+      { name: "xid_age", type: "number", prec: 12, scale: 0 },
     ],
     omitted: ["date_value"]
   },

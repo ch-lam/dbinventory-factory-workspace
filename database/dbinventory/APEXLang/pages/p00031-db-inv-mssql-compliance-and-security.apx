@@ -41,7 +41,16 @@ page 31 (
                        -- addressed by reportColumnQueryId, so inserting in the
                        -- middle would renumber every one of them.
                        r.rule_code,
-                       f.entity_id
+                       f.entity_id,
+                       -- Le serveur, distinct de l'instance : sur MSSQL
+                       -- instance_name est le nom d'instance SQL Server et
+                       -- hostname le FQDN de la machine collectee.
+                       h.hostname,
+                       -- host_id parce que la page 35 se pilote par la, et par
+                       -- rien d'autre : P35_HOSTNAME y est un item cache calcule
+                       -- depuis P35_HOST_ID en `used: always`, donc une valeur
+                       -- qu'on lui passerait serait ecrasee a l'arrivee.
+                       a.host_id
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
@@ -52,6 +61,7 @@ page 31 (
                    and rc.active = 1
                   join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
                   join dim_instance i on i.instance_id = a.instance_id
+                  join dim_host h on h.host_id = a.host_id
                   left join dim_database d on d.database_id = a.database_id
                   left join ref_exception e on e.exception_id = f.exception_id
                  where i.platform = 'MSSQL'
@@ -141,6 +151,28 @@ page 31 (
             }
         )
 
+        column HOSTNAME (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            heading {
+                heading: Server
+            }
+            layout {
+                sequence: 220
+            }
+        )
+
+        column HOST_ID (
+            reportColumnQueryId: 15
+            derivedColumn: N
+            heading {
+                heading: Host id
+            }
+            layout {
+                sequence: 230
+            }
+        )
+
         column EXCEPTION_STATUS (
             reportColumnQueryId: 10
             derivedColumn: N
@@ -177,10 +209,13 @@ page 31 (
                 target: {
                     page: 35
                     items: {
-                        P35_HOSTNAME: #INSTANCE_NAME#
+                        P35_HOST_ID: #HOST_ID#
                     }
                 }
                 linkText: #INSTANCE_NAME#
+            }
+            comments {
+                comments: Passes P35_HOST_ID, which is the only item page 35 is driven by. It used to pass P35_HOSTNAME, a hidden item that page 35 computes from P35_HOST_ID with `used: always` - so the value arrived, was overwritten, and the page opened on no server at all.
             }
         )
 

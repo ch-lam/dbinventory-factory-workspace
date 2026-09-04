@@ -16,6 +16,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DBINVENTORY_USER="dbinventory"
 DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
 DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
+# ── Cible SQLcl ───────────────────────────────────────────────────────────────
+# Par defaut, le triplet ci-dessus : le comportement de production ne change pas.
+# Si DBINVENTORY_CONN_NAME est positionnee, on passe par une connexion SQLcl
+# nommee a la place. C'est ce qui permet de charger un jeu de donnees de
+# demonstration dans une autre base sans toucher au staging du dev, que cette
+# machine ne peut pas recollecter -- le chargement commence par TRUNCATE.
+if [[ -n "${DBINVENTORY_CONN_NAME:-}" ]]; then
+    SQLCL_ARGS=( -S -name "${DBINVENTORY_CONN_NAME}" )
+else
+    SQLCL_ARGS=( -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" )
+fi
 MAIL_TO="lambert.christophe@chl.lu"
 
 # ── Log ───────────────────────────────────────────────────────────────────────
@@ -68,7 +79,7 @@ log "Chargement des fichiers .csv PostgreSQL dans Oracle..."
 log "Log : ${LOG_FILE}"
 
 SQLCL_EXIT=0
-sql -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" <<'SQLCL_SESSION' 2>&1 | tee "${LOG_FILE}" || SQLCL_EXIT="${PIPESTATUS[0]}"
+sql "${SQLCL_ARGS[@]}" <<'SQLCL_SESSION' 2>&1 | tee "${LOG_FILE}" || SQLCL_EXIT="${PIPESTATUS[0]}"
 WHENEVER SQLERROR EXIT FAILURE ROLLBACK
 SET FEEDBACK OFF
 SET ECHO     OFF

@@ -8,3 +8,11 @@
 # Shell scripts break under Git Bash if checked out with CRLF (the trailing \r
 # is parsed as part of the shebang and of every command).
 *.sh text eol=lf
+
+# The demonstration fixtures are byte-compared, so their line endings are part
+# of the content. generate.mjs writes LF; a CRLF checkout would leave the whole
+# of fixtures/out modified on the first regeneration, on Windows only.
+# check_baseline.sh is worse: it strips CR from SQLcl's output before diffing,
+# so a CRLF baseline would differ on every single line.
+fixtures/out/** text eol=lf
+fixtures/expected/*.csv text eol=lf

@@ -77,8 +77,13 @@ WHERE  pdb.pdb_id = svc.con_id AND svc.name NOT LIKE 'SYS%' AND svc.name NOT LIK
 ORDER BY 1;
 SPOOL OFF
 SPOOL ${LIST_DIR}/users_temp.csv APPEND
-SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||dbs.name||'","'||inst.instance_name||'","'||
-       pdb.pdb_name||'","'||usr.username||'","'||usr.account_status||'"'
+-- Ordre des colonnes = ordre de la table oracle_users, db_name EN DERNIER.
+-- Le chargement SQLcl est positionnel : ce SELECT plaçait db_name en 2e
+-- position, donc tout glissait d'un cran et account_status recevait des noms
+-- d'utilisateurs pendant que db_name recevait 'OPEN'. dim_account n'y voyait
+-- plus que des noms de bases -- 34 lignes au lieu de plusieurs centaines.
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","'||
+       pdb.pdb_name||'","'||usr.username||'","'||usr.account_status||'","'||dbs.name||'"'
 FROM   cdb_users usr, v\$instance inst, v\$database dbs, dba_pdbs pdb
 WHERE  usr.con_id = pdb.pdb_id AND usr.account_status = 'OPEN' ORDER BY 1;
 SPOOL OFF
@@ -125,8 +130,11 @@ FROM   v\$active_services svc, v\$instance inst, v\$database dbs
 WHERE  svc.name NOT LIKE 'SYS%' ORDER BY 1;
 SPOOL OFF
 SPOOL ${LIST_DIR}/users_temp.csv APPEND
-SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||dbs.name||'","'||inst.instance_name||'","'||dbs.name||'","'||
-       usr.username||'","'||usr.account_status||'"'
+-- Même correction qu'en CDB : db_name en dernier. Sur une base non-CDB,
+-- pdb_name porte le nom de la base, parce que c'est ce que dim_database
+-- utilisera comme db_name.
+SELECT '"'||REPLACE(inst.host_name,'"','')||'","'||inst.instance_name||'","'||dbs.name||'","'||
+       usr.username||'","'||usr.account_status||'","'||dbs.name||'"'
 FROM   dba_users usr, v\$instance inst, v\$database dbs
 WHERE  usr.account_status = 'OPEN' ORDER BY 1;
 SPOOL OFF
@@ -187,8 +195,15 @@ SQL
 SELECT '/ '||name||' /' FROM gv$active_services WHERE name NOT LIKE 'SYS%' AND name NOT LIKE '%pdb%' ORDER BY 1;
 SQL
             ) || svc_list="NA"
+            # Ordre = celui de la table oracle_dataguard : primary_db,
+            # standby_db, pdb_list_impacted, service_list_impacted,
+            # protection_mode. Le mode de protection etait ecrit en 3e
+            # position et atterrissait donc dans pdb_list_impacted, pendant
+            # que ext_oracle_instance.protection_mode recevait la liste de
+            # services. Latent jusqu a present : aucun broker DataGuard actif
+            # sur le parc, le fichier restait vide et personne ne l a vu.
             printf '%s,%s,%s,%s,%s\n' \
-                "${primary}" "${standby}" "${protection}" "${pdb_list:-NA}" "${svc_list:-NA}" \
+                "${primary}" "${standby}" "${pdb_list:-NA}" "${svc_list:-NA}" "${protection}" \
                 >> "${LIST_DIR}/dataguard_temp.csv"
         fi
     fi

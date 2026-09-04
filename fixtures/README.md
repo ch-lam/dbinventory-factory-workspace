@@ -1,0 +1,186 @@
+# Jeu de données de démonstration et de non-régression
+
+Un parc fictif complet — le **Groupe Hospitalier Meridian**, `ghm.lan` — produit sous
+forme de CSV de collecte, chargé par la chaîne de production sans la contourner.
+
+Il sert trois usages qui n'en font qu'un :
+
+1. **Démontrer l'application** sans exposer le parc du CHL.
+2. **Vérifier que la collecte reste alignée sur les structures.** Le chargement SQLcl est
+   positionnel et sans en-tête : une colonne déplacée ne produit aucune erreur, elle décale
+   tout ce qui suit. C'est arrivé, et personne ne l'a vu pendant des mois.
+3. **Servir d'oracle de non-régression** quand une règle de conformité change.
+
+---
+
+## Utilisation
+
+```bash
+# Génération seule (aucune base requise)
+node fixtures/generate.mjs
+
+# Génération + chargement + ETL, sur la base de démonstration
+./fixtures/load_fixtures.sh DEMO_DBINVENTORY_dbinventory
+
+# Comparaison au fichier de référence
+./fixtures/check_baseline.sh DEMO_DBINVENTORY_dbinventory
+
+# Après un changement de règle VOULU : on recapture, puis on relit le diff git
+./fixtures/check_baseline.sh DEMO_DBINVENTORY_dbinventory --capture
+```
+
+`load_fixtures.sh` refuse de tourner ailleurs que sur une base de démonstration, et il le
+vérifie deux fois : sur le nom de la connexion, puis sur `v_environment_identity` lue dans
+la base elle-même. Le premier contrôle est déclaratif, le second ne l'est pas. Le
+chargement commence par `TRUNCATE` sur tout le staging, et la donnée du dev n'est pas
+rejouable depuis cette machine.
+
+---
+
+## Organisation
+
+| Fichier | Rôle |
+|---|---|
+| `world.json` | Le parc : graine, dates figées, effectifs, **matrice de défauts** |
+| `generate.mjs` | Point d'entrée : produit 56 CSV + 3 `.lst` |
+| `lib/contract.mjs` | **L'ordre des colonnes, table par table** — la pièce maîtresse |
+| `lib/csv.mjs` | Écriture CSV : quoting, longueurs, refus de ce qui ne charge pas |
+| `lib/rng.mjs` | Tirage à graine (mulberry32), pour la reproductibilité |
+| `lib/estate.mjs` | Construction du parc : hôtes, instances, bases |
+| `lib/emit_*.mjs` | Un émetteur par moteur |
+| `sqlcl.sh` | Appel de SQLcl jouable depuis Git Bash — voir ci-dessous |
+| `expected/baseline.csv` | Les chiffres attendus, **capturés et non prédits** |
+
+### Pourquoi `sqlcl.sh` existe
+
+Sur un poste Windows, SQLcl lancé sans TTY répond
+`java.io.IOException: Fonction incorrecte` **à la place du résultat de la requête**, et
+rend 0 — le garde-fou d'identité lisait donc ce message comme un nom de service. Il faut
+lui donner stdin depuis un vrai fichier et `-Dorg.jline.terminal.provider=dumb`, et lui
+passer des chemins Windows : `/g/...` est lu comme `C:\g\...`. Ce sont exactement les
+prérequis de `APEXLang/validate.sh`, d'où le helper commun plutôt qu'une troisième copie.
+Sur le serveur de production, ces réglages sont sans effet.
+
+Le générateur n'a **aucune dépendance npm**, comme `tests/apex_page_test.mjs`.
+
+---
+
+## Le contrat de chargement
+
+`LOAD <table> ../collect/<table>.csv` : **le nom du fichier est le nom de la table**, sans
+exception. Aucun en-tête, chargement positionnel, `TRUNCATE` avant chaque chargement.
+
+| Loader | COLUMN_NAMES | Séparateur | Enclosures | TIMESTAMP_FORMAT |
+|---|---|---|---|---|
+| `load_info_oracle.sh` | OFF | `,` | `"` | `YYYY-MM-DD HH24:MI:SS` |
+| `load_info_mssql.sh` | OFF | `,` | *aucune déclarée* | non défini |
+| `load_info_postgres.sh` | OFF | `,` | `"` | non défini |
+
+Les deux configurations d'enclosure se comportent pareil à l'usage : les valeurs se
+chargent sans guillemets résiduels dans les deux cas. Le générateur émet donc la même
+forme que les collecteurs réels — **toute valeur non vide entre guillemets, y compris les
+nombres, et une valeur vide écrite sans rien** (`,,`, jamais `""`).
+
+`contract.mjs` a été **dérivé du DDL de la base et d'une collecte réelle archivée**, pas
+écrit à la main. Les nombres de champs viennent des 56 fichiers d'un vrai run ; cinq
+fichiers étant vides en production, leur contrat est déduit des scripts de collecte et
+marqué `source: "déduit des scripts"`.
+
+---
+
+## Les pièges qui font échouer une génération naïve
+
+**Les colonnes à DEFAULT en fin de table ne sont pas dans le CSV**, et leur nombre varie :
+0 pour `mssql_hosts`, 1 pour `oracle_databases` (`count_pdb`), 2 pour la plupart des tables
+de sécurité (`compliance_score`, `date_value`), 3 pour `oracle_security_tablespace` et
+`oracle_size_usage`. Un champ de trop met un nom d'hôte dans `date_value` et la ligne est
+rejetée. `csv.mjs` refuse d'écrire un champ hors contrat.
+
+**Oracle n'émet que les déviations.** `oracle_sec_high_sys_privs` est vide sur une base
+saine. Les verdicts conformes sont produits par anti-jointure contre deux **témoins** de
+collecte réussie : `oracle_security_parameter` par instance, `oracle_security_profile` par
+base. Une base absente de son témoin ne produit **aucun** constat — voulu : une collecte
+ratée ne doit pas être notée conforme. MSSQL fait l'inverse et émet des lignes sentinelles
+(`NoOrphanedUser`, `nogroup`, `no_permission`).
+
+**`pdb_name` n'a pas la même valeur selon la table.** Les tables de sécurité portent
+`NON CONTAINER` pour une base non-CDB, que l'ETL retraduit en `db_name` ; `oracle_size_usage`
+et les métriques portent le nom que `dim_database` utilisera. D'où les deux champs de
+`dbEntities` dans `estate.mjs` : `pdbName` pour la sécurité, `dimName` pour le reste.
+
+**Côté MSSQL, `collect_target` et `hostname` sont deux chaînes différentes** dont l'ETL
+dépend : `dim_host.hostname` vient du FQDN (`collect_target`), `dim_instance.instance_name`
+vient de `@@SERVERNAME` (`hostname`), de forme `MACHINE/INSTANCE`. Le collecteur réécrit
+tous les antislashs en slash.
+
+**`collect_id` vaut exactement `COLL_ID_YYYYMMDD`** — 16 caractères, la largeur de la
+colonne.
+
+---
+
+## Le déterminisme, et pourquoi les dates sont figées
+
+Une graine donnée produit toujours les mêmes octets. Sans cela, le fichier de référence ne
+voudrait rien dire.
+
+Les dates de `world.json` sont **figées et non calculées depuis aujourd'hui**, et
+`load_fixtures.sh` passe `snapshotDate` explicitement à l'ETL. Avec le défaut
+`trunc(sysdate)`, la fraîcheur des sauvegardes, les fins de support et `data_age_days`
+dériveraient d'un jour à l'autre : le fichier de référence serait faux le lendemain de sa
+capture.
+
+Réserve connue : `v_discovery_status.days_since_last_seen` et `is_stale` utilisent
+`sysdate` sans paramètre. La référence ne porte donc pas l'ancienneté de la discovery.
+
+Chaque moteur a **son propre flux aléatoire** dérivé de la graine. Avec un flux unique,
+ajouter une ligne dans l'émetteur Oracle décalait tous les tirages MSSQL en aval et
+réécrivait la totalité des fichiers : le diff devenait illisible.
+
+---
+
+## La matrice de défauts
+
+`world.json` déclare, **règle par règle**, la part de la population évaluée qui doit être en
+écart. Une valeur strictement entre 0 et 1 garantit les deux polarités, et `markShare`
+marque un nombre **exact** d'éléments plutôt qu'un tirage indépendant : un test qui compare
+des comptes ne tolère pas « à peu près 30 % ».
+
+67 des 69 règles actives y figurent. Les deux autres, `MSSQL_ENGINE_SUPPORTED` et
+`MSSQL_ENGINE_PATCH_CURRENT`, sont pilotées par le mélange de versions, calé sur les dates
+de `product_support` pour produire les trois états : sous support, sous support étendu
+(`is_norm_exception = 1`) et hors support.
+
+---
+
+## Le fichier de référence : capturé, pas prédit
+
+Le générateur **ne recalcule pas** les verdicts. Ce serait réimplémenter
+`pkg_dbinv_scoring`, et un test qui réimplémente son sujet ne prouve que sa propre
+cohérence.
+
+```
+charger  ->  ETL  ->  check_baseline.sh --capture  ->  expected/baseline.csv
+```
+
+`T_004_fixture_expectations.sql` produit l'empreinte chiffrée (cardinalités, constats par
+règle et par verdict, conformité, scoring, volumétrie du staging) et joue en plus des
+**assertions structurelles** qui, elles, échouent bruyamment : poids sommant à 100, tout
+`rule_code` émis présent au catalogue, aucun constat sans entité, scores dans leurs bornes,
+aucune règle muette, et surtout **chaque règle active couvrant les deux polarités**.
+
+Cette dernière est celle qui a le plus de valeur. Une règle qui ne rend qu'un seul verdict
+passe tous les autres contrôles sans avoir jamais été mise à l'épreuve — c'était le cas de
+la saturation de stockage, verte sur 1034 constats parce qu'elle ne pouvait pas rougir.
+
+---
+
+## Ce que ce jeu de données ne couvre pas
+
+- **MySQL et MongoDB** : les pages 50 et 60 restent vides. Elles ne contiennent aucune
+  requête SQL, il n'existe aucune table de staging MongoDB ni aucun contrôle pour ces deux
+  moteurs. C'est l'état réel du produit.
+- **La conformité PostgreSQL** : les 32 contrôles et 70 règles sont tous Oracle ou MSSQL.
+  Les CSV PostgreSQL alimentent le staging, que la page 40 lit directement ; ils ne
+  produisent ni constat ni score.
+- **La discovery** et le **second millésime de collecte** (l'historique des faits) : prévus
+  en itération 2.

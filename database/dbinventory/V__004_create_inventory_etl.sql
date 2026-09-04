@@ -448,14 +448,30 @@ create or replace package body pkg_dbinv_inventory as
    procedure load_fact_storage_capacity ( p_snapshot_date in date ) is
    begin
       -- Oracle tablespaces: allocated size vs sum of segments
+      --
+      -- Les segments viennent de oracle_size_usage_seg, PAS de
+      -- oracle_size_usage.sum_segment_mb : cette colonne existe dans la table
+      -- mais n'est dans aucun CSV -- elle suit les colonnes que le collecteur
+      -- s'arrête d'écrire, et le chargement positionnel ne la remplit jamais.
+      -- Elle valait donc NULL sur 100 % des lignes, used_mb tombait à 0, et
+      -- pct_used avec lui : le contrôle de saturation ne pouvait pas rougir,
+      -- quel que soit le remplissage réel. Vérifié sur la base de dev, où les
+      -- 524 lignes de fact_storage_capacity Oracle portaient pct_used = 0
+      -- alors que oracle_size_usage_seg contenait bien 231 sommes de segments.
       merge into fact_storage_capacity f
       using ( select su.storage_unit_id, p_snapshot_date snapshot_date,
                      max(z.size_mb) size_mb,
-                     max(nvl(z.sum_segment_mb, 0)) used_mb,
-                     max(z.size_mb) - max(nvl(z.sum_segment_mb, 0)) free_mb,
+                     max(nvl(g.sum_segment_mb, 0)) used_mb,
+                     max(z.size_mb) - max(nvl(g.sum_segment_mb, 0)) free_mb,
                      cast(null as number) max_size_mb,
-                     round(100 * max(nvl(z.sum_segment_mb, 0)) / nullif(max(z.size_mb), 0), 2) pct_used
+                     round(100 * max(nvl(g.sum_segment_mb, 0)) / nullif(max(z.size_mb), 0), 2) pct_used
                 from oracle_size_usage z
+                -- Jointure externe : un tablespace sans segment collecté reste
+                -- mesuré à 0 % plutôt que de disparaître de la capacité.
+                left join oracle_size_usage_seg g
+                       on g.db_name = z.db_name
+                      and g.pdb_name = z.pdb_name
+                      and g.tablespace_name = z.tablespace_name
                 join oracle_databases od on od.db_name = z.db_name
                 join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
                 join dim_instance di on di.host_id = ds.host_id and di.instance_name = od.instance_name

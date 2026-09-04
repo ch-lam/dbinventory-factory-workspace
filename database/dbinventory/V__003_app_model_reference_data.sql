@@ -431,6 +431,9 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
    values ( 'MSSQL_ENGINE_SUPPORTED', 'MSSQL_OUT_OF_SUPPORT', 'INSTANCE', '*',
             'Engine version must still be supported', 'The major version must not be past its end of support. Extended support (ESU) keeps the instance compliant but is flagged as an exception on the compliance row.', 'HIGH' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_ENGINE_SUPPORTED', 'ORACLE_OUT_OF_SUPPORT', 'INSTANCE', '*',
+            'Engine release must still be supported', 'The major release must not be past its end of support. Extended Support keeps the instance compliant and raises the norm exception flag, as it does on SQL Server. Note the Innovation Releases (18c, 21c) are not eligible for Extended Support at all, so for them the Premier date is the only one there is.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_ENGINE_PATCH_CURRENT', 'MSSQL_PATCH_LEVEL', 'INSTANCE', '*',
             'Engine build must be at the latest published patch level', 'dim_instance.engine_version must be at or above product_support.current_patch_level for its major version, compared on the build and revision numbers. Note: an instance kept on the GDR-only branch reads as behind, because the reference tracks the cumulative-update train.', 'MEDIUM' );
 
@@ -614,7 +617,7 @@ update ref_control_rule set origin = 'HOUSE_CONFLICT', benchmark_code = 'CIS_MSS
  where rule_code = 'MSSQL_REG_TCP_PORT';
 
 -- Left as HOUSE, and worth re-examining during the mapping review:
---   MSSQL_ENGINE_SUPPORTED, *_BACKUP_FRESHNESS_SLA, *_STORAGE_PCT_USED
+--   *_ENGINE_SUPPORTED, *_BACKUP_FRESHNESS_SLA, *_STORAGE_PCT_USED
 --     - service-level commitments, no benchmark equivalent.
 --   ORACLE_PRM_SYS_LOGON_DELAY, ORACLE_NO_USERMIG_TABLE
 --     - real hardening, but not traced to a published recommendation here.
@@ -819,5 +822,48 @@ insert into product_support ( product_company, product_type, product_version, co
 insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
                               edition_date, end_of_support_date )
    values ( 'POSTGRESQL', 'POSTGRES', '10', 'PostgreSQL 10', 'PostgreSQL 10', date '2017-10-05', date '2022-11-10' );
+
+
+-- Oracle, keyed on the MAJOR release alone. An Oracle banner version carries
+-- five components (19.20.0.0.0) but the support dates depend only on the first:
+-- every release update of 19c shares them. Same cut as PostgreSQL, and NOT the
+-- major.minor cut used for SQL Server -- '19.20' matches nothing here.
+--
+-- Two release kinds, and the difference is load-bearing. A Long Term Release
+-- (19c, and the 23 line) gets Premier then Extended Support; an Innovation
+-- Release (18c, 21c) is not eligible for Extended Support AT ALL, so its
+-- end_of_ext_support_date is null and the Premier date is the only one there is.
+-- A null there means "none exists", not "not filled in yet".
+--
+-- The 23 line is branded Oracle AI Database 26ai since the October 2025 release
+-- update, but the internal version stays 23.x (26ai reports 23.26.1.0.0), which
+-- is what an instance banner returns and what this table must therefore be
+-- keyed on. Only versions from 18c are listed: nothing older runs on the estate.
+--
+-- current_patch_level is left null, as for PostgreSQL: there is no Oracle patch
+-- reference here and no *_ENGINE_PATCH_CURRENT rule to consume one.
+--
+-- Transcribed by hand from Oracle's Lifetime Support Policy, like the Microsoft
+-- rows above; 19c and 23ai/26ai were both extended after their original dates,
+-- so recheck rather than assume when a release changes status.
+
+delete from product_support where product_company = 'ORACLE' and product_type = 'ORACLE';
+
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'ORACLE', 'ORACLE', '23', 'Oracle AI Database 26ai (formerly 23ai)', 'Oracle 26ai (23.x)',
+            date '2023-09-19', date '2031-12-31', null );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'ORACLE', 'ORACLE', '21', 'Oracle Database 21c (Innovation Release)', 'Oracle 21c',
+            date '2021-08-13', date '2027-07-31', null );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'ORACLE', 'ORACLE', '19', 'Oracle Database 19c (Long Term Release)', 'Oracle 19c',
+            date '2019-04-25', date '2029-12-31', date '2032-12-31' );
+insert into product_support ( product_company, product_type, product_version, commercial_name, display_name,
+                              edition_date, end_of_support_date, end_of_ext_support_date )
+   values ( 'ORACLE', 'ORACLE', '18', 'Oracle Database 18c (Innovation Release)', 'Oracle 18c',
+            date '2018-07-23', date '2021-06-30', null );
 
 commit;

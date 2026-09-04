@@ -129,7 +129,10 @@ page 1 (
                 Select 
                   ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'ORACLE') ORACLE,
                   ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'MSSQL' And db_name Not In ( 'master', 'msdb', 'tempdb', 'model')) MSSQL,
-                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'PORTGRES' ) POSTGRES,
+                  -- 'postgres' est ecartee comme master/msdb/tempdb/model le sont
+                  -- au-dessus : c'est la base de maintenance du cluster, pas une base
+                  -- applicative. template0/template1 ne sont deja pas collectees.
+                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'POSTGRES' And db_name <> 'postgres' ) POSTGRES,
                   ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'MYSQL') MYSQL
                 From DUAL;
                 
@@ -414,13 +417,19 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    With SQL_VERSIONS As
-                      ( select decode( substr( engine_version, 1, instr( engine_version, '.')-1), 10, 'SQL 2008/2008 R2', 11, 'SQL 2012', 12, 'SQL 2014', 13, 'SQL 2016', 14, 'SQL 2017', 15, 'SQL 2019', 16, 'SQL 2022', 17, 'SQL 2025', 'Unknown Yet') SQL_VERSION
-                         from dim_instance where platform = 'MYSQL' )
-                    select SQL_VERSION as label,
+                    -- Une version MySQL se lit sur majeure.mineure (5.7, 8.0, 8.4) :
+                    -- 8.0 et 8.4 sont deux versions distinctes, pas deux correctifs
+                    -- d'une meme majeure. Rien n'est collecte sur MySQL aujourd'hui,
+                    -- mais ce graphe heritait de la table des noms SQL Server et
+                    -- aurait affiche « SQL 2019 » pour une instance en 8.0.
+                    With MYSQL_VERSIONS As
+                      ( select nvl( regexp_substr( engine_version, '^\d+\.\d+' ), 'Unknown' ) MYSQL_VERSION
+                          from dim_instance where platform = 'MYSQL' )
+                    select 'MySQL ' || MYSQL_VERSION as label,
                            count(*) as value
-                      from SQL_VERSIONS
-                     group by SQL_VERSION order by value desc
+                      from MYSQL_VERSIONS
+                     group by MYSQL_VERSION
+                     order by MYSQL_VERSION
                     ```
             }
             columnMapping {
@@ -588,13 +597,21 @@ page 1 (
                 type: sqlQuery
                 sqlQuery:
                     ```sql
-                    With SQL_VERSIONS As
-                      ( select decode( substr( engine_version, 1, instr( engine_version, '.')-1), 10, 'SQL 2008/2008 R2', 11, 'SQL 2012', 12, 'SQL 2014', 13, 'SQL 2016', 14, 'SQL 2017', 15, 'SQL 2019', 16, 'SQL 2022', 17, 'SQL 2025', 'Unknown Yet') SQL_VERSION
-                         from dim_instance where platform = 'POSTGRES' )
-                    select SQL_VERSION as label,
+                    -- Groupe par MAJEURE. Depuis la version 10, PostgreSQL numerote
+                    -- une majeure sur une SEULE composante : 16.4 est la majeure 16,
+                    -- minor 4. C'est aussi le grain du calendrier de fin de support
+                    -- dans product_support, donc une tranche de ce graphe correspond
+                    -- exactement a une date de support et non a plusieurs.
+                    --
+                    -- Tri numerique, pas alphabetique : en texte, '9' passe apres '16'.
+                    With PG_MAJOR As
+                      ( select nvl( regexp_substr( engine_version, '^\d+' ), 'Unknown' ) MAJOR_VERSION
+                          from dim_instance where platform = 'POSTGRES' )
+                    select 'PostgreSQL ' || MAJOR_VERSION as label,
                            count(*) as value
-                      from SQL_VERSIONS
-                     group by SQL_VERSION order by value desc
+                      from PG_MAJOR
+                     group by MAJOR_VERSION
+                     order by to_number( regexp_substr( MAJOR_VERSION, '\d+' ) ) nulls last
                     ```
             }
             columnMapping {

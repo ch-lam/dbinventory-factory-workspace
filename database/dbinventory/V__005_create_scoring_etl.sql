@@ -1132,6 +1132,64 @@ create or replace package body pkg_dbinv_scoring as
                   is_compliant, observed_value, expected_value )
          values ( s.rule_code, s.entity_type, s.entity_id, s.item_key, s.snapshot_date,
                   s.is_compliant, s.observed_value, s.expected_value );
+      -- Oracle end of support, on the same shape as SQL Server -- Extended
+      -- Support keeps the instance compliant and raises is_norm_exception,
+      -- because it is a vendor condition and not a derogation granted here.
+      --
+      -- The cut is the leading digits, NOT the major.minor of the block above:
+      -- an Oracle banner reads 19.20.0.0.0 and the support dates belong to the
+      -- release, not to the release update. Copying the SQL Server substr would
+      -- have looked for '19.20' in product_support and judged nothing at all.
+      --
+      -- An instance whose release is absent from the calendar produces NO row,
+      -- as everywhere else here, rather than a fabricated verdict.
+      merge into fact_control_finding f
+      using (
+         select 'ORACLE_ENGINE_SUPPORTED' rule_code,
+                'INSTANCE' entity_type,
+                di.instance_id entity_id,
+                '*' item_key,
+                p_snapshot_date snapshot_date,
+                case when p_snapshot_date <= ps.end_of_support_date then 1
+                     when ps.end_of_ext_support_date is not null
+                          and p_snapshot_date <= ps.end_of_ext_support_date then 1
+                     else 0 end is_compliant,
+                case when p_snapshot_date > ps.end_of_support_date
+                          and ps.end_of_ext_support_date is not null
+                          and p_snapshot_date <= ps.end_of_ext_support_date then 1
+                     else 0 end is_norm_exception,
+                substr( ps.display_name || ' (' || di.engine_version || '), '
+                        || case when p_snapshot_date <= ps.end_of_support_date
+                                   then 'premier support until ' || to_char(ps.end_of_support_date, 'YYYY-MM-DD')
+                                when ps.end_of_ext_support_date is not null
+                                   and p_snapshot_date <= ps.end_of_ext_support_date
+                                   then 'premier support ended ' || to_char(ps.end_of_support_date, 'YYYY-MM-DD')
+                                        || ', extended support until ' || to_char(ps.end_of_ext_support_date, 'YYYY-MM-DD')
+                                else 'out of support since '
+                                     || to_char(nvl(ps.end_of_ext_support_date, ps.end_of_support_date), 'YYYY-MM-DD')
+                           end
+                      , 1, 400 ) observed_value,
+                'supported on ' || to_char(p_snapshot_date, 'YYYY-MM-DD') expected_value
+         from dim_instance di
+         join product_support ps
+           on ps.product_company = 'ORACLE'
+          and ps.product_type = 'ORACLE'
+          and ps.product_version = regexp_substr( di.engine_version, '^\d+' )
+         where di.platform = 'ORACLE'
+           and regexp_like( di.engine_version, '^\d+' )
+      ) s
+      on ( f.rule_code = s.rule_code and f.entity_type = s.entity_type
+           and f.entity_id = s.entity_id and f.item_key = s.item_key
+           and f.snapshot_date = s.snapshot_date )
+      when matched then update set
+         f.is_compliant = s.is_compliant, f.is_norm_exception = s.is_norm_exception,
+         f.observed_value = s.observed_value, f.expected_value = s.expected_value
+      when not matched then
+         insert ( rule_code, entity_type, entity_id, item_key, snapshot_date,
+                  is_compliant, is_norm_exception, observed_value, expected_value )
+         values ( s.rule_code, s.entity_type, s.entity_id, s.item_key, s.snapshot_date,
+                  s.is_compliant, s.is_norm_exception, s.observed_value, s.expected_value );
+
       -- PostgreSQL end of support.
       --
       -- The major version is a SINGLE component since release 10 (16.4 is major

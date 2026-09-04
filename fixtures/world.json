@@ -29,8 +29,9 @@
     "databases": 25,
     "cdbShare": 0.32,
     "pdbsPerCdb": [1, 3],
-    "versions": ["19.3.0.0.0", "19.9.0.0.0", "19.13.0.0.0", "19.20.0.0.0", "19.31.0.0.0"],
-    "versionWeights": [1, 3, 12, 6, 3],
+    "_versionsComment": "18.14 est hors support depuis 2021 et 21.15 est une Innovation Release sans support etendu : sans elles, ORACLE_ENGINE_SUPPORTED ne rendrait qu'un seul verdict et T_004 le refuserait",
+    "versions": ["18.14.0.0.0", "19.3.0.0.0", "19.9.0.0.0", "19.13.0.0.0", "19.20.0.0.0", "19.31.0.0.0", "21.15.0.0.0", "23.26.1.0.0"],
+    "versionWeights": [2, 1, 3, 8, 5, 3, 3, 3],
     "licenses": ["CPU", "SAP"],
     "tablespacesPerDb": [4, 9],
     "usersPerDb": [8, 22]

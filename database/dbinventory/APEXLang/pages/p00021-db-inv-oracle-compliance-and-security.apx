@@ -41,7 +41,12 @@ page 21 (
                        -- addressed by reportColumnQueryId, so inserting in the
                        -- middle would renumber every one of them.
                        r.rule_code,
-                       f.entity_id
+                       f.entity_id,
+                       -- Le serveur, distinct de l'instance : sur Oracle
+                       -- instance_name est le SID. La page 25 filtre sur
+                       -- dim_host.hostname, c'est donc lui qu'il faut lui
+                       -- passer, et non le nom d'instance.
+                       h.hostname
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
@@ -52,6 +57,7 @@ page 21 (
                    and rc.active = 1
                   join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
                   join dim_instance i on i.instance_id = a.instance_id
+                  join dim_host h on h.host_id = a.host_id
                   left join dim_database d on d.database_id = a.database_id
                   left join ref_exception e on e.exception_id = f.exception_id
                  where i.platform = 'ORACLE'
@@ -141,6 +147,17 @@ page 21 (
             }
         )
 
+        column HOSTNAME (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            heading {
+                heading: Server
+            }
+            layout {
+                sequence: 220
+            }
+        )
+
         column EXCEPTION_STATUS (
             reportColumnQueryId: 10
             derivedColumn: N
@@ -175,12 +192,15 @@ page 21 (
             }
             link {
                 target: {
-                    page: 35
+                    page: 25
                     items: {
-                        P35_HOSTNAME: #INSTANCE_NAME#
+                        P25_HOSTNAME: #HOSTNAME#
                     }
                 }
                 linkText: #INSTANCE_NAME#
+            }
+            comments {
+                comments: Points at 25, the Oracle server page. It used to point at 35, the MSSQL one, carried over when this page was cloned from 31 - an Oracle instance name landed on a page that only knows SQL Server hosts. The value passed is HOSTNAME and not INSTANCE_NAME: P25_HOSTNAME is a select list over dim_host.hostname, and on Oracle the instance name is the SID.
             }
         )
 

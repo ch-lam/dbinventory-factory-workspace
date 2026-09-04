@@ -207,6 +207,39 @@ comment on column ext_mssql_instance.service_account is 'Windows account the SQL
 
 
 -- ============================================================
+-- ext_postgres_instance  (PostgreSQL-specific container attributes)
+-- ============================================================
+-- Everything the PostgreSQL collect returns that has no equivalent on the other
+-- engines lands here rather than widening dim_instance. db_role is kept at this
+-- level and not on dim_host: a standby is a property of the running cluster, and
+-- it is what explains why an instance carries no SECURITY finding -- the
+-- security collect deliberately skips standbys.
+create table ext_postgres_instance (
+   instance_id       number not null,
+   data_directory    varchar2(255 char),
+   start_time        varchar2(30 char),
+   max_connections   number(10),
+   shared_buffers_mb number(10),
+   wal_level         varchar2(20 char),
+   archive_mode      varchar2(20 char),
+   db_role           varchar2(20 char),
+   constraint ext_postgres_instance_pk primary key ( instance_id ),
+   constraint ext_postgres_inst_fk foreign key ( instance_id )
+      references dim_instance ( instance_id )
+);
+
+comment on table ext_postgres_instance is 'PostgreSQL-specific extension of dim_instance (cluster configuration and replication role).';
+comment on column ext_postgres_instance.instance_id is 'Instance this extension row belongs to (PK and FK to dim_instance).';
+comment on column ext_postgres_instance.data_directory is 'Path of the PostgreSQL data directory.';
+comment on column ext_postgres_instance.start_time is 'Timestamp at which the PostgreSQL instance was started.';
+comment on column ext_postgres_instance.max_connections is 'Maximum number of concurrent connections configured (max_connections).';
+comment on column ext_postgres_instance.shared_buffers_mb is 'Size of the shared_buffers configuration parameter, in megabytes.';
+comment on column ext_postgres_instance.wal_level is 'WAL level configured on the instance (e.g. replica, logical).';
+comment on column ext_postgres_instance.archive_mode is 'WAL archive mode configured on the instance; the source of PG_ARCHIVE_MODE_ON.';
+comment on column ext_postgres_instance.db_role is 'Role of the instance in the replication topology (PRIMARY, STANDBY).';
+
+
+-- ============================================================
 -- dim_database  (usable database: Oracle PDB / non-CDB DB, or MSSQL database)
 -- ============================================================
 create table dim_database (

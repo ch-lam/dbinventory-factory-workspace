@@ -60,9 +60,11 @@
   },
 
   "postgres": {
-    "hosts": 4,
+    "_comment": "standbys : les N derniers hotes du lot. La collecte de securite ne passe pas dessus.",
+    "hosts": 6,
+    "standbys": 1,
     "databasesPerHost": [1, 3],
-    "versions": ["14.12", "15.8", "16.4"]
+    "versions": ["13.16", "14.12", "15.8", "16.4", "17.2"]
   },
 
   "environments": {
@@ -142,6 +144,26 @@
     "ORACLE_HIGH_ROLE_PRIVS_GRANT":     0.36,
     "ORACLE_HIGH_TAB_PRIVS_PUBLIC":     0.28,
     "ORACLE_STORAGE_PCT_USED":          0.09,
-    "ORACLE_BACKUP_FRESHNESS_SLA":      0.12
+    "ORACLE_BACKUP_FRESHNESS_SLA":      0.12,
+
+    "PG_PRM_SSL_ON":                    0.40,
+    "PG_PRM_PASSWORD_ENCRYPTION":       0.20,
+    "PG_PRM_LOG_CONNECTIONS":           0.20,
+    "PG_PRM_LOG_DISCONNECTIONS":        0.40,
+    "PG_PRM_LOG_STATEMENT":             0.60,
+    "PG_PRM_SSL_MIN_PROTOCOL":          0.40,
+    "PG_PRM_PGAUDIT_LOADED":            0.60,
+    "PG_ROLE_NO_EXTRA_SUPERUSER":       0.40,
+    "PG_ROLE_NO_BYPASSRLS":             0.20,
+    "PG_ROLE_REPLICATION_LIMITED":      0.40,
+    "PG_MEMBER_NO_SERVER_PROGRAM":      0.20,
+    "PG_MEMBER_NO_SERVER_FILES":        0.40,
+    "PG_MEMBER_NO_WRITE_ALL_DATA":      0.20,
+    "PG_HBA_NO_TRUST":                  0.40,
+    "PG_HBA_NO_WEAK_METHOD":            0.60,
+    "PG_PUBLIC_NO_CREATE":              0.25,
+    "PG_ARCHIVE_MODE_ON":               0.33,
+    "PG_BACKUP_FRESHNESS_SLA":          0.33,
+    "PG_XID_WRAPAROUND":                0.15
   }
 }

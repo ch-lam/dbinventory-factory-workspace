@@ -15,26 +15,37 @@ page 40 (
     }
 
     region postgres-hosts (
-        name: PostgreSQL Hosts
+        name: PostgreSQL Servers
+        title: PostgreSQL Servers
         type: classicReport
         source {
             location: localDatabase
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select hostname,
-                       environment,
-                       license_type,
-                       pg_version,
-                       db_role,
-                       port,
-                       wal_level,
-                       archive_mode,
-                       max_connections,
-                       shared_buffers_mb,
-                       data_directory
-                  from postgres_hosts
-                 order by hostname
+                -- Read from the model rather than from postgres_hosts, now that the
+                -- PostgreSQL collect feeds dim_host/dim_instance. Same columns in the
+                -- same order as before, so the column definitions below are unchanged.
+                --
+                -- instance_name IS the hostname on PostgreSQL: the collect never carries
+                -- the port back into the data, so the model cannot separate two clusters
+                -- running on one machine. See pkg_dbinv_inventory.load_dim_host.
+                select i.instance_name hostname,
+                       h.environment,
+                       h.license_type,
+                       i.engine_version pg_version,
+                       e.db_role,
+                       i.port,
+                       e.wal_level,
+                       e.archive_mode,
+                       e.max_connections,
+                       e.shared_buffers_mb,
+                       e.data_directory
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                  left join ext_postgres_instance e on e.instance_id = i.instance_id
+                 where i.platform = 'POSTGRES'
+                 order by i.instance_name
                 ```
         }
         layout {
@@ -60,40 +71,14 @@ page 40 (
             whenNoDataFound: No data found.
         }
 
-        column ARCHIVE_MODE (
-            reportColumnQueryId: 8
+        column HOSTNAME (
+            reportColumnQueryId: 1
             derivedColumn: N
             heading {
-                heading: Archive Mode
-                alignment: center
+                heading: Hostname
             }
             layout {
-                sequence: 80
-                columnAlignment: center
-            }
-        )
-
-        column DATA_DIRECTORY (
-            reportColumnQueryId: 11
-            derivedColumn: N
-            heading {
-                heading: Data Directory
-            }
-            layout {
-                sequence: 110
-            }
-        )
-
-        column DB_ROLE (
-            reportColumnQueryId: 5
-            derivedColumn: N
-            heading {
-                heading: Role
-                alignment: center
-            }
-            layout {
-                sequence: 50
-                columnAlignment: center
+                sequence: 10
             }
         )
 
@@ -110,20 +95,6 @@ page 40 (
             }
         )
 
-        column HOSTNAME (
-            reportColumnQueryId: 1
-            derivedColumn: N
-            heading {
-                heading: Hostname
-            }
-            layout {
-                sequence: 10
-            }
-            comments {
-                comments: Display Label: Hostname. Display in Report: true. Display in Form: false. Format Mask: none. Value Required: false. Read Only: true. Primary Display Column: true. Authorization Scheme: none.
-            }
-        )
-
         column LICENSE_TYPE (
             reportColumnQueryId: 3
             derivedColumn: N
@@ -132,19 +103,6 @@ page 40 (
             }
             layout {
                 sequence: 30
-            }
-        )
-
-        column MAX_CONNECTIONS (
-            reportColumnQueryId: 9
-            derivedColumn: N
-            heading {
-                heading: Max Conn.
-                alignment: end
-            }
-            layout {
-                sequence: 90
-                columnAlignment: end
             }
         )
 
@@ -159,6 +117,19 @@ page 40 (
             }
         )
 
+        column DB_ROLE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Role
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
         column PORT (
             reportColumnQueryId: 6
             derivedColumn: N
@@ -168,6 +139,43 @@ page 40 (
             }
             layout {
                 sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column WAL_LEVEL (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: WAL Level
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column ARCHIVE_MODE (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Archive Mode
+                alignment: center
+            }
+            layout {
+                sequence: 80
+                columnAlignment: center
+            }
+        )
+
+        column MAX_CONNECTIONS (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Max Conn.
+                alignment: end
+            }
+            layout {
+                sequence: 90
                 columnAlignment: end
             }
         )
@@ -185,18 +193,626 @@ page 40 (
             }
         )
 
-        column WAL_LEVEL (
+        column DATA_DIRECTORY (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Data Directory
+            }
+            layout {
+                sequence: 110
+            }
+        )
+
+    )
+
+    region postgres-databases (
+        name: Databases
+        title: Databases
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                -- Identity from the model, descriptive attributes from the collect.
+                -- owner, encoding, collation and default tablespace have no home in the
+                -- dimensional model: there is no ext_postgres_database, because nothing
+                -- scores them and inventing a table to mirror four display columns would
+                -- add a load step that could drift. They are read from the staging row
+                -- the model was built from, joined on the same key.
+                select i.instance_name hostname,
+                       d.db_name,
+                       d.environment,
+                       p.owner,
+                       p.encoding,
+                       p.collation,
+                       p.tablespace,
+                       sc.used_mb size_mb
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  left join postgres_databases p
+                    on p.hostname = i.instance_name
+                   and p.datname = d.db_name
+                  left join dim_storage_unit su
+                    on su.database_id = d.database_id
+                   and su.storage_type = 'DATABASE'
+                  left join fact_storage_capacity sc
+                    on sc.storage_unit_id = su.storage_unit_id
+                   and sc.snapshot_date = ( select max(sc2.snapshot_date) from fact_storage_capacity sc2 )
+                 where d.platform = 'POSTGRES'
+                 order by i.instance_name, d.db_name
+                ```
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No database collected on PostgreSQL yet.
+        }
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column DB_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column OWNER (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Owner
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column ENCODING (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Encoding
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column COLLATION (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Collation
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column TABLESPACE (
             reportColumnQueryId: 7
             derivedColumn: N
             heading {
-                heading: WAL Level
+                heading: Tablespace
             }
             layout {
                 sequence: 70
             }
         )
 
+        column SIZE_MB (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Size (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 80
+                columnAlignment: end
+            }
+        )
+
+    )
+
+    region postgres-capacity (
+        name: Capacity : Transaction ID Headroom
+        title: Capacity : Transaction ID Headroom
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                -- What "running out" means on PostgreSQL.
+                --
+                -- There is no percentage of a disk here, and that is not an omission: a
+                -- PostgreSQL database has no size ceiling of its own, and no filesystem
+                -- size is reachable from SQL, so fact_storage_capacity carries used_mb
+                -- with pct_used deliberately null. The hard ceiling the engine does have
+                -- is transaction id wraparound - 2^31, past which the cluster refuses
+                -- writes until a VACUUM FREEZE completes - and that is what is scored,
+                -- through PG_XID_WRAPAROUND.
+                --
+                -- Size is shown beside it for growth, without a verdict attached.
+                select i.instance_name hostname,
+                       d.db_name,
+                       sc.used_mb size_mb,
+                       round( 100 * p.xid_age / 2147483648, 2 ) pct_xid_used,
+                       t.warn_value,
+                       t.crit_value,
+                       case when round( 100 * p.xid_age / 2147483648, 2 ) >= t.crit_value then 'Critical'
+                            when round( 100 * p.xid_age / 2147483648, 2 ) >= t.warn_value then 'Warning'
+                            else 'OK'
+                       end xid_status
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join postgres_databases p
+                    on p.hostname = i.instance_name
+                   and p.datname = d.db_name
+                  left join dim_storage_unit su
+                    on su.database_id = d.database_id
+                   and su.storage_type = 'DATABASE'
+                  left join fact_storage_capacity sc
+                    on sc.storage_unit_id = su.storage_unit_id
+                   and sc.snapshot_date = ( select max(sc2.snapshot_date) from fact_storage_capacity sc2 )
+                  left join ref_threshold t
+                    on t.control_code = 'POSTGRES_CAPACITY_SATURATION'
+                   and t.metric = 'pct_xid_used'
+                   and t.environment = '*'
+                 where d.platform = 'POSTGRES'
+                   and p.xid_age is not null
+                 order by round( 100 * p.xid_age / 2147483648, 2 ) desc nulls last
+                ```
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No transaction id age collected yet.
+        }
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column DB_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column SIZE_MB (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Size (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+        )
+
+        column PCT_XID_USED (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: XID Used (%)
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column WARN_VALUE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Warning (%)
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+        )
+
+        column CRIT_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Critical (%)
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column XID_STATUS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    region postgres-wal-archiving (
+        name: WAL Archiving
+        title: WAL Archiving
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                -- WAL archiving is NOT a backup, and this region must not be read as one:
+                -- no pgBackRest or Barman catalogue is collected anywhere in the estate,
+                -- so nothing here says a restore has ever been possible. What it does say
+                -- is whether the necessary condition for point-in-time recovery holds -
+                -- archiving switched on, and the last segment recent enough. Both are
+                -- scored, as POSTGRES_WAL_ARCHIVING and POSTGRES_BACKUP_FRESHNESS.
+                --
+                -- hours_since_backup is measured from pg_stat_archiver.last_archived_time
+                -- and lands in last_log_date, never in last_full_date: see
+                -- pkg_dbinv_inventory.load_fact_instance_backup.
+                select i.instance_name hostname,
+                       e.archive_mode,
+                       ib.last_log_date last_archived_time,
+                       b.last_archived_wal,
+                       ib.hours_since_backup hours_since_archived,
+                       ib.failed_count,
+                       b.last_failed_wal,
+                       t.crit_value sla_hours
+                  from dim_instance i
+                  left join ext_postgres_instance e on e.instance_id = i.instance_id
+                  left join fact_instance_backup ib
+                    on ib.instance_id = i.instance_id
+                   and ib.snapshot_date = ( select max(ib2.snapshot_date) from fact_instance_backup ib2 )
+                  left join postgres_backup b on b.hostname = i.instance_name
+                  left join ref_threshold t
+                    on t.control_code = 'POSTGRES_BACKUP_FRESHNESS'
+                   and t.metric = 'hours_since_archived'
+                   and t.environment = '*'
+                 where i.platform = 'POSTGRES'
+                 order by ib.hours_since_backup desc nulls last
+                ```
+        }
+        layout {
+            sequence: 40
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No WAL archiver statistics collected yet.
+        }
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ARCHIVE_MODE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Archive Mode
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column LAST_ARCHIVED_TIME (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Last Archived
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column LAST_ARCHIVED_WAL (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Last WAL Segment
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column HOURS_SINCE_ARCHIVED (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Hours Since
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+        )
+
+        column FAILED_COUNT (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Failed
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column LAST_FAILED_WAL (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Last Failed WAL
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column SLA_HOURS (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: SLA (h)
+                alignment: end
+            }
+            layout {
+                sequence: 80
+                columnAlignment: end
+            }
+        )
+
+    )
+
+    region postgres-replication (
+        name: Replication
+        title: Replication
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                -- Read straight from the collect: streaming replication has no home in the
+                -- dimensional model, and nothing scores it. That is deliberate - a
+                -- replication lag is a supervision signal, watched by Zabbix
+                -- (check_postgres.sh), not a compliance verdict this inventory should be
+                -- issuing. It is shown here because the estate's topology belongs on the
+                -- inventory page.
+                --
+                -- lag_seconds = -1 is the collect's marker for "not measurable", not a
+                -- negative lag: on a standby the collect reports the age of the last
+                -- message received, and there is none before the first one arrives.
+                select r.hostname,
+                       r.db_role,
+                       r.peer_addr,
+                       r.state,
+                       r.sync_state,
+                       case when r.lag_seconds < 0 then null else r.lag_seconds end lag_seconds
+                  from postgres_replication r
+                 order by r.hostname, r.peer_addr
+                ```
+        }
+        layout {
+            sequence: 50
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No streaming replication collected. A cluster with no standby produces no row here.
+        }
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column DB_ROLE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Role
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column PEER_ADDR (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Peer
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column STATE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: State
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column SYNC_STATE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Sync
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column LAG_SECONDS (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Lag (s)
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
     )
 
 )
-

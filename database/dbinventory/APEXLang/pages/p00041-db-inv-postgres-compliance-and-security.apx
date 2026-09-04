@@ -1,0 +1,933 @@
+page 41 (
+    name: DB Inv. - Postgres Compliance and Security
+    alias: DB-INV-POSTGRES-COMPLIANCE-AND-SECURITY
+    title: DB Inv. - Postgres Compliance and Security
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region pg-noncompliance (
+        name: Non Compliance Issues
+        title: Non Compliance Issues
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select i.instance_name,
+                       rc.category,
+                       r.title,
+                       nvl( r.severity, rc.severity ) severity,
+                       f.entity_type scope,
+                       f.observed_value,
+                       d.db_name,
+                       f.item_key,
+                       f.expected_value,
+                       case when f.exception_id is not null then 'Granted derogation'
+                            when f.is_norm_exception = 1 then 'Accepted by the norm'
+                            else 'Open'
+                       end exception_status,
+                       e.justification,
+                       -- Appended at the end on purpose: the columns above are
+                       -- addressed by reportColumnQueryId, so inserting in the
+                       -- middle would renumber every one of them.
+                       r.rule_code,
+                       f.entity_id
+                  from fact_control_finding f
+                  join ref_control_rule r
+                    on r.rule_code = f.rule_code
+                   and r.active = 1
+                  join ref_control rc
+                    on rc.control_code = r.control_code
+                   and rc.score_domain = 'SECURITY'
+                   and rc.active = 1
+                  join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+                  join dim_instance i on i.instance_id = a.instance_id
+                  left join dim_database d on d.database_id = a.database_id
+                  left join ref_exception e on e.exception_id = f.exception_id
+                 where i.platform = 'POSTGRES'
+                   and f.is_compliant = 0
+                   and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+                ```
+        }
+        layout {
+            sequence: 110
+            slot: body
+            startNewRow: false
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--removeHeader js-removeLandmark
+                t-Region--scrollBody
+            ]
+        }
+        reportLayout {
+            numberOfRows: 60
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+                t-Report--rowHighlight
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+            displayPosition: topAndBottomRight
+        }
+        messages {
+            whenNoDataFound: No Compliance Issues matches your criterias
+            whenMoreDataFound: Too much issues matches your criteria, please add some filtering to see less than 2000 rows.
+        }
+        printing {
+            enabled: true
+        }
+        output {
+            linkText: Print
+            format: pdf
+        }
+        page {
+            height: 8.5
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+        pageHeader {
+            pageHeaderText: Non Compliance Issues
+        }
+
+        column CATEGORY (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Category
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column DB_NAME (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 65
+            }
+        )
+
+        column ENTITY_ID (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            heading {
+                heading: Entity id
+            }
+            layout {
+                sequence: 210
+            }
+        )
+
+        column EXCEPTION_STATUS (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Exception
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column EXPECTED_VALUE (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Expected Value
+            }
+            layout {
+                sequence: 75
+            }
+        )
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Instance Name
+            }
+            layout {
+                sequence: 60
+            }
+            comments {
+                comments: Plain column, deliberately not a link. There is no PostgreSQL server detail page - 25 covers Oracle and 35 covers MSSQL - and page 40 takes no parameter, so a link there would drop the instance the user clicked.
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 68
+            }
+        )
+
+        column JUSTIFICATION (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Derogation Justification
+            }
+            layout {
+                sequence: 90
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Observed Value
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column RULE_CODE (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Derogation
+            }
+            layout {
+                sequence: 200
+            }
+            link {
+                target: {
+                    page: 71
+                    items: {
+                        P71_RULE_CODE: #RULE_CODE#
+                        P71_ENTITY_TYPE: #SCOPE#
+                        P71_ENTITY_ID: #ENTITY_ID#
+                        P71_ITEM_KEY: #ITEM_KEY#
+                        P71_OBSERVED_VALUE: #OBSERVED_VALUE#
+                    }
+                    clearCache: 71
+                }
+                linkText: Grant
+            }
+            sorting {
+                sortable: false
+            }
+            comments {
+                comments: Opens the derogation dialog already scoped to this finding, so the rule code and the entity are never typed by hand.
+            }
+        )
+
+        column SCOPE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Scope
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column SEVERITY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Severity
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column TITLE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Title
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+    )
+
+    region granted-exceptions (
+        name: Granted Exceptions
+        title: Granted Exceptions
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select e.exception_id,
+                       case when e.active = 0 then 'Disabled'
+                            when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
+                            when e.start_date > trunc(sysdate) then 'Not started'
+                            when nvl( ( select count(*) from fact_control_finding f where f.exception_id = e.exception_id and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ), 0 ) = 0 then 'Active, covers nothing'
+                            else 'Active'
+                       end status,
+                       r.title rule_title,
+                       e.entity_type scope,
+                       nvl( nvl( i.instance_name, d.db_name ), h.hostname ) scope_name,
+                       e.item_key,
+                       e.observed_value,
+                       ( select count(*) from fact_control_finding f where f.exception_id = e.exception_id and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) covered_today,
+                       e.start_date,
+                       e.end_date,
+                       e.review_due_date,
+                       e.approved_by,
+                       e.document_ref,
+                       e.justification
+                  from ref_exception e
+                  join ref_control_rule r on r.rule_code = e.rule_code
+                  join ref_control rc on rc.control_code = r.control_code and rc.platform = 'POSTGRES'
+                  left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
+                  left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
+                  left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id
+                 order by e.exception_id
+                ```
+        }
+        layout {
+            sequence: 120
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        reportLayout {
+            numberOfRows: 30
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+                t-Report--rowHighlight
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+            displayPosition: topAndBottomRight
+        }
+        messages {
+            whenNoDataFound: No documented derogation has been granted on PostgreSQL yet
+        }
+        printing {
+            enabled: true
+        }
+        output {
+            linkText: Print
+            format: pdf
+        }
+        page {
+            height: 8.5
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+        pageHeader {
+            pageHeaderText: Granted Exceptions
+        }
+
+        column APPROVED_BY (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            heading {
+                heading: Approved By
+            }
+            layout {
+                sequence: 120
+            }
+        )
+
+        column COVERED_TODAY (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Findings Covered
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column DOCUMENT_REF (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            heading {
+                heading: Document
+            }
+            layout {
+                sequence: 130
+            }
+        )
+
+        column END_DATE (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Valid Until
+            }
+            layout {
+                sequence: 100
+            }
+        )
+
+        column EXCEPTION_ID (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Id
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column JUSTIFICATION (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            heading {
+                heading: Justification
+            }
+            layout {
+                sequence: 140
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Pinned Value
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column REVIEW_DUE_DATE (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Review Due
+            }
+            layout {
+                sequence: 110
+            }
+        )
+
+        column RULE_TITLE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Derogated Rule
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column SCOPE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Granted At
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column SCOPE_NAME (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Entity
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column START_DATE (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Valid From
+            }
+            layout {
+                sequence: 90
+            }
+        )
+
+        column STATUS (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Status
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+    )
+
+    region pg-open-noncompliance (
+        name: PostgreSQL : Open Non Compliance
+        title: PostgreSQL : Open Non Compliance
+        type: chart
+        layout {
+            sequence: 90
+            slot: body
+            startNewRow: false
+            columnSpan: 4
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--noPadding
+                i-h320
+                t-Region--scrollBody
+            ]
+        }
+        chart {
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
+        }
+        legend {
+            position: bottom
+        }
+
+        series pg-open-noncompliance (
+            name: PostgreSQL Open Non Compliance by Severity
+            execution {
+                sequence: 10
+            }
+            source {
+                type: sqlQuery
+                sqlQuery:
+                    ```sql
+                    With COMP_ISSUES As
+                    ( select nvl( r.severity, rc.severity ) severity
+                        from fact_control_finding f
+                        join ref_control_rule r
+                          on r.rule_code = f.rule_code
+                         and r.active = 1
+                        join ref_control rc
+                          on rc.control_code = r.control_code
+                         and rc.score_domain = 'SECURITY'
+                         and rc.active = 1
+                        join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+                        join dim_instance i on i.instance_id = a.instance_id
+                       where i.platform = 'POSTGRES'
+                         and f.is_compliant = 0
+                         and f.exception_id is null
+                         and f.is_norm_exception = 0
+                         and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) )
+                    Select COUNT(*) value, InitCAP(SEVERITY) label From COMP_ISSUES Group By InitCAP(SEVERITY)
+                    ```
+            }
+            columnMapping {
+                label: LABEL
+                value: VALUE
+            }
+        )
+
+    )
+
+    region pg-versions (
+        name: PostgreSQL : Versions
+        title: PostgreSQL : Versions
+        type: chart
+        layout {
+            sequence: 70
+            slot: body
+            columnSpan: 4
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--noPadding
+                i-h320
+                t-Region--scrollBody
+            ]
+        }
+        chart {
+            type: donut
+        }
+        settings {
+            pieSelectionEffect: highlightAndExplode
+        }
+        value {
+            format: decimal
+            decimalPlaces: 0
+            formatScaling: none
+        }
+        legend {
+            position: bottom
+        }
+
+        series pg-versions (
+            name: PostgreSQL Major Versions
+            execution {
+                sequence: 10
+            }
+            source {
+                type: sqlQuery
+                sqlQuery:
+                    ```sql
+                      -- Grouped by MAJOR version, unlike the Oracle page which
+                      -- groups by release update. Since release 10 PostgreSQL
+                      -- numbers a major with a SINGLE component (16.4 is major 16,
+                      -- minor 4), and that is also the grain of the end-of-support
+                      -- calendar in product_support -- so this donut and
+                      -- PG_ENGINE_SUPPORTED read the version the same way, and a
+                      -- slice here maps to one support date rather than several.
+                      --
+                      -- Ordered numerically, not alphabetically: as text, '9'
+                      -- sorts after '16' and would put the oldest cluster last.
+                      With PG_MAJOR As
+                        ( select nvl( regexp_substr( engine_version, '^\d+' ), 'Unknown' ) major_version
+                            from dim_instance where platform = 'POSTGRES' )
+                      select major_version as label,
+                             count(*) as value
+                        from PG_MAJOR
+                       group by major_version
+                       order by to_number( regexp_substr( major_version, '\d+' ) ) nulls last
+                    ```
+            }
+            columnMapping {
+                label: LABEL
+                value: VALUE
+            }
+        )
+
+    )
+
+    region noncompliance-criterias (
+        name: Non Compliance Criterias
+        title: Non Compliance Criterias
+        type: facetedSearch
+        source {
+            filteredRegion: @pg-noncompliance
+        }
+        layout {
+            sequence: 100
+            slot: body
+            columnSpan: 2
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        settings {
+            compactNosThreshold: 10000
+            displayChartForTopNValues: 10
+        }
+
+        facet P41_CATEGORY (
+            type: checkboxGroup
+            label {
+                label: Category
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 30
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: CATEGORY
+            }
+        )
+
+        facet P41_DB_NAME (
+            type: checkboxGroup
+            label {
+                label: Database
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 65
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: DB_NAME
+            }
+        )
+
+        facet P41_EXCEPTION_STATUS (
+            type: checkboxGroup
+            label {
+                label: Exception
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 45
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: EXCEPTION_STATUS
+            }
+        )
+
+        facet P41_INSTANCE_NAME (
+            type: checkboxGroup
+            label {
+                label: Instance Name
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 60
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: INSTANCE_NAME
+            }
+        )
+
+        facet P41_SCOPE (
+            type: checkboxGroup
+            label {
+                label: Scope
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 20
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: SCOPE
+            }
+        )
+
+        facet P41_SEARCH (
+            type: search
+            label {
+                label: Search
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        facet P41_SEVERITY (
+            type: checkboxGroup
+            label {
+                label: Severity
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 50
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: SEVERITY
+            }
+        )
+
+        facet P41_TITLE (
+            type: checkboxGroup
+            label {
+                label: Title
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 40
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: TITLE
+            }
+        )
+
+    )
+
+    region pg-noncompliance-by-control (
+        name: PostgreSQL : Open Non Compliance by Control
+        title: PostgreSQL : Open Non Compliance by Control
+        type: chart
+        layout {
+            sequence: 80
+            slot: body
+            startNewRow: false
+            columnSpan: 4
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--noPadding
+                i-h320
+                t-Region--scrollBody
+            ]
+        }
+        comments {
+            comments: The Oracle page notes here that it could not carry over the MSSQL support-status donut, ORACLE_OUT_OF_SUPPORT having no rule behind it. PostgreSQL does not have that problem - PG_ENGINE_SUPPORTED is evaluated against a real calendar - but the support state is already legible on the Versions donut beside it, where each slice is exactly one support date. Keeping this slot on the by-control breakdown says something the other charts do not.
+        }
+        chart {
+            type: bar
+        }
+        chartAppearance {
+            orientation: horizontal
+        }
+        legend {
+            position: bottom
+        }
+
+        series pg-noncompliance-by-control (
+            name: Open Findings by Control
+            execution {
+                sequence: 10
+            }
+            source {
+                location: localDatabase
+                type: sqlQuery
+                sqlQuery:
+                    ```sql
+                    -- Where the problem is, as opposed to how bad it is (the
+                    -- severity chart) or how old the estate is (the release
+                    -- update chart). A control carrying a thousand findings is
+                    -- fixed by one campaign, not instance by instance, and that
+                    -- is a different decision from chasing the worst server.
+                    --
+                    -- Labelled with ref_control.title, not the control code:
+                    -- "Host-based authentication methods" reads,
+                    -- POSTGRES_HBA_AUTH does not. Horizontal bars because the
+                    -- spread is wide -- one control can carry every pg_hba line
+                    -- of the estate while another carries one row per cluster --
+                    -- and a donut
+                    -- cannot be read at that ratio.
+                    --
+                    -- "Open" means what it means on the severity chart beside
+                    -- it: a derogated finding is not a campaign to run. Without
+                    -- these two predicates the bar would keep counting findings
+                    -- the RSSI has already signed off.
+                    select rc.title as label,
+                           count(*) as value
+                      from fact_control_finding f
+                      join ref_control_rule r
+                        on r.rule_code = f.rule_code
+                       and r.active = 1
+                      join ref_control rc
+                        on rc.control_code = r.control_code
+                       and rc.score_domain = 'SECURITY'
+                       and rc.active = 1
+                      join v_entity_ancestry a
+                        on a.entity_type = f.entity_type
+                       and a.entity_id = f.entity_id
+                      join dim_instance i
+                        on i.instance_id = a.instance_id
+                     where i.platform = 'POSTGRES'
+                       and f.is_compliant = 0
+                       and f.exception_id is null
+                       and f.is_norm_exception = 0
+                       and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+                     group by rc.title
+                     order by count(*) desc
+                    ```
+            }
+            columnMapping {
+                label: LABEL
+                value: VALUE
+            }
+        )
+
+        axis x (
+            name: x
+            showAxis: true
+        )
+
+        axis y (
+            name: y
+            showAxis: true
+            title: Open findings
+        )
+
+    )
+
+)
+

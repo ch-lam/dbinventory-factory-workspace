@@ -3,3 +3,5 @@ TST;FREE;pgsrv-tst-01.ghm.lan:5432
 TST;FREE;pgsrv-tst-02.ghm.lan:5432
 TST;FREE;pgsrv-tst-03.ghm.lan:5432
 PRD;FREE;pgsrv-prd-04.ghm.lan:5432
+PRD;FREE;pgsrv-prd-05.ghm.lan:5432
+TST;FREE;pgsrv-tst-06.ghm.lan:5432

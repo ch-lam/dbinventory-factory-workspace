@@ -1,1 +1,2 @@
-"pgsrv-tst-01.ghm.lan","PRIMARY","10.20.30.40","streaming","async","12"
+"pgsrv-tst-01.ghm.lan","PRIMARY","10.20.30.40","streaming","async","3"
+"pgsrv-tst-06.ghm.lan","STANDBY","pgsrv-tst-01.ghm.lan","streaming","NA","1"

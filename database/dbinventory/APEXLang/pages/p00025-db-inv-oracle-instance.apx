@@ -1,0 +1,1120 @@
+page 25 (
+    name: DB Inv. - Oracle Instance
+    alias: DB-INV-ORACLE-INSTANCE
+    title: DB Inv. - Oracle Instance
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region page-title (
+        name: &P25_INSTANCE_LABEL.
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region instance-filter (
+        name: Instance Selection
+        type: staticContent
+        layout {
+            sequence: 5
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P25_INSTANCE_ID (
+        type: selectList
+        label {
+            label: Instance
+            alignment: left
+        }
+        lov {
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select h.hostname || ' / ' || i.instance_name d,
+                       i.instance_id r
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                 where i.platform = 'ORACLE'
+                 order by h.hostname, i.instance_name
+                ```
+            displayNullValue: false
+        }
+        layout {
+            sequence: 10
+            region: @instance-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            warnOnUnsavedChanges: ignore
+        }
+        help {
+            helpText: Select the Oracle instance whose card is displayed below.
+        }
+    )
+
+    pageItem P25_INSTANCE_LABEL (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @instance-filter
+            slot: regionBody
+        }
+        source {
+            type: sqlQuerySingleValue
+            sqlQuery:
+                ```sql
+                select h.hostname || ' / ' || i.instance_name
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                 where i.instance_id = :P25_INSTANCE_ID
+                ```
+            used: always
+        }
+    )
+
+    region oracle-instance-host (
+        name: Server
+        title: Server
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select h.hostname,
+                       h.environment,
+                       h.license_type,
+                       h.os_type,
+                       h.num_cpus,
+                       h.memory_gb,
+                       ( select count(*) from dim_instance i2 where i2.host_id = h.host_id ) instance_count
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                 where i.instance_id = :P25_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P25_INSTANCE_ID
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column LICENSE_TYPE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: License
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column OS_TYPE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: OS
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column NUM_CPUS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: CPUs
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+        )
+
+        column MEMORY_GB (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Memory (GB)
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column INSTANCE_COUNT (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Instances on host
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+            comments {
+                comments: A host can carry several instances - the estate has some with two - which is why this card is keyed on the instance and not on the host.
+            }
+        )
+
+    )
+
+    region oracle-instance-identity (
+        name: Instance
+        title: Instance
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select i.instance_name,
+                       xi.db_unique_name,
+                       xi.database_type,
+                       xi.db_role,
+                       xi.rac_state,
+                       xi.protection_mode,
+                       xi.charset,
+                       xi.count_pdb
+                  from dim_instance i
+                  left join ext_oracle_instance xi on xi.instance_id = i.instance_id
+                 where i.instance_id = :P25_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P25_INSTANCE_ID
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column DB_UNIQUE_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: DB Unique Name
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column DATABASE_TYPE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Type
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column DB_ROLE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Role
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column RAC_STATE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: RAC
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column PROTECTION_MODE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Protection Mode
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column CHARSET (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Character Set
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column COUNT_PDB (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: PDBs
+                alignment: end
+            }
+            layout {
+                sequence: 80
+                columnAlignment: end
+            }
+        )
+
+    )
+
+    region oracle-instance-version (
+        name: Version & Support
+        title: Version & Support
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select i.engine_version,
+                       i.edition,
+                       ps.display_name release_name,
+                       to_char(ps.end_of_support_date, 'DD/MM/YYYY') premier_support_end,
+                       to_char(ps.end_of_ext_support_date, 'DD/MM/YYYY') extended_support_end,
+                       case when fc.control_code is null then 'Not assessed'
+                            when fc.is_compliant = 0    then 'Out of support'
+                            when fc.has_exception = 1   then 'Extended support'
+                            else 'Supported'
+                       end support_status,
+                       fc.observed_value support_detail
+                  from dim_instance i
+                  left join product_support ps
+                    on ps.product_company = 'ORACLE'
+                   and ps.product_type = 'ORACLE'
+                   and ps.product_version = regexp_substr( i.engine_version, '^\d+' )
+                  left join fact_compliance fc
+                    on fc.entity_type = 'INSTANCE'
+                   and fc.entity_id = i.instance_id
+                   and fc.control_code = 'ORACLE_OUT_OF_SUPPORT'
+                   and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                 where i.instance_id = :P25_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P25_INSTANCE_ID
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column ENGINE_VERSION (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column EDITION (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Edition
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column RELEASE_NAME (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Release
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column PREMIER_SUPPORT_END (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Premier Support Ends
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column EXTENDED_SUPPORT_END (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Extended Support Ends
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+            comments {
+                comments: Empty on an Innovation Release: 18c and 21c are not eligible for Extended Support at all, so the absence means none exists rather than not filled in.
+            }
+        )
+
+        column SUPPORT_STATUS (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 60
+                columnAlignment: center
+            }
+        )
+
+        column SUPPORT_DETAIL (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Detail
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+    )
+
+    region oracle-instance-databases (
+        name: Databases (PDB)
+        title: Databases (PDB)
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d.db_name,
+                       d.environment,
+                       xd.pdb_state,
+                       case xd.is_pdb when 1 then 'PDB' when 0 then 'Non-CDB' end db_kind,
+                       xd.charset,
+                       ( select round(sum(fsc.size_mb))
+                           from fact_storage_capacity fsc
+                           join dim_storage_unit su on su.storage_unit_id = fsc.storage_unit_id
+                          where su.database_id = d.database_id
+                            and fsc.snapshot_date = ( select max(s.snapshot_date) from fact_storage_capacity s ) ) size_mb,
+                       ( select count(*) from dim_storage_unit su2
+                          where su2.database_id = d.database_id and su2.storage_type = 'TABLESPACE' ) tablespace_count,
+                       d.database_id
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  left join ext_oracle_database xd on xd.database_id = d.database_id
+                  left join ext_oracle_instance xi on xi.instance_id = i.instance_id
+                 where d.instance_id = :P25_INSTANCE_ID
+                   and d.platform = 'ORACLE'
+                   -- On ecarte le CONTENEUR. load_dim_database insere, a cote des PDB, une ligne
+                   -- de grain base pour le CDB lui-meme : elle n'a ni tablespace, ni compte, ni
+                   -- mesure de ressource, parce que la collecte est clee par pdb_name et n'emet
+                   -- jamais le conteneur. Ce drill-down represente le CDB comme l'INSTANCE, page
+                   -- 25 ; l'offrir aussi comme une base ouvrirait une carte impossible a remplir.
+                   --
+                   -- Le discriminant n'est PAS is_pdb seul : les bases non-CDB le portent aussi a
+                   -- 0. C'est is_pdb = 0 ET une instance de type CONTAINER.
+                   and not ( xi.database_type = 'CONTAINER' and nvl(xd.is_pdb, 1) = 0 )
+                 order by d.db_name
+                ```
+            pageItemsToSubmit: P25_INSTANCE_ID
+        }
+        layout {
+            sequence: 40
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No database collected on this instance.
+        }
+
+        column DB_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 10
+            }
+            link {
+                target: {
+                    page: 26
+                    items: {
+                        P26_DATABASE_ID: #DATABASE_ID#
+                    }
+                }
+                linkText: #DB_NAME#
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column PDB_STATE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: State
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column DB_KIND (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Kind
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column CHARSET (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Character Set
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column SIZE_MB (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Size (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column TABLESPACE_COUNT (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Tablespaces
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+        )
+
+        column DATABASE_ID (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 80
+            }
+        )
+
+    )
+
+    region oracle-instance-scoring (
+        name: Scores
+        title: Scores
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select sc.score_domain,
+                       sc.score_value,
+                       sc.max_score,
+                       round( 100 * sc.score_value / nullif(sc.max_score, 0), 1 ) pct,
+                       sc.status,
+                       to_char(sc.snapshot_date, 'DD/MM/YYYY') snapshot_date,
+                       sc.data_age_days
+                  from fact_scoring sc
+                 where sc.entity_type = 'INSTANCE'
+                   and sc.entity_id = :P25_INSTANCE_ID
+                   and sc.snapshot_date = ( select max(s2.snapshot_date) from fact_scoring s2 )
+                 order by sc.score_domain
+                ```
+            pageItemsToSubmit: P25_INSTANCE_ID
+        }
+        layout {
+            sequence: 50
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: No score computed for this instance.
+        }
+
+        column SCORE_DOMAIN (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Domain
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column SCORE_VALUE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Score
+                alignment: end
+            }
+            layout {
+                sequence: 20
+                columnAlignment: end
+            }
+        )
+
+        column MAX_SCORE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Max
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+        )
+
+        column PCT (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: %
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column STATUS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column SNAPSHOT_DATE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Snapshot
+                alignment: center
+            }
+            layout {
+                sequence: 60
+                columnAlignment: center
+            }
+        )
+
+        column DATA_AGE_DAYS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Data age (days)
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+            comments {
+                comments: The age of the collect the score rests on. A score says nothing without it.
+            }
+        )
+
+    )
+
+    region oracle-instance-findings (
+        name: Compliance Findings
+        title: Compliance Findings
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select rc.category,
+                       r.title,
+                       nvl( r.severity, rc.severity ) severity,
+                       f.item_key,
+                       f.observed_value,
+                       f.expected_value,
+                       case when f.exception_id is not null then 'Granted derogation'
+                            when f.is_norm_exception = 1 then 'Accepted by the norm'
+                            else 'Open'
+                       end exception_status
+                  from fact_control_finding f
+                  join ref_control_rule r on r.rule_code = f.rule_code and r.active = 1
+                  join ref_control rc on rc.control_code = r.control_code and rc.active = 1
+                 where f.entity_type = 'INSTANCE'
+                   and f.entity_id = :P25_INSTANCE_ID
+                   and f.is_compliant = 0
+                   and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+                 order by rc.category, r.title, f.item_key
+                ```
+            pageItemsToSubmit: P25_INSTANCE_ID
+        }
+        layout {
+            sequence: 60
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No open finding at instance level.
+        }
+
+        column CATEGORY (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Category
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column TITLE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Rule
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column SEVERITY (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Severity
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Observed
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column EXPECTED_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Expected
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column EXCEPTION_STATUS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    dynamicAction refresh-oracle-instance-host (
+        name: Refresh oracle-instance-host
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P25_INSTANCE_ID
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @oracle-instance-host
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-oracle-instance-identity (
+        name: Refresh oracle-instance-identity
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P25_INSTANCE_ID
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @oracle-instance-identity
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-oracle-instance-version (
+        name: Refresh oracle-instance-version
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P25_INSTANCE_ID
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @oracle-instance-version
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-oracle-instance-databases (
+        name: Refresh oracle-instance-databases
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P25_INSTANCE_ID
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @oracle-instance-databases
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-oracle-instance-scoring (
+        name: Refresh oracle-instance-scoring
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P25_INSTANCE_ID
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @oracle-instance-scoring
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-oracle-instance-findings (
+        name: Refresh oracle-instance-findings
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P25_INSTANCE_ID
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @oracle-instance-findings
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+)

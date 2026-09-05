@@ -2,7 +2,7 @@ dim|account/MSSQL|805
 dim|account/ORACLE|408
 dim|account/POSTGRES|27
 dim|database/MSSQL|510
-dim|database/ORACLE|41
+dim|database/ORACLE|34
 dim|database/POSTGRES|14
 dim|host/MSSQL|55
 dim|host/ORACLE|20

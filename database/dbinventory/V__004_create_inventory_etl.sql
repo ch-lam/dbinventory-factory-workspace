@@ -212,7 +212,22 @@ create or replace package body pkg_dbinv_inventory as
       merge into ext_oracle_instance e
       using ( select di.instance_id,
                      max(od.db_role) db_role, max(od.rac_state) rac_state, max(od.db_unique_name) db_unique_name,
-                     max(od.database_type) database_type, max(od.count_pdb) count_pdb, max(od.db_charset) charset,
+                     max(od.database_type) database_type,
+                     -- Derive, jamais lu depuis od.count_pdb : cette colonne de staging
+                     -- n'est alimentee par personne (voir le merge non-CDB plus bas), donc
+                     -- l'attribut restait NULL sur toutes les instances -- et il est
+                     -- AFFICHE en colonne « PDBs » sur les pages 20 et 25, vides depuis
+                     -- toujours. La donnee existe deja dans oracle_pdbs : un compte se
+                     -- calcule, il ne se collecte pas.
+                     --
+                     -- Enveloppe dans max() comme protection_mode juste en dessous : la
+                     -- requete groupe par di.instance_id, donc od.hostname n'est pas une
+                     -- colonne de groupement et une sous-requete scalaire qui la reference
+                     -- leverait ORA-00979 sans cela.
+                     max( ( select count(*) from oracle_pdbs p
+                              where p.hostname = od.hostname
+                                and p.instance_name = od.instance_name ) ) count_pdb,
+                     max(od.db_charset) charset,
                      max( ( select max(dg.protection_mode) from oracle_dataguard dg
                               where dg.primary_db in ( od.db_name, od.db_unique_name ) ) ) protection_mode
                 from oracle_databases od
@@ -302,14 +317,27 @@ create or replace package body pkg_dbinv_inventory as
          insert ( instance_id, platform, db_name, db_state, environment )
          values ( s.instance_id, s.platform, s.db_name, s.db_state, s.environment );
 
-      -- Oracle non-CDB databases (no PDB rows)
+      -- Oracle non-CDB databases: the database IS the instance, so it gets a row of
+      -- its own. A CDB must NOT get one -- its usable databases are its PDBs, inserted
+      -- by the merge above -- and the container has no tablespace, no account and no
+      -- resource measure of its own, the collect being keyed by pdb_name.
+      --
+      -- Filtered on database_type, which is `not null` and which the collect actually
+      -- writes. It used to filter on `nvl(od.count_pdb, 0) = 0`, and that could never
+      -- work: count_pdb is emitted by NOBODY -- not by get_info_oracle.sh, and the
+      -- fixture contract lists it under `omitted`. It is the last column of a
+      -- twenty-column table with `default 0`, so the positional load never reaches it.
+      -- Measured on the demonstration database: NULL on all 25 rows. The predicate was
+      -- therefore true for every row, and every CDB received a spurious database-grained
+      -- row beside its PDBs -- 7 of 41 on the demo, and as many on the real estate.
+      -- Whether the column held NULL or its default 0, it could not tell a CDB apart.
       merge into dim_database dd
       using ( select di.instance_id, 'ORACLE' platform, od.db_name,
                      max(od.environment) environment
                 from oracle_databases od
                 join dim_host ds on ds.platform = 'ORACLE' and ds.hostname = od.hostname
                 join dim_instance di on di.host_id = ds.host_id and di.instance_name = od.instance_name
-               where nvl(od.count_pdb, 0) = 0
+               where od.database_type <> 'CONTAINER'
                group by di.instance_id, od.db_name ) s
       on ( dd.instance_id = s.instance_id and dd.db_name = s.db_name )
       when matched then update set dd.environment = s.environment

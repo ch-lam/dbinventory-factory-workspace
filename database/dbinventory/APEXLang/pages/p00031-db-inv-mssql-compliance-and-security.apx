@@ -46,11 +46,12 @@ page 31 (
                        -- instance_name est le nom d'instance SQL Server et
                        -- hostname le FQDN de la machine collectee.
                        h.hostname,
-                       -- host_id parce que la page 35 se pilote par la, et par
-                       -- rien d'autre : P35_HOSTNAME y est un item cache calcule
-                       -- depuis P35_HOST_ID en `used: always`, donc une valeur
-                       -- qu'on lui passerait serait ecrasee a l'arrivee.
-                       a.host_id
+                       -- host_id n'est plus la cle du lien mais reste affiche :
+                       -- la colonne cachee HOST_ID est adressee par son rang.
+                       a.host_id,
+                       -- La page 35 est passee au grain instance. v_entity_ancestry
+                       -- porte instance_id pour un constat de n'importe quel grain.
+                       a.instance_id
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
@@ -173,6 +174,15 @@ page 31 (
             }
         )
 
+        column INSTANCE_ID (
+            reportColumnQueryId: 16
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 235
+            }
+        )
+
         column EXCEPTION_STATUS (
             reportColumnQueryId: 10
             derivedColumn: N
@@ -209,13 +219,13 @@ page 31 (
                 target: {
                     page: 35
                     items: {
-                        P35_HOST_ID: #HOST_ID#
+                        P35_INSTANCE_ID: #INSTANCE_ID#
                     }
                 }
                 linkText: #INSTANCE_NAME#
             }
             comments {
-                comments: Passes P35_HOST_ID, which is the only item page 35 is driven by. It used to pass P35_HOSTNAME, a hidden item that page 35 computes from P35_HOST_ID with `used: always` - so the value arrived, was overwritten, and the page opened on no server at all.
+                comments: Passes P35_INSTANCE_ID, page 35 having become the instance card. It passed P35_HOST_ID before that, and P35_HOSTNAME before THAT - a hidden item page 35 computed from P35_HOST_ID, so the value arrived and was overwritten. v_entity_ancestry resolves a finding of any grain up to its instance, so the link works from every row.
             }
         )
 

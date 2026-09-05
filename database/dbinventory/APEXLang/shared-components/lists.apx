@@ -431,7 +431,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 30
+                page: 36
             }
         }
     )
@@ -536,6 +536,8 @@ list navigation-menu (
             pages: [
                 3
                 30
+                35
+                36
             ]
         }
         link {
@@ -721,7 +723,7 @@ list navigation-menu (
         }
         link {
             target: {
-                page: 30
+                page: 35
             }
         }
     )

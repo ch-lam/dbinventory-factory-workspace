@@ -1,0 +1,1433 @@
+page 45 (
+    name: DB Inv. - Postgres Instance
+    alias: DB-INV-POSTGRES-INSTANCE
+    title: DB Inv. - Postgres Instance
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+    advanced {
+        reloadOnSubmit: always
+    }
+
+    region page-title (
+        name: &P45_INSTANCE_LABEL.
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region instance-filter (
+        name: Instance Selection
+        type: staticContent
+        layout {
+            sequence: 5
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P45_INSTANCE_ID (
+        type: selectOne
+        label {
+            label: Instance
+            alignment: left
+        }
+        lov {
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select h.hostname d,
+                       i.instance_id r
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                 where i.platform = 'POSTGRES'
+                 order by h.hostname
+                ```
+        }
+        layout {
+            sequence: 10
+            region: @instance-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            warnOnUnsavedChanges: ignore
+        }
+        help {
+            helpText: Select the PostgreSQL cluster whose card is displayed below.
+        }
+    )
+
+    pageItem P45_INSTANCE_LABEL (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @instance-filter
+            slot: regionBody
+        }
+        source {
+            type: sqlQuerySingleValue
+            sqlQuery:
+                ```sql
+                select h.hostname
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                 where i.instance_id = :P45_INSTANCE_ID
+                ```
+            used: always
+        }
+    )
+
+    region pg-instance-host (
+        name: Server
+        title: Server
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select h.hostname,
+                       h.environment,
+                       h.license_type,
+                       e.data_directory,
+                       e.start_time,
+                       ( select count(*) from dim_database d where d.instance_id = i.instance_id ) database_count
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                  left join ext_postgres_instance e on e.instance_id = i.instance_id
+                 where i.instance_id = :P45_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+            comments {
+                comments: Also the instance name: the PostgreSQL collect never carries the port into the data, so one host is one cluster in this model. A second cluster on the same machine could not be told apart.
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column LICENSE_TYPE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: License
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column DATA_DIRECTORY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Data Directory
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column START_TIME (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Started
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column DATABASE_COUNT (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Databases
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+    )
+
+    region pg-instance-identity (
+        name: Instance
+        title: Instance
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select i.instance_name,
+                       i.engine_version,
+                       i.port,
+                       e.db_role,
+                       e.wal_level,
+                       e.archive_mode,
+                       e.max_connections,
+                       e.shared_buffers_mb
+                  from dim_instance i
+                  left join ext_postgres_instance e on e.instance_id = i.instance_id
+                 where i.instance_id = :P45_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ENGINE_VERSION (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column PORT (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Port
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+        )
+
+        column DB_ROLE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Role
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+            comments {
+                comments: STANDBY explains why a cluster carries no SECURITY finding: get_info_postgres_security.sh skips standbys, their configuration being that of the primary and already judged.
+            }
+        )
+
+        column WAL_LEVEL (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: WAL Level
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column ARCHIVE_MODE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Archive Mode
+                alignment: center
+            }
+            layout {
+                sequence: 60
+                columnAlignment: center
+            }
+        )
+
+        column MAX_CONNECTIONS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Max Connections
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+        )
+
+        column SHARED_BUFFERS_MB (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Shared Buffers (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 80
+                columnAlignment: end
+            }
+        )
+
+    )
+
+    region pg-instance-version (
+        name: Version & Support
+        title: Version & Support
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select i.engine_version,
+                       ps.display_name release_name,
+                       to_char(ps.edition_date, 'DD/MM/YYYY') released,
+                       to_char(ps.end_of_support_date, 'DD/MM/YYYY') community_support_end,
+                       case when fc.control_code is null then 'Not assessed'
+                            when fc.is_compliant = 0    then 'Out of support'
+                            else 'Supported'
+                       end support_status,
+                       fc.observed_value support_detail
+                  from dim_instance i
+                  left join product_support ps
+                    on ps.product_company = 'POSTGRESQL'
+                   and ps.product_type = 'POSTGRES'
+                   and ps.product_version = regexp_substr( i.engine_version, '^\d+' )
+                  left join fact_compliance fc
+                    on fc.entity_type = 'INSTANCE'
+                   and fc.entity_id = i.instance_id
+                   and fc.control_code = 'POSTGRES_OUT_OF_SUPPORT'
+                   and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                 where i.instance_id = :P45_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column ENGINE_VERSION (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Version
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column RELEASE_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Release
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column RELEASED (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Released
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column COMMUNITY_SUPPORT_END (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Support Ends
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+            comments {
+                comments: Five years from the initial release. There is no extended support on PostgreSQL, which is why no Extended column appears here as it does on the Oracle and MSSQL cards.
+            }
+        )
+
+        column SUPPORT_STATUS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column SUPPORT_DETAIL (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Detail
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+    )
+
+    region pg-instance-databases (
+        name: Databases
+        title: Databases
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d.db_name,
+                       d.environment,
+                       p.owner,
+                       p.encoding,
+                       p.collation,
+                       p.tablespace,
+                       sc.used_mb size_mb,
+                       round( 100 * p.xid_age / 2147483648, 2 ) pct_xid_used,
+                       d.database_id
+                  from dim_database d
+                  left join postgres_databases p
+                    on p.hostname = ( select i.instance_name from dim_instance i where i.instance_id = d.instance_id )
+                   and p.datname = d.db_name
+                  left join dim_storage_unit su
+                    on su.database_id = d.database_id
+                   and su.storage_type = 'DATABASE'
+                  left join fact_storage_capacity sc
+                    on sc.storage_unit_id = su.storage_unit_id
+                   and sc.snapshot_date = ( select max(s.snapshot_date) from fact_storage_capacity s )
+                 where d.instance_id = :P45_INSTANCE_ID
+                   and d.platform = 'POSTGRES'
+                 order by d.db_name
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 40
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No database collected on this instance.
+        }
+
+        column DB_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 10
+            }
+            link {
+                target: {
+                    page: 46
+                    items: {
+                        P46_DATABASE_ID: #DATABASE_ID#
+                    }
+                }
+                linkText: #DB_NAME#
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column OWNER (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Owner
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column ENCODING (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Encoding
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column COLLATION (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Collation
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column TABLESPACE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Tablespace
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column SIZE_MB (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Size (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+        )
+
+        column PCT_XID_USED (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: XID Used (%)
+                alignment: end
+            }
+            layout {
+                sequence: 80
+                columnAlignment: end
+            }
+        )
+
+        column DATABASE_ID (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 90
+            }
+        )
+
+    )
+
+    region pg-instance-wal (
+        name: WAL Archiving
+        title: WAL Archiving
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                -- L'archivage WAL n'est PAS une sauvegarde : aucun catalogue pgBackRest ou
+                -- Barman n'est collecte, donc rien ici ne dit qu'une restauration ait ete
+                -- possible. Ce qu'il dit, c'est si la condition necessaire d'une recuperation a
+                -- un instant donne tient. Les deux controles sont
+                -- POSTGRES_WAL_ARCHIVING et POSTGRES_BACKUP_FRESHNESS.
+                select e.archive_mode,
+                       to_char(ib.last_log_date, 'DD/MM/YYYY HH24:MI') last_archived_time,
+                       b.last_archived_wal,
+                       ib.hours_since_backup hours_since_archived,
+                       t.crit_value sla_hours,
+                       ib.failed_count,
+                       b.last_failed_wal
+                  from dim_instance i
+                  left join ext_postgres_instance e on e.instance_id = i.instance_id
+                  left join fact_instance_backup ib
+                    on ib.instance_id = i.instance_id
+                   and ib.snapshot_date = ( select max(b2.snapshot_date) from fact_instance_backup b2 )
+                  left join postgres_backup b on b.hostname = i.instance_name
+                  left join ref_threshold t
+                    on t.control_code = 'POSTGRES_BACKUP_FRESHNESS'
+                   and t.metric = 'hours_since_archived'
+                   and t.environment = '*'
+                 where i.instance_id = :P45_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 50
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: No WAL archiver statistics collected.
+        }
+
+        column ARCHIVE_MODE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Archive Mode
+                alignment: center
+            }
+            layout {
+                sequence: 10
+                columnAlignment: center
+            }
+        )
+
+        column LAST_ARCHIVED_TIME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Last Archived
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column LAST_ARCHIVED_WAL (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Last WAL Segment
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column HOURS_SINCE_ARCHIVED (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Hours Since
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+            comments {
+                comments: Empty when archiving is off: pg_stat_archiver has never archived anything, the collect writes NA, and safe_to_date returns null rather than a fabricated date.
+            }
+        )
+
+        column SLA_HOURS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: SLA (h)
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+        )
+
+        column FAILED_COUNT (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Failed
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column LAST_FAILED_WAL (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Last Failed WAL
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+    )
+
+    region pg-instance-replication (
+        name: Replication
+        title: Replication
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                -- Lu depuis la collecte : la replication streaming n'a pas de place dans le
+                -- modele dimensionnel et n'est scoree par rien. C'est voulu -- un retard de
+                -- replication est un signal de supervision, surveille par Zabbix, pas un verdict
+                -- de conformite que cet inventaire doit rendre.
+                select r.db_role,
+                       r.peer_addr,
+                       r.state,
+                       r.sync_state,
+                       case when r.lag_seconds < 0 then null else r.lag_seconds end lag_seconds
+                  from postgres_replication r
+                  join dim_instance i on i.instance_name = r.hostname
+                 where i.instance_id = :P45_INSTANCE_ID
+                 order by r.peer_addr
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 60
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: No streaming replication. A cluster with no standby produces no row here.
+        }
+
+        column DB_ROLE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Role
+                alignment: center
+            }
+            layout {
+                sequence: 10
+                columnAlignment: center
+            }
+        )
+
+        column PEER_ADDR (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Peer
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column STATE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: State
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column SYNC_STATE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Sync
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column LAG_SECONDS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Lag (s)
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+            comments {
+                comments: The collect writes -1 for "not measurable", not for a negative lag; it is shown empty rather than as a negative number.
+            }
+        )
+
+    )
+
+    region pg-instance-roles (
+        name: Roles
+        title: Roles
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select a.account_name,
+                       a.account_type,
+                       r.rolsuper,
+                       r.rolcreaterole,
+                       r.rolcreatedb,
+                       r.rolreplication,
+                       r.rolbypassrls,
+                       r.rolconnlimit,
+                       r.rolvaliduntil
+                  from dim_account a
+                  join dim_instance i on i.host_id = a.host_id
+                  left join postgres_security_roles r
+                    on r.hostname = i.instance_name
+                   and r.rolname = a.account_name
+                 where i.instance_id = :P45_INSTANCE_ID
+                   and a.platform = 'POSTGRES'
+                   and a.scope = 'SERVER'
+                 order by a.account_name
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 70
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No role collected. A STANDBY has none: the security collect skips it.
+        }
+
+        column ACCOUNT_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Role
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ACCOUNT_TYPE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Type
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column ROLSUPER (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Superuser
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column ROLCREATEROLE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Create Role
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column ROLCREATEDB (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Create DB
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column ROLREPLICATION (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Replication
+                alignment: center
+            }
+            layout {
+                sequence: 60
+                columnAlignment: center
+            }
+        )
+
+        column ROLBYPASSRLS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Bypass RLS
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+        )
+
+        column ROLCONNLIMIT (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Conn. Limit
+                alignment: end
+            }
+            layout {
+                sequence: 80
+                columnAlignment: end
+            }
+        )
+
+        column ROLVALIDUNTIL (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Valid Until
+                alignment: center
+            }
+            layout {
+                sequence: 90
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    region pg-instance-scoring (
+        name: Scores
+        title: Scores
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select sc.score_domain,
+                       sc.score_value,
+                       sc.max_score,
+                       round( 100 * sc.score_value / nullif(sc.max_score, 0), 1 ) pct,
+                       sc.status,
+                       to_char(sc.snapshot_date, 'DD/MM/YYYY') snapshot_date,
+                       sc.data_age_days
+                  from fact_scoring sc
+                 where sc.entity_type = 'INSTANCE'
+                   and sc.entity_id = :P45_INSTANCE_ID
+                   and sc.snapshot_date = ( select max(s2.snapshot_date) from fact_scoring s2 )
+                 order by sc.score_domain
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 80
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: No score computed for this instance.
+        }
+
+        column SCORE_DOMAIN (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Domain
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column SCORE_VALUE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Score
+                alignment: end
+            }
+            layout {
+                sequence: 20
+                columnAlignment: end
+            }
+        )
+
+        column MAX_SCORE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Max
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+        )
+
+        column PCT (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: %
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column STATUS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column SNAPSHOT_DATE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Snapshot
+                alignment: center
+            }
+            layout {
+                sequence: 60
+                columnAlignment: center
+            }
+        )
+
+        column DATA_AGE_DAYS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Data age (days)
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+            comments {
+                comments: A STANDBY has no SECURITY score at all, only the other three domains: the security collect skips it deliberately.
+            }
+        )
+
+    )
+
+    region pg-instance-findings (
+        name: Compliance Findings
+        title: Compliance Findings
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select rc.category,
+                       r.title,
+                       nvl( r.severity, rc.severity ) severity,
+                       f.item_key,
+                       f.observed_value,
+                       f.expected_value,
+                       case when f.exception_id is not null then 'Granted derogation'
+                            when f.is_norm_exception = 1 then 'Accepted by the norm'
+                            else 'Open'
+                       end exception_status
+                  from fact_control_finding f
+                  join ref_control_rule r on r.rule_code = f.rule_code and r.active = 1
+                  join ref_control rc on rc.control_code = r.control_code and rc.active = 1
+                 where f.entity_type = 'INSTANCE'
+                   and f.entity_id = :P45_INSTANCE_ID
+                   and f.is_compliant = 0
+                   and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+                 order by rc.category, r.title, f.item_key
+                ```
+            pageItemsToSubmit: P45_INSTANCE_ID
+        }
+        layout {
+            sequence: 90
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No open finding at instance level.
+        }
+
+        column CATEGORY (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Category
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column TITLE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Rule
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column SEVERITY (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Severity
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Observed
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column EXPECTED_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Expected
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column EXCEPTION_STATUS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    dynamicAction reload-on-selection (
+        name: Reload on selection
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P45_INSTANCE_ID
+        }
+
+        action native-javascript-code (
+            action: executeJsCode
+            settings {
+                jsCode: apex.page.submit()
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    branch reload-same-page (
+        name: Reload same page
+        comments {
+            comments: Hands control back to the same page after the selector submits it. Type page is "Show only": it re-renders inside the same request, with no redirect, so no URL and no checksum - which matters because this page requires arguments to have a checksum and a URL built in the browser cannot carry one. This branch REQUIRES the page attribute reloadOnSubmit = always: with its default onlyForSuccess, APEX refuses a Show Only branch at RUNTIME with APEX.BRANCH.SHOW_ONLY_NOT_SUPPORTED, which apex validate cannot catch.
+        }
+        execution {
+            sequence: 10
+            point: afterProcessing
+        }
+        behavior {
+            type: page
+            pageNumber: 45
+        }
+    )
+
+)

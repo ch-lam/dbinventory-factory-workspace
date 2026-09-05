@@ -546,20 +546,14 @@ page 25 (
                           where su2.database_id = d.database_id and su2.storage_type = 'TABLESPACE' ) tablespace_count,
                        d.database_id
                   from dim_database d
-                  join dim_instance i on i.instance_id = d.instance_id
                   left join ext_oracle_database xd on xd.database_id = d.database_id
-                  left join ext_oracle_instance xi on xi.instance_id = i.instance_id
                  where d.instance_id = :P25_INSTANCE_ID
                    and d.platform = 'ORACLE'
-                   -- On ecarte le CONTENEUR. load_dim_database insere, a cote des PDB, une ligne
-                   -- de grain base pour le CDB lui-meme : elle n'a ni tablespace, ni compte, ni
-                   -- mesure de ressource, parce que la collecte est clee par pdb_name et n'emet
-                   -- jamais le conteneur. Ce drill-down represente le CDB comme l'INSTANCE, page
-                   -- 25 ; l'offrir aussi comme une base ouvrirait une carte impossible a remplir.
-                   --
-                   -- Le discriminant n'est PAS is_pdb seul : les bases non-CDB le portent aussi a
-                   -- 0. C'est is_pdb = 0 ET une instance de type CONTAINER.
-                   and not ( xi.database_type = 'CONTAINER' and nvl(xd.is_pdb, 1) = 0 )
+                   -- Aucun filtre a poser ici : depuis le 2026-09-05 load_dim_database ne cree
+                   -- plus de ligne de grain base pour le CONTENEUR d'un CDB. Cette liste portait
+                   -- le contournement, l'ETL porte desormais la correction -- il filtre sur
+                   -- database_type, une colonne que la collecte ecrit vraiment, la ou il filtrait
+                   -- sur count_pdb que personne n'alimente.
                  order by d.db_name
                 ```
             pageItemsToSubmit: P25_INSTANCE_ID

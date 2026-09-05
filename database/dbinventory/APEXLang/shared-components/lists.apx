@@ -482,30 +482,6 @@ list navigation-menu (
         }
     )
 
-    entry mongodb (
-        label: MongoDB
-        icon {
-            imageIconCssClasses: fa-tint
-        }
-        layout {
-            sequence: 60
-        }
-        isCurrent {
-            type: pages
-            pages: [
-                6
-                60
-            ]
-        }
-        link {
-            target: {
-                page: 60
-            }
-        }
-        serverSideCondition {
-            type: never
-        }
-    )
 
     entry ms-patching (
         label: Patching

@@ -176,11 +176,13 @@ la saturation de stockage, verte sur 1034 constats parce qu'elle ne pouvait pas 
 
 ## Ce que ce jeu de données ne couvre pas
 
-- **MySQL et MongoDB** : les pages 50 et 60 restent vides. Elles ne contiennent aucune
-  requête SQL, il n'existe aucune table de staging MongoDB ni aucun contrôle pour ces deux
-  moteurs. C'est l'état réel du produit.
-- **La conformité PostgreSQL** : les 32 contrôles et 70 règles sont tous Oracle ou MSSQL.
-  Les CSV PostgreSQL alimentent le staging, que la page 40 lit directement ; ils ne
-  produisent ni constat ni score.
+- **MySQL** : la page 50 reste vide. Elle ne contient aucune requête SQL, et il n'existe ni
+  table de staging ni contrôle pour ce moteur. C'est l'état réel du produit, et l'entrée de
+  menu est un jalon assumé.
 - **La discovery** et le **second millésime de collecte** (l'historique des faits) : prévus
   en itération 2.
+
+MongoDB ne figure plus dans cette liste : il est **sorti du périmètre** le 2026-09-05, page et
+entrée de menu supprimées. Et la conformité PostgreSQL n'y figure plus non plus — elle a été
+livrée depuis : PostgreSQL est jugé sur les quatre domaines de score, et les CSV de ce jeu de
+données produisent bien des constats.

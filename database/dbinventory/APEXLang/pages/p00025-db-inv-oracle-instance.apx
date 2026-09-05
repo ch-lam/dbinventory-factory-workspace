@@ -13,6 +13,9 @@ page 25 (
         pageAccessProtection: argumentsMustHaveChecksum
         formAutoComplete: false
     }
+    advanced {
+        reloadOnSubmit: always
+    }
 
     region page-title (
         name: &P25_INSTANCE_LABEL.
@@ -997,6 +1000,9 @@ page 25 (
 
     branch reload-same-page (
         name: Reload same page
+        comments {
+            comments: Hands control back to the same page after the selector submits it. Type page is "Show only": it re-renders inside the same request, with no redirect, so no URL and no checksum - which matters because this page requires arguments to have a checksum and a URL built in the browser cannot carry one. This branch REQUIRES the page attribute reloadOnSubmit = always: with its default onlyForSuccess, APEX refuses a Show Only branch at RUNTIME with APEX.BRANCH.SHOW_ONLY_NOT_SUPPORTED, which apex validate cannot catch.
+        }
         execution {
             sequence: 10
             point: afterProcessing

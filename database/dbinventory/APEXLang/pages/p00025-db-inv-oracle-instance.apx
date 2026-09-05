@@ -41,7 +41,7 @@ page 25 (
     )
 
     pageItem P25_INSTANCE_ID (
-        type: selectList
+        type: selectOne
         label {
             label: Instance
             alignment: left
@@ -57,7 +57,6 @@ page 25 (
                  where i.platform = 'ORACLE'
                  order by h.hostname, i.instance_name
                 ```
-            displayNullValue: false
         }
         layout {
             sequence: 10
@@ -973,8 +972,8 @@ page 25 (
 
     )
 
-    dynamicAction refresh-oracle-instance-host (
-        name: Refresh oracle-instance-host
+    dynamicAction reload-on-selection (
+        name: Reload on selection
         execution {
             sequence: 10
         }
@@ -983,11 +982,10 @@ page 25 (
             items: P25_INSTANCE_ID
         }
 
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-instance-host
+        action native-javascript-code (
+            action: executeJsCode
+            settings {
+                jsCode: apex.page.submit()
             }
             execution {
                 sequence: 10
@@ -997,124 +995,16 @@ page 25 (
 
     )
 
-    dynamicAction refresh-oracle-instance-identity (
-        name: Refresh oracle-instance-identity
+    branch reload-same-page (
+        name: Reload same page
         execution {
             sequence: 10
+            point: afterProcessing
         }
-        when {
-            selectionType: items
-            items: P25_INSTANCE_ID
+        behavior {
+            type: page
+            pageNumber: 25
         }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-instance-identity
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
-    )
-
-    dynamicAction refresh-oracle-instance-version (
-        name: Refresh oracle-instance-version
-        execution {
-            sequence: 10
-        }
-        when {
-            selectionType: items
-            items: P25_INSTANCE_ID
-        }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-instance-version
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
-    )
-
-    dynamicAction refresh-oracle-instance-databases (
-        name: Refresh oracle-instance-databases
-        execution {
-            sequence: 10
-        }
-        when {
-            selectionType: items
-            items: P25_INSTANCE_ID
-        }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-instance-databases
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
-    )
-
-    dynamicAction refresh-oracle-instance-scoring (
-        name: Refresh oracle-instance-scoring
-        execution {
-            sequence: 10
-        }
-        when {
-            selectionType: items
-            items: P25_INSTANCE_ID
-        }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-instance-scoring
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
-    )
-
-    dynamicAction refresh-oracle-instance-findings (
-        name: Refresh oracle-instance-findings
-        execution {
-            sequence: 10
-        }
-        when {
-            selectionType: items
-            items: P25_INSTANCE_ID
-        }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-instance-findings
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
     )
 
 )

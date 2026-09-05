@@ -41,7 +41,7 @@ page 26 (
     )
 
     pageItem P26_DATABASE_ID (
-        type: selectList
+        type: selectOne
         label {
             label: Database
             alignment: left
@@ -69,7 +69,6 @@ page 26 (
                    and not ( xi.database_type = 'CONTAINER' and nvl(xd.is_pdb, 1) = 0 )
                  order by h.hostname, i.instance_name, d.db_name
                 ```
-            displayNullValue: false
         }
         layout {
             sequence: 10
@@ -762,8 +761,8 @@ page 26 (
 
     )
 
-    dynamicAction refresh-oracle-database-identity (
-        name: Refresh oracle-database-identity
+    dynamicAction reload-on-selection (
+        name: Reload on selection
         execution {
             sequence: 10
         }
@@ -772,11 +771,10 @@ page 26 (
             items: P26_DATABASE_ID
         }
 
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-database-identity
+        action native-javascript-code (
+            action: executeJsCode
+            settings {
+                jsCode: apex.page.submit()
             }
             execution {
                 sequence: 10
@@ -786,100 +784,16 @@ page 26 (
 
     )
 
-    dynamicAction refresh-oracle-database-tablespaces (
-        name: Refresh oracle-database-tablespaces
+    branch reload-same-page (
+        name: Reload same page
         execution {
             sequence: 10
+            point: afterProcessing
         }
-        when {
-            selectionType: items
-            items: P26_DATABASE_ID
+        behavior {
+            type: page
+            pageNumber: 26
         }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-database-tablespaces
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
-    )
-
-    dynamicAction refresh-oracle-database-users (
-        name: Refresh oracle-database-users
-        execution {
-            sequence: 10
-        }
-        when {
-            selectionType: items
-            items: P26_DATABASE_ID
-        }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-database-users
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
-    )
-
-    dynamicAction refresh-oracle-database-resources (
-        name: Refresh oracle-database-resources
-        execution {
-            sequence: 10
-        }
-        when {
-            selectionType: items
-            items: P26_DATABASE_ID
-        }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-database-resources
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
-    )
-
-    dynamicAction refresh-oracle-database-findings (
-        name: Refresh oracle-database-findings
-        execution {
-            sequence: 10
-        }
-        when {
-            selectionType: items
-            items: P26_DATABASE_ID
-        }
-
-        action native-refresh (
-            action: refresh
-            affectedElements {
-                selectionType: region
-                region: @oracle-database-findings
-            }
-            execution {
-                sequence: 10
-                fireOnInit: false
-            }
-        )
-
     )
 
 )

@@ -1,0 +1,805 @@
+page 26 (
+    name: DB Inv. - Oracle Database
+    alias: DB-INV-ORACLE-DATABASE
+    title: DB Inv. - Oracle Database
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+    advanced {
+        reloadOnSubmit: always
+    }
+
+    region page-title (
+        name: &P26_DATABASE_LABEL.
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region database-filter (
+        name: Database Selection
+        type: staticContent
+        layout {
+            sequence: 5
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P26_DATABASE_ID (
+        type: selectOne
+        label {
+            label: Database
+            alignment: left
+        }
+        lov {
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select h.hostname || ' / ' || i.instance_name || ' / ' || d.db_name d,
+                       d.database_id r
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join dim_host h on h.host_id = i.host_id
+                  left join ext_oracle_database xd on xd.database_id = d.database_id
+                  left join ext_oracle_instance xi on xi.instance_id = i.instance_id
+                 where d.platform = 'ORACLE'
+                   -- On ecarte le CONTENEUR. load_dim_database insere, a cote des PDB, une ligne
+                   -- de grain base pour le CDB lui-meme : elle n'a ni tablespace, ni compte, ni
+                   -- mesure de ressource, parce que la collecte est clee par pdb_name et n'emet
+                   -- jamais le conteneur. Ce drill-down represente le CDB comme l'INSTANCE, page
+                   -- 25 ; l'offrir aussi comme une base ouvrirait une carte impossible a remplir.
+                   --
+                   -- Le discriminant n'est PAS is_pdb seul : les bases non-CDB le portent aussi a
+                   -- 0. C'est is_pdb = 0 ET une instance de type CONTAINER.
+                   and not ( xi.database_type = 'CONTAINER' and nvl(xd.is_pdb, 1) = 0 )
+                 order by h.hostname, i.instance_name, d.db_name
+                ```
+        }
+        layout {
+            sequence: 10
+            region: @database-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            warnOnUnsavedChanges: ignore
+        }
+        help {
+            helpText: Select the Oracle database (PDB) whose card is displayed below.
+        }
+    )
+
+    pageItem P26_DATABASE_LABEL (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @database-filter
+            slot: regionBody
+        }
+        source {
+            type: sqlQuerySingleValue
+            sqlQuery:
+                ```sql
+                select h.hostname || ' / ' || i.instance_name || ' / ' || d.db_name
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join dim_host h on h.host_id = i.host_id
+                 where d.database_id = :P26_DATABASE_ID
+                ```
+            used: always
+        }
+    )
+
+    region oracle-database-identity (
+        name: Database
+        title: Database
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d.db_name,
+                       d.environment,
+                       nvl(xd.pdb_state, d.db_state) db_state,
+                       case xd.is_pdb when 1 then 'PDB' when 0 then 'Non-CDB' end db_kind,
+                       xd.charset,
+                       i.instance_name,
+                       h.hostname
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join dim_host h on h.host_id = i.host_id
+                  left join ext_oracle_database xd on xd.database_id = d.database_id
+                 where d.database_id = :P26_DATABASE_ID
+                ```
+            pageItemsToSubmit: P26_DATABASE_ID
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select a database above.
+        }
+
+        column DB_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column DB_STATE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: State
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column DB_KIND (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Kind
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column CHARSET (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Character Set
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column HOSTNAME (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Server
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+    )
+
+    region oracle-database-tablespaces (
+        name: Tablespaces & Capacity
+        title: Tablespaces & Capacity
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select su.name tablespace_name,
+                       fsc.size_mb,
+                       fsc.used_mb,
+                       fsc.free_mb,
+                       fsc.pct_used,
+                       t.warn_value,
+                       t.crit_value,
+                       case when fsc.pct_used >= t.crit_value then 'Critical'
+                            when fsc.pct_used >= t.warn_value then 'Warning'
+                            when fsc.pct_used is null then null
+                            else 'OK'
+                       end saturation
+                  from dim_storage_unit su
+                  left join fact_storage_capacity fsc
+                    on fsc.storage_unit_id = su.storage_unit_id
+                   and fsc.snapshot_date = ( select max(s.snapshot_date) from fact_storage_capacity s )
+                  left join ref_threshold t
+                    on t.control_code = 'ORACLE_CAPACITY_SATURATION'
+                   and t.metric = 'pct_used'
+                   and t.environment = '*'
+                 where su.database_id = :P26_DATABASE_ID
+                   and su.storage_type = 'TABLESPACE'
+                 order by fsc.pct_used desc nulls last, su.name
+                ```
+            pageItemsToSubmit: P26_DATABASE_ID
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No tablespace collected for this database.
+        }
+
+        column TABLESPACE_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Tablespace
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column SIZE_MB (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Allocated (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 20
+                columnAlignment: end
+            }
+        )
+
+        column USED_MB (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Used (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+        )
+
+        column FREE_MB (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Free (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column PCT_USED (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Used (%)
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+        )
+
+        column WARN_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Warning (%)
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column CRIT_VALUE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Critical (%)
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+        )
+
+        column SATURATION (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 80
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    region oracle-database-users (
+        name: Users
+        title: Users
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select a.account_name,
+                       a.account_type,
+                       a.scope
+                  from dim_account a
+                 where a.database_id = :P26_DATABASE_ID
+                   and a.platform = 'ORACLE'
+                 order by a.account_name
+                ```
+            pageItemsToSubmit: P26_DATABASE_ID
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No account collected for this database.
+        }
+
+        column ACCOUNT_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: User
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ACCOUNT_TYPE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Type
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column SCOPE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Scope
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    region oracle-database-resources (
+        name: Resources
+        title: Resources
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select to_char(fr.snapshot_date, 'DD/MM/YYYY') snapshot_date,
+                       fr.cpu_time_min,
+                       fr.sga_mb,
+                       fr.pga_mb,
+                       fr.buffer_cache_mb,
+                       fr.shared_pool_mb
+                  from fact_db_resource fr
+                 where fr.database_id = :P26_DATABASE_ID
+                 order by fr.snapshot_date desc
+                ```
+            pageItemsToSubmit: P26_DATABASE_ID
+        }
+        layout {
+            sequence: 40
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No resource measure collected for this database.
+        }
+
+        column SNAPSHOT_DATE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Snapshot
+                alignment: center
+            }
+            layout {
+                sequence: 10
+                columnAlignment: center
+            }
+        )
+
+        column CPU_TIME_MIN (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: CPU (min)
+                alignment: end
+            }
+            layout {
+                sequence: 20
+                columnAlignment: end
+            }
+        )
+
+        column SGA_MB (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: SGA (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+        )
+
+        column PGA_MB (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: PGA (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column BUFFER_CACHE_MB (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Buffer Cache (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+        )
+
+        column SHARED_POOL_MB (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Shared Pool (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+    )
+
+    region oracle-database-findings (
+        name: Compliance Findings
+        title: Compliance Findings
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select rc.category,
+                       r.title,
+                       nvl( r.severity, rc.severity ) severity,
+                       f.entity_type scope,
+                       f.item_key,
+                       f.observed_value,
+                       f.expected_value,
+                       case when f.exception_id is not null then 'Granted derogation'
+                            when f.is_norm_exception = 1 then 'Accepted by the norm'
+                            else 'Open'
+                       end exception_status
+                  from fact_control_finding f
+                  join ref_control_rule r on r.rule_code = f.rule_code and r.active = 1
+                  join ref_control rc on rc.control_code = r.control_code and rc.active = 1
+                  join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+                 where a.database_id = :P26_DATABASE_ID
+                   and f.is_compliant = 0
+                   and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+                 order by rc.category, r.title, f.item_key
+                ```
+            pageItemsToSubmit: P26_DATABASE_ID
+        }
+        layout {
+            sequence: 50
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No open finding on this database.
+        }
+
+        column CATEGORY (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Category
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column TITLE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Rule
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column SEVERITY (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Severity
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column SCOPE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Grain
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+            comments {
+                comments: DATABASE for a rule evaluated on the database itself, STORAGE for one evaluated on one of its tablespaces - both belong to this database through v_entity_ancestry.
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Observed
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column EXPECTED_VALUE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Expected
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column EXCEPTION_STATUS (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 80
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    dynamicAction reload-on-selection (
+        name: Reload on selection
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P26_DATABASE_ID
+        }
+
+        action native-javascript-code (
+            action: executeJsCode
+            settings {
+                jsCode: apex.page.submit()
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    branch reload-same-page (
+        name: Reload same page
+        comments {
+            comments: Hands control back to the same page after the selector submits it. Type page is "Show only": it re-renders inside the same request, with no redirect, so no URL and no checksum - which matters because this page requires arguments to have a checksum and a URL built in the browser cannot carry one. This branch REQUIRES the page attribute reloadOnSubmit = always: with its default onlyForSuccess, APEX refuses a Show Only branch at RUNTIME with APEX.BRANCH.SHOW_ONLY_NOT_SUPPORTED, which apex validate cannot catch.
+        }
+        execution {
+            sequence: 10
+            point: afterProcessing
+        }
+        behavior {
+            type: page
+            pageNumber: 26
+        }
+    )
+
+)

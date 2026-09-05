@@ -46,7 +46,11 @@ page 21 (
                        -- instance_name est le SID. La page 25 filtre sur
                        -- dim_host.hostname, c'est donc lui qu'il faut lui
                        -- passer, et non le nom d'instance.
-                       h.hostname
+                       h.hostname,
+                       -- Depuis que la page 25 est au grain instance, c'est
+                       -- l'instance_id qui la pilote. v_entity_ancestry le porte
+                       -- deja pour chaque constat, quel que soit son grain.
+                       a.instance_id
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
@@ -158,6 +162,15 @@ page 21 (
             }
         )
 
+        column INSTANCE_ID (
+            reportColumnQueryId: 15
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 230
+            }
+        )
+
         column EXCEPTION_STATUS (
             reportColumnQueryId: 10
             derivedColumn: N
@@ -194,13 +207,13 @@ page 21 (
                 target: {
                     page: 25
                     items: {
-                        P25_HOSTNAME: #HOSTNAME#
+                        P25_INSTANCE_ID: #INSTANCE_ID#
                     }
                 }
                 linkText: #INSTANCE_NAME#
             }
             comments {
-                comments: Points at 25, the Oracle server page. It used to point at 35, the MSSQL one, carried over when this page was cloned from 31 - an Oracle instance name landed on a page that only knows SQL Server hosts. The value passed is HOSTNAME and not INSTANCE_NAME: P25_HOSTNAME is a select list over dim_host.hostname, and on Oracle the instance name is the SID.
+                comments: Points at 25, the Oracle instance card, and passes INSTANCE_ID. The finding may be evaluated at any grain - instance, database, storage unit - but v_entity_ancestry resolves every one of them up to its instance, so the link works from any row. The Server column beside it is display only: there is no host card in the drill-down, the host is shown on the instance card.
             }
         )
 

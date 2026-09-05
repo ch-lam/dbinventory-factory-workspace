@@ -35,7 +35,11 @@ page 20 (
                        xi.count_pdb,
                        h.os_type,
                        h.num_cpus,
-                       h.memory_gb
+                       h.memory_gb,
+                       -- La cle du drill-down. hostname ne peut pas la remplacer :
+                       -- un hote du parc porte jusqu'a deux instances, et la carte
+                       -- de la page 25 est au grain instance.
+                       i.instance_id
                   from dim_instance i
                   join dim_host h on h.host_id = i.host_id
                   left join ext_oracle_instance xi on xi.instance_id = i.instance_id
@@ -174,7 +178,7 @@ page 20 (
                 target: {
                     page: 25
                     items: {
-                        P25_HOSTNAME: #HOSTNAME#
+                        P25_INSTANCE_ID: #INSTANCE_ID#
                     }
                 }
                 linkText: #HOSTNAME#
@@ -190,14 +194,33 @@ page 20 (
         column INSTANCE_NAME (
             reportColumnQueryId: 2
             derivedColumn: N
+            type: link
             heading {
                 heading: Instance
             }
             layout {
                 sequence: 20
             }
+            link {
+                target: {
+                    page: 25
+                    items: {
+                        P25_INSTANCE_ID: #INSTANCE_ID#
+                    }
+                }
+                linkText: #INSTANCE_NAME#
+            }
             sorting {
                 sortable: false
+            }
+        )
+
+        column INSTANCE_ID (
+            reportColumnQueryId: 15
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 200
             }
         )
 

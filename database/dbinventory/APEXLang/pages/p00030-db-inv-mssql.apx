@@ -34,7 +34,11 @@ page 30 (
                        h.num_cpus,
                        h.memory_gb,
                        xi.service_account,
-                       h.host_id
+                       h.host_id,
+                       -- La cle du drill-down depuis que la page 35 est au grain
+                       -- instance. host_id reste, il porte encore la colonne
+                       -- cachee du lien historique et coute une reference.
+                       i.instance_id
                   from dim_instance i
                   join dim_host h on h.host_id = i.host_id
                   left join ext_mssql_host xh on xh.host_id = h.host_id
@@ -127,7 +131,7 @@ page 30 (
                 target: {
                     page: 35
                     items: {
-                        P35_HOST_ID: #HOST_ID#
+                        P35_INSTANCE_ID: #INSTANCE_ID#
                     }
                     clearCache: 31
                 }
@@ -147,6 +151,15 @@ page 30 (
             type: hidden
             layout {
                 sequence: 5
+            }
+        )
+
+        column INSTANCE_ID (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 6
             }
         )
 

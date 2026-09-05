@@ -1,0 +1,755 @@
+page 46 (
+    name: DB Inv. - Postgres Database
+    alias: DB-INV-POSTGRES-DATABASE
+    title: DB Inv. - Postgres Database
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+    advanced {
+        reloadOnSubmit: always
+    }
+
+    region page-title (
+        name: &P46_DATABASE_LABEL.
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region database-filter (
+        name: Database Selection
+        type: staticContent
+        layout {
+            sequence: 5
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P46_DATABASE_ID (
+        type: selectOne
+        label {
+            label: Database
+            alignment: left
+        }
+        lov {
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select h.hostname || ' / ' || d.db_name d,
+                       d.database_id r
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join dim_host h on h.host_id = i.host_id
+                 where d.platform = 'POSTGRES'
+                 order by h.hostname, d.db_name
+                ```
+        }
+        layout {
+            sequence: 10
+            region: @database-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            warnOnUnsavedChanges: ignore
+        }
+        help {
+            helpText: Select the PostgreSQL database whose card is displayed below.
+        }
+    )
+
+    pageItem P46_DATABASE_LABEL (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @database-filter
+            slot: regionBody
+        }
+        source {
+            type: sqlQuerySingleValue
+            sqlQuery:
+                ```sql
+                select h.hostname || ' / ' || d.db_name
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join dim_host h on h.host_id = i.host_id
+                 where d.database_id = :P46_DATABASE_ID
+                ```
+            used: always
+        }
+    )
+
+    region pg-database-identity (
+        name: Database
+        title: Database
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d.db_name,
+                       d.environment,
+                       p.owner,
+                       p.encoding,
+                       p.collation,
+                       p.tablespace,
+                       p.datconnlimit,
+                       i.instance_name,
+                       h.hostname
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  join dim_host h on h.host_id = i.host_id
+                  left join postgres_databases p
+                    on p.hostname = i.instance_name
+                   and p.datname = d.db_name
+                 where d.database_id = :P46_DATABASE_ID
+                ```
+            pageItemsToSubmit: P46_DATABASE_ID
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select a database above.
+        }
+
+        column DB_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column OWNER (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Owner
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column ENCODING (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Encoding
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column COLLATION (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Collation
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column TABLESPACE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Tablespace
+            }
+            layout {
+                sequence: 60
+            }
+            comments {
+                comments: A PostgreSQL tablespace is a CLUSTER-level object shared by every database, which is why it is shown here as an attribute and not modelled as a storage unit of its own. See pkg_dbinv_inventory.load_dim_storage_unit.
+            }
+        )
+
+        column DATCONNLIMIT (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Conn. Limit
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+        )
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column HOSTNAME (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Server
+            }
+            layout {
+                sequence: 90
+            }
+        )
+
+    )
+
+    region pg-database-capacity (
+        name: Capacity : Transaction ID Headroom
+        title: Capacity : Transaction ID Headroom
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select sc.used_mb size_mb,
+                       p.xid_age,
+                       round( 100 * p.xid_age / 2147483648, 2 ) pct_xid_used,
+                       t.warn_value,
+                       t.crit_value,
+                       case when round( 100 * p.xid_age / 2147483648, 2 ) >= t.crit_value then 'Critical'
+                            when round( 100 * p.xid_age / 2147483648, 2 ) >= t.warn_value then 'Warning'
+                            when p.xid_age is null then null
+                            else 'OK'
+                       end xid_status
+                  from dim_database d
+                  join dim_instance i on i.instance_id = d.instance_id
+                  left join postgres_databases p
+                    on p.hostname = i.instance_name
+                   and p.datname = d.db_name
+                  left join dim_storage_unit su
+                    on su.database_id = d.database_id
+                   and su.storage_type = 'DATABASE'
+                  left join fact_storage_capacity sc
+                    on sc.storage_unit_id = su.storage_unit_id
+                   and sc.snapshot_date = ( select max(s.snapshot_date) from fact_storage_capacity s )
+                  left join ref_threshold t
+                    on t.control_code = 'POSTGRES_CAPACITY_SATURATION'
+                   and t.metric = 'pct_xid_used'
+                   and t.environment = '*'
+                 where d.database_id = :P46_DATABASE_ID
+                ```
+            pageItemsToSubmit: P46_DATABASE_ID
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: No transaction id age collected for this database.
+        }
+
+        column SIZE_MB (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Size (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 10
+                columnAlignment: end
+            }
+            comments {
+                comments: Growth only, with no verdict attached: there is no denominator to compare it to. The storage unit is the database itself on PostgreSQL, not a tablespace.
+            }
+        )
+
+        column XID_AGE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: XID Age
+                alignment: end
+            }
+            layout {
+                sequence: 20
+                columnAlignment: end
+            }
+        )
+
+        column PCT_XID_USED (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: XID Used (%)
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+            comments {
+                comments: Against the 2^31 wraparound ceiling, past which the cluster refuses writes until a VACUUM FREEZE completes. Thresholds are 50/80 rather than the 80/90 used for disks, because the remedy grows with the table.
+            }
+        )
+
+        column WARN_VALUE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Warning (%)
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column CRIT_VALUE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Critical (%)
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+        )
+
+        column XID_STATUS (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 60
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    region pg-database-extensions (
+        name: Extensions
+        title: Extensions
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select e.extname,
+                       e.extversion
+                  from postgres_extensions e
+                  join dim_database d on d.db_name = e.datname
+                  join dim_instance i on i.instance_id = d.instance_id and i.instance_name = e.hostname
+                 where d.database_id = :P46_DATABASE_ID
+                 order by e.extname
+                ```
+            pageItemsToSubmit: P46_DATABASE_ID
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No extension collected for this database.
+        }
+
+        column EXTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Extension
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column EXTVERSION (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Version
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    region pg-database-privileges (
+        name: PUBLIC Privileges
+        title: PUBLIC Privileges
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select pr.grantee,
+                       pr.privilege_type,
+                       case when upper(pr.privilege_type) = 'CREATE' then 'Judged by PG_PUBLIC_NO_CREATE'
+                            else 'Not judged - engine default'
+                       end judged
+                  from postgres_sec_db_privs pr
+                  join dim_database d on d.db_name = pr.datname
+                  join dim_instance i on i.instance_id = d.instance_id and i.instance_name = pr.hostname
+                 where d.database_id = :P46_DATABASE_ID
+                 order by pr.privilege_type
+                ```
+            pageItemsToSubmit: P46_DATABASE_ID
+        }
+        layout {
+            sequence: 40
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: No PUBLIC privilege collected. A STANDBY has none: the security collect skips it.
+        }
+
+        column GRANTEE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Grantee
+                alignment: center
+            }
+            layout {
+                sequence: 10
+                columnAlignment: center
+            }
+            comments {
+                comments: Always PUBLIC: the collect filters on grantee = 0, the oid of PUBLIC, and writes that literal.
+            }
+        )
+
+        column PRIVILEGE_TYPE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Privilege
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column JUDGED (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Norm
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+    )
+
+    region pg-database-findings (
+        name: Compliance Findings
+        title: Compliance Findings
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select rc.category,
+                       r.title,
+                       nvl( r.severity, rc.severity ) severity,
+                       f.entity_type scope,
+                       f.item_key,
+                       f.observed_value,
+                       f.expected_value,
+                       case when f.exception_id is not null then 'Granted derogation'
+                            when f.is_norm_exception = 1 then 'Accepted by the norm'
+                            else 'Open'
+                       end exception_status
+                  from fact_control_finding f
+                  join ref_control_rule r on r.rule_code = f.rule_code and r.active = 1
+                  join ref_control rc on rc.control_code = r.control_code and rc.active = 1
+                  join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+                 where a.database_id = :P46_DATABASE_ID
+                   and f.is_compliant = 0
+                   and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+                 order by rc.category, r.title, f.item_key
+                ```
+            pageItemsToSubmit: P46_DATABASE_ID
+        }
+        layout {
+            sequence: 50
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No open finding on this database.
+        }
+
+        column CATEGORY (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Category
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column TITLE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Rule
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column SEVERITY (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Severity
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column SCOPE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Grain
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Observed
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column EXPECTED_VALUE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Expected
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column EXCEPTION_STATUS (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 80
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    dynamicAction reload-on-selection (
+        name: Reload on selection
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P46_DATABASE_ID
+        }
+
+        action native-javascript-code (
+            action: executeJsCode
+            settings {
+                jsCode: apex.page.submit()
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    branch reload-same-page (
+        name: Reload same page
+        comments {
+            comments: Hands control back to the same page after the selector submits it. Type page is "Show only": it re-renders inside the same request, with no redirect, so no URL and no checksum - which matters because this page requires arguments to have a checksum and a URL built in the browser cannot carry one. This branch REQUIRES the page attribute reloadOnSubmit = always: with its default onlyForSuccess, APEX refuses a Show Only branch at RUNTIME with APEX.BRANCH.SHOW_ONLY_NOT_SUPPORTED, which apex validate cannot catch.
+        }
+        execution {
+            sequence: 10
+            point: afterProcessing
+        }
+        behavior {
+            type: page
+            pageNumber: 46
+        }
+    )
+
+)

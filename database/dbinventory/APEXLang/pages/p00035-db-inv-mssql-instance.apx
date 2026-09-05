@@ -1,0 +1,1199 @@
+page 35 (
+    name: DB Inv. - MSSQL Instance
+    alias: DB-INV-MSSQL-INSTANCE
+    title: DB Inv. - MSSQL Instance
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+    advanced {
+        reloadOnSubmit: always
+    }
+
+    region page-title (
+        name: &P35_INSTANCE_LABEL.
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region instance-filter (
+        name: Instance Selection
+        type: staticContent
+        layout {
+            sequence: 5
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P35_INSTANCE_ID (
+        type: selectOne
+        label {
+            label: Instance
+            alignment: left
+        }
+        lov {
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select h.hostname || ' / ' || i.instance_name d,
+                       i.instance_id r
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                 where i.platform = 'MSSQL'
+                 order by h.hostname, i.instance_name
+                ```
+        }
+        layout {
+            sequence: 10
+            region: @instance-filter
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            warnOnUnsavedChanges: ignore
+        }
+        help {
+            helpText: Select the SQL Server instance whose card is displayed below.
+        }
+    )
+
+    pageItem P35_INSTANCE_LABEL (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @instance-filter
+            slot: regionBody
+        }
+        source {
+            type: sqlQuerySingleValue
+            sqlQuery:
+                ```sql
+                select h.hostname || ' / ' || i.instance_name
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                 where i.instance_id = :P35_INSTANCE_ID
+                ```
+            used: always
+        }
+    )
+
+    region mssql-instance-host (
+        name: Server
+        title: Server
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select h.hostname,
+                       h.environment,
+                       h.license_type,
+                       h.os_type,
+                       h.num_cpus,
+                       h.memory_gb,
+                       case xh.is_clustered when 1 then 'Yes' when 0 then 'No' end is_clustered,
+                       xh.activenodename,
+                       ( select count(*) from dim_instance i2 where i2.host_id = h.host_id ) instance_count
+                  from dim_instance i
+                  join dim_host h on h.host_id = i.host_id
+                  left join ext_mssql_host xh on xh.host_id = h.host_id
+                 where i.instance_id = :P35_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P35_INSTANCE_ID
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column HOSTNAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Hostname
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column LICENSE_TYPE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: License
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column OS_TYPE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: OS
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column NUM_CPUS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: CPUs
+                alignment: end
+            }
+            layout {
+                sequence: 50
+                columnAlignment: end
+            }
+        )
+
+        column MEMORY_GB (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Memory (GB)
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column IS_CLUSTERED (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Clustered
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+        )
+
+        column ACTIVENODENAME (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Active Node
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column INSTANCE_COUNT (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Instances on host
+                alignment: end
+            }
+            layout {
+                sequence: 90
+                columnAlignment: end
+            }
+            comments {
+                comments: Hosts in the estate carry up to two instances, which is why this card is keyed on the instance and no longer on the host as it was before.
+            }
+        )
+
+    )
+
+    region mssql-instance-identity (
+        name: Instance
+        title: Instance
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select i.instance_name,
+                       i.edition,
+                       i.collation,
+                       i.port,
+                       case
+                          when regexp_like(i.install_date, '^[0-9]{8}$')
+                             then to_char(to_date(i.install_date, 'YYYYMMDD'), 'DD/MM/YYYY')
+                          else i.install_date
+                       end install_date,
+                       xi.max_dop,
+                       xi.parallel_threshold,
+                       xi.min_memory,
+                       xi.max_memory,
+                       case xi.xp_cmdshell_enabled when 1 then 'Enabled' when 0 then 'Disabled' end xp_cmdshell,
+                       xi.service_account
+                  from dim_instance i
+                  left join ext_mssql_instance xi on xi.instance_id = i.instance_id
+                 where i.instance_id = :P35_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P35_INSTANCE_ID
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Instance
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column EDITION (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Edition
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column COLLATION (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Collation
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column PORT (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Port
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column INSTALL_DATE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Installed
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column MAX_DOP (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Max DOP
+                alignment: end
+            }
+            layout {
+                sequence: 60
+                columnAlignment: end
+            }
+        )
+
+        column PARALLEL_THRESHOLD (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Cost Threshold
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+        )
+
+        column MIN_MEMORY (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Min Memory (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 80
+                columnAlignment: end
+            }
+        )
+
+        column MAX_MEMORY (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: Max Memory (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 90
+                columnAlignment: end
+            }
+        )
+
+        column XP_CMDSHELL (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: xp_cmdshell
+                alignment: center
+            }
+            layout {
+                sequence: 100
+                columnAlignment: center
+            }
+        )
+
+        column SERVICE_ACCOUNT (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Service Account
+            }
+            layout {
+                sequence: 110
+            }
+        )
+
+    )
+
+    region mssql-instance-version (
+        name: Version & Support
+        title: Version & Support
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select i.engine_version,
+                       ps.display_name release_name,
+                       ps.current_patch_name,
+                       ps.current_patch_level,
+                       to_char(ps.end_of_support_date, 'DD/MM/YYYY') premier_support_end,
+                       to_char(ps.end_of_ext_support_date, 'DD/MM/YYYY') extended_support_end,
+                       case when fc.control_code is null then 'Not assessed'
+                            when fc.is_compliant = 0    then 'Out of support'
+                            when fc.has_exception = 1   then 'Extended support'
+                            else 'Supported'
+                       end support_status
+                  from dim_instance i
+                  left join product_support ps
+                    on ps.product_company = 'MICROSOFT'
+                   and ps.product_type = 'MSSQL'
+                   and ps.product_version = substr( i.engine_version, 1, instr(i.engine_version, '.', 1, 2) - 1 )
+                  left join fact_compliance fc
+                    on fc.entity_type = 'INSTANCE'
+                   and fc.entity_id = i.instance_id
+                   and fc.control_code = 'MSSQL_OUT_OF_SUPPORT'
+                   and fc.snapshot_date = ( select max(f2.snapshot_date) from fact_compliance f2 )
+                 where i.instance_id = :P35_INSTANCE_ID
+                ```
+            pageItemsToSubmit: P35_INSTANCE_ID
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: Select an instance above.
+        }
+
+        column ENGINE_VERSION (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Build
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column RELEASE_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Release
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column CURRENT_PATCH_NAME (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Latest CU
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column CURRENT_PATCH_LEVEL (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Latest Build
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column PREMIER_SUPPORT_END (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Mainstream Ends
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column EXTENDED_SUPPORT_END (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Extended Ends
+                alignment: center
+            }
+            layout {
+                sequence: 60
+                columnAlignment: center
+            }
+        )
+
+        column SUPPORT_STATUS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    region mssql-instance-databases (
+        name: Databases
+        title: Databases
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select d.db_name,
+                       d.environment,
+                       d.db_state,
+                       xd.recovery_model,
+                       xd.compatibility_level,
+                       xd.agname,
+                       ( select round(sum(fsc.size_mb))
+                           from fact_storage_capacity fsc
+                           join dim_storage_unit su on su.storage_unit_id = fsc.storage_unit_id
+                          where su.database_id = d.database_id
+                            and fsc.snapshot_date = ( select max(s.snapshot_date) from fact_storage_capacity s ) ) size_mb,
+                       fb.hours_since_backup,
+                       d.database_id
+                  from dim_database d
+                  left join ext_mssql_database xd on xd.database_id = d.database_id
+                  left join fact_backup fb
+                    on fb.database_id = d.database_id
+                   and fb.snapshot_date = ( select max(b.snapshot_date) from fact_backup b )
+                 where d.instance_id = :P35_INSTANCE_ID
+                   and d.platform = 'MSSQL'
+                 order by d.db_name
+                ```
+            pageItemsToSubmit: P35_INSTANCE_ID
+        }
+        layout {
+            sequence: 40
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No database collected on this instance.
+        }
+
+        column DB_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Database
+            }
+            layout {
+                sequence: 10
+            }
+            link {
+                target: {
+                    page: 36
+                    items: {
+                        P36_DATABASE_ID: #DATABASE_ID#
+                    }
+                }
+                linkText: #DB_NAME#
+            }
+            sorting {
+                sortable: false
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Environment
+                alignment: center
+            }
+            layout {
+                sequence: 20
+                columnAlignment: center
+            }
+        )
+
+        column DB_STATE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: State
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column RECOVERY_MODEL (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Recovery
+                alignment: center
+            }
+            layout {
+                sequence: 40
+                columnAlignment: center
+            }
+        )
+
+        column COMPATIBILITY_LEVEL (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Compat.
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column AGNAME (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Availability Group
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column SIZE_MB (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Size (MB)
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+        )
+
+        column HOURS_SINCE_BACKUP (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Hours Since Backup
+                alignment: end
+            }
+            layout {
+                sequence: 80
+                columnAlignment: end
+            }
+        )
+
+        column DATABASE_ID (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 90
+            }
+        )
+
+    )
+
+    region mssql-instance-scoring (
+        name: Scores
+        title: Scores
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select sc.score_domain,
+                       sc.score_value,
+                       sc.max_score,
+                       round( 100 * sc.score_value / nullif(sc.max_score, 0), 1 ) pct,
+                       sc.status,
+                       to_char(sc.snapshot_date, 'DD/MM/YYYY') snapshot_date,
+                       sc.data_age_days
+                  from fact_scoring sc
+                 where sc.entity_type = 'INSTANCE'
+                   and sc.entity_id = :P35_INSTANCE_ID
+                   and sc.snapshot_date = ( select max(s2.snapshot_date) from fact_scoring s2 )
+                 order by sc.score_domain
+                ```
+            pageItemsToSubmit: P35_INSTANCE_ID
+        }
+        layout {
+            sequence: 50
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYNoPagination
+        }
+        messages {
+            whenNoDataFound: No score computed for this instance.
+        }
+
+        column SCORE_DOMAIN (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Domain
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column SCORE_VALUE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Score
+                alignment: end
+            }
+            layout {
+                sequence: 20
+                columnAlignment: end
+            }
+        )
+
+        column MAX_SCORE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Max
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+        )
+
+        column PCT (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: %
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column STATUS (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 50
+                columnAlignment: center
+            }
+        )
+
+        column SNAPSHOT_DATE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Snapshot
+                alignment: center
+            }
+            layout {
+                sequence: 60
+                columnAlignment: center
+            }
+        )
+
+        column DATA_AGE_DAYS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Data age (days)
+                alignment: end
+            }
+            layout {
+                sequence: 70
+                columnAlignment: end
+            }
+            comments {
+                comments: The age of the collect the score rests on. A score says nothing without it.
+            }
+        )
+
+    )
+
+    region mssql-instance-parameters (
+        name: Parameters (sp_configure / registry)
+        title: Parameters (sp_configure / registry)
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select p.source,
+                       p.parameter_name,
+                       fcp.config_value,
+                       fcp.run_value,
+                       fcp.value_text
+                  from fact_config_parameter fcp
+                  join dim_parameter p on p.parameter_id = fcp.parameter_id
+                 where fcp.instance_id = :P35_INSTANCE_ID
+                   and fcp.snapshot_date = ( select max(f2.snapshot_date) from fact_config_parameter f2 )
+                 order by p.source, p.parameter_name
+                ```
+            pageItemsToSubmit: P35_INSTANCE_ID
+        }
+        layout {
+            sequence: 60
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No parameter collected for this instance.
+        }
+
+        column SOURCE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Source
+                alignment: center
+            }
+            layout {
+                sequence: 10
+                columnAlignment: center
+            }
+        )
+
+        column PARAMETER_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Parameter
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column CONFIG_VALUE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Config Value
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+        )
+
+        column RUN_VALUE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Run Value
+                alignment: end
+            }
+            layout {
+                sequence: 40
+                columnAlignment: end
+            }
+        )
+
+        column VALUE_TEXT (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Value
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+    )
+
+    region mssql-instance-findings (
+        name: Compliance Findings
+        title: Compliance Findings
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select rc.category,
+                       r.title,
+                       nvl( r.severity, rc.severity ) severity,
+                       f.item_key,
+                       f.observed_value,
+                       f.expected_value,
+                       case when f.exception_id is not null then 'Granted derogation'
+                            when f.is_norm_exception = 1 then 'Accepted by the norm'
+                            else 'Open'
+                       end exception_status
+                  from fact_control_finding f
+                  join ref_control_rule r on r.rule_code = f.rule_code and r.active = 1
+                  join ref_control rc on rc.control_code = r.control_code and rc.active = 1
+                 where f.entity_type = 'INSTANCE'
+                   and f.entity_id = :P35_INSTANCE_ID
+                   and f.is_compliant = 0
+                   and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+                 order by rc.category, r.title, f.item_key
+                ```
+            pageItemsToSubmit: P35_INSTANCE_ID
+        }
+        layout {
+            sequence: 70
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+        }
+        messages {
+            whenNoDataFound: No open finding at instance level.
+        }
+
+        column CATEGORY (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Category
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column TITLE (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Rule
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column SEVERITY (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Severity
+                alignment: center
+            }
+            layout {
+                sequence: 30
+                columnAlignment: center
+            }
+        )
+
+        column ITEM_KEY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Item
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column OBSERVED_VALUE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Observed
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column EXPECTED_VALUE (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Expected
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column EXCEPTION_STATUS (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Status
+                alignment: center
+            }
+            layout {
+                sequence: 70
+                columnAlignment: center
+            }
+        )
+
+    )
+
+    dynamicAction reload-on-selection (
+        name: Reload on selection
+        execution {
+            sequence: 10
+        }
+        when {
+            selectionType: items
+            items: P35_INSTANCE_ID
+        }
+
+        action native-javascript-code (
+            action: executeJsCode
+            settings {
+                jsCode: apex.page.submit()
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    branch reload-same-page (
+        name: Reload same page
+        comments {
+            comments: Hands control back to the same page after the selector submits it. Type page is "Show only": it re-renders inside the same request, with no redirect, so no URL and no checksum - which matters because this page requires arguments to have a checksum and a URL built in the browser cannot carry one. This branch REQUIRES the page attribute reloadOnSubmit = always: with its default onlyForSuccess, APEX refuses a Show Only branch at RUNTIME with APEX.BRANCH.SHOW_ONLY_NOT_SUPPORTED, which apex validate cannot catch.
+        }
+        execution {
+            sequence: 10
+            point: afterProcessing
+        }
+        behavior {
+            type: page
+            pageNumber: 35
+        }
+    )
+
+)

@@ -41,7 +41,11 @@ page 41 (
                        -- addressed by reportColumnQueryId, so inserting in the
                        -- middle would renumber every one of them.
                        r.rule_code,
-                       f.entity_id
+                       f.entity_id,
+                       -- La cle du lien vers la carte d'instance, qui existe
+                       -- desormais. v_entity_ancestry la porte pour un constat de
+                       -- n'importe quel grain.
+                       a.instance_id
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
@@ -166,14 +170,36 @@ page 41 (
         column INSTANCE_NAME (
             reportColumnQueryId: 1
             derivedColumn: N
+            type: link
             heading {
                 heading: Instance Name
             }
             layout {
                 sequence: 60
             }
+            link {
+                target: {
+                    page: 45
+                    items: {
+                        P45_INSTANCE_ID: #INSTANCE_ID#
+                    }
+                }
+                linkText: #INSTANCE_NAME#
+            }
+            sorting {
+                sortable: false
+            }
             comments {
-                comments: Plain column, deliberately not a link. There is no PostgreSQL server detail page - 25 covers Oracle and 35 covers MSSQL - and page 40 takes no parameter, so a link there would drop the instance the user clicked.
+                comments: Points at 45, the PostgreSQL instance card, which did not exist when this page was written - the column was plain until then. On PostgreSQL the instance name IS the hostname, so there is one card per host and no Server column beside this one.
+            }
+        )
+
+        column INSTANCE_ID (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 220
             }
         )
 

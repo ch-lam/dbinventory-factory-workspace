@@ -153,45 +153,4 @@ insert into scoring_activity_list (
            'Compliance is 80%, some configuration items need improvement.',
            5,
            7 );
-/*
-insert into scoring_activity_list (
-   scoring_type,
-   last_scoring_date,
-   last_scoring_value,
-   scoring_card_class,
-   scoring_status,
-   status_color,
-   scoring_label,
-   details_apex_page_number,
-   scoring_order
-) values ( 'MongoDB Compliance',
-           current_timestamp,
-           80,
-           'u-color-7-border',
-           'Warning',
-           'u-color-7',
-           'Compliance is 80%, some configuration items need improvement.',
-           6,
-           9 );
-
-insert into scoring_activity_list (
-   scoring_type,
-   last_scoring_date,
-   last_scoring_value,
-   scoring_card_class,
-   scoring_status,
-   status_color,
-   scoring_label,
-   details_apex_page_number,
-   scoring_order
-) values ( 'MongoDB Licensing',
-           current_timestamp,
-           30,
-           'u-color-9-border',
-           'Warning',
-           'u-color-9',
-           'Compliance is 30%, this is critical, some configuration items need critical review.',
-           6,
-           10 );
-*/
 commit;

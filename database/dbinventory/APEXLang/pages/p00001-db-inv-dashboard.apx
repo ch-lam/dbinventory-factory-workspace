@@ -60,7 +60,7 @@ page 1 (
                        ||case when score_value >= 90 then 'all checks passed.'
                               when score_value >= 70 then 'some checks need improvement.'
                               else 'several checks are failing.' end scoring_label,
-                       apex_page.get_url( p_page => case platform when 'ORACLE' then 21 when 'MSSQL' then 31 when 'POSTGRES' then 41 when 'MYSQL' then 51 when 'MONGODB' then 61 else 1 end ) details_apex_page_number,
+                       apex_page.get_url( p_page => case platform when 'ORACLE' then 21 when 'MSSQL' then 31 when 'POSTGRES' then 41 when 'MYSQL' then 51 else 1 end ) details_apex_page_number,
                        row_number() over ( order by platform, score_domain ) scoring_order
                   from agg
                  order by scoring_order asc

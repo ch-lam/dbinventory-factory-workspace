@@ -18,9 +18,18 @@ rm -f "${LIST_DIR}/error_db.lst"
 
 # ── Collecte par instance ─────────────────────────────────────────────────────
 while IFS=';' read -r env license server; do
-    [[ -z "${server:-}" ]] && continue
+    # Le filtre en fin de boucle a déjà écarté commentaires et lignes vides : une
+    # 3e colonne absente ici ne peut venir que d'une ligne mal formée (un
+    # séparateur autre que ';'). L'ignorer en silence, c'est ne jamais collecter
+    # la cible et ne jamais l'apprendre — c'est ce qui est arrivé à GINRHU.
+    if [[ -z "${server:-}" ]]; then
+        log_err "ligne de périmètre mal formée, attendu ENV;LICENCE;HOTE:PORT : ${env}${license:+;${license}}"
+        continue
+    fi
     host="${server%%:*}"
-    port="${server##*:}"
+    # Même garde que dans get_info_mssql.sh : sans le ":port", ${server##*:}
+    # rendrait le hostname, et la cible deviendrait "HOTE,HOTE".
+    if [[ "${server}" == *:* ]]; then port="${server##*:}"; else port=1433; fi
     target="${host},${port}"
     log "Connexion : ${target} [${env}/${license}]"
 

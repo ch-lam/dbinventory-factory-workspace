@@ -764,4 +764,70 @@ export const CONTRACT = {
     ],
     omitted: ["compliance_score","date_value"]
   },
+
+   // ------------------------------------------------------------------ discovery
+   // Deux fichiers qui ne viennent pas de la collecte et n'en ont pas le format.
+   //
+   // Le NOM DE FICHIER differe du nom de table : load_info_discovery.sh attend
+   // discovery_mssql.csv pour discovery_mssql_inst. C'est un contrat de
+   // production, on le porte explicitement plutot que de plier l'un des deux.
+   discovery_mssql_inst: {
+      engine: 'discovery',
+      source: 'discovery/windows/discovery_MSSQL.ps1',
+      fileName: 'discovery_mssql.csv',
+      // Charge PAR NOM (COLUMN_NAMES ON) : l'en-tete est obligatoire, et
+      // l'ordre ci-dessous est celui de l'objet PowerShell, pas celui de la
+      // table -- tcpport y est en 13e position et non en 17e. C'est
+      // volontaire : c'est la seule chose qui prouve que le chargement par nom
+      // fait bien son travail.
+      format: { delimiter: ',', quoted: true, header: true },
+      fields: [
+         { name: 'serveur', type: 'varchar2', len: 150 },
+         { name: 'instance', type: 'varchar2', len: 128 },
+         { name: 'service', type: 'varchar2', len: 128 },
+         { name: 'edition', type: 'varchar2', len: 100 },
+         { name: 'version', type: 'varchar2', len: 50 },
+         { name: 'patch', type: 'varchar2', len: 50 },
+         { name: 'etatservice', type: 'varchar2', len: 30 },
+         { name: 'demarrage', type: 'varchar2', len: 30 },
+         { name: 'compteservice', type: 'varchar2', len: 150 },
+         { name: 'bitness', type: 'varchar2', len: 10 },
+         { name: 'editiongratuite', type: 'varchar2', len: 10 },
+         { name: 'portsql', type: 'varchar2', len: 10 },
+         { name: 'tcpport', type: 'varchar2', len: 20 },
+         { name: 'acceswmi', type: 'varchar2', len: 30 },
+         { name: 'protocole', type: 'varchar2', len: 20 },
+         { name: 'statut', type: 'varchar2', len: 100 },
+         { name: 'detail', type: 'varchar2', len: 1000 }
+      ],
+      omitted: []
+   },
+
+   // Charge POSITIONNELLEMENT, sans en-tete, en ';' et sans guillemets : ici
+   // l'ordre des colonnes EST le contrat. Le separateur est ';' et non ',' pour
+   // que ora_sids puisse lister plusieurs SID separes par des virgules.
+   // Le producteur n'ecrit jamais de champ vide : il ecrit '-'.
+   discovery_linux_engines: {
+      engine: 'discovery',
+      source: 'discovery/linux/detect_db_engines.sh (v2)',
+      fileName: 'discovery_linux.csv',
+      format: { delimiter: ';', quoted: false, header: false },
+      fields: [
+         { name: 'hostn', type: 'varchar2', len: 150 },
+         { name: 'pg_pkg', type: 'varchar2', len: 1 },
+         { name: 'pg_proc', type: 'varchar2', len: 10 },
+         { name: 'pg_port', type: 'varchar2', len: 100 },
+         { name: 'pg_port_guess', type: 'varchar2', len: 1 },
+         { name: 'ora_pkg', type: 'varchar2', len: 1 },
+         { name: 'ora_proc', type: 'varchar2', len: 10 },
+         { name: 'ora_sids', type: 'varchar2', len: 400 },
+         { name: 'ora_port', type: 'varchar2', len: 100 },
+         { name: 'ora_port_guess', type: 'varchar2', len: 1 },
+         { name: 'my_pkg', type: 'varchar2', len: 1 },
+         { name: 'my_proc', type: 'varchar2', len: 10 },
+         { name: 'my_port', type: 'varchar2', len: 100 },
+         { name: 'my_port_guess', type: 'varchar2', len: 1 }
+      ],
+      omitted: []
+   }
 };

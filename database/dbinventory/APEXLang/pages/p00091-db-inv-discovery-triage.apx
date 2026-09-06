@@ -63,7 +63,7 @@ page 91 (
             templateOptions: #DEFAULT#
         }
         help {
-            helpText: Values in use in the collection perimeter. Required to promote.
+            helpText: Reference values, from the environments and licence_types tables. Required to promote.
         }
     )
 
@@ -134,12 +134,12 @@ page 91 (
             templateOptions: #DEFAULT#
         }
         help {
-            helpText: Values in use in the collection perimeter. Required to promote.
+            helpText: Reference values, from the environments and licence_types tables. Required to promote.
         }
     )
 
     pageItem P91_PORT (
-        type: displayOnly
+        type: textField
         label {
             label: TCP Port
             alignment: right
@@ -155,7 +155,79 @@ page 91 (
             templateOptions: #DEFAULT#
         }
         help {
-            helpText: Read from the instance registry key by the Windows discovery. Without it the instance cannot be collected, because a named instance does not listen on 1433.
+            helpText: MSSQL reads it from the instance registry key, and it is then already filled: without it a named instance cannot be collected, because it does not listen on 1433. Oracle and PostgreSQL are only discovered at host level, so when the host listens on several ports the choice is yours.
+        }
+    )
+
+    pageItem P91_PLATFORM (
+        type: hidden
+        layout {
+            sequence: 15
+            region: @triage
+            slot: regionBody
+        }
+    )
+
+    pageItem P91_PORTS_SEEN (
+        type: displayOnly
+        label {
+            label: Ports Seen
+            alignment: right
+        }
+        layout {
+            sequence: 51
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Every port the detection saw listening on this host, for the engine concerned. Several of them means the discovery cannot choose, and you must.
+        }
+    )
+
+    pageItem P91_COLLECT_NAME (
+        type: textField
+        label {
+            label: Collect Name
+            alignment: right
+        }
+        layout {
+            sequence: 55
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: The key of the Oracle and PostgreSQL perimeters, and a human choice: it names the target in the generated list and in every screen afterwards. MSSQL does not use one, its perimeter is keyed on host and port.
+        }
+    )
+
+    pageItem P91_SERVICE_NAME (
+        type: textField
+        label {
+            label: Oracle Service
+            alignment: right
+        }
+        layout {
+            sequence: 56
+            region: @triage
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: The database service name, which the connect string needs. The discovery only found the SID, from ora_pmon_<SID>, and a SID is not a service: prefilled with it as a starting point, to be confirmed.
         }
     )
 
@@ -212,6 +284,11 @@ page 91 (
         behavior {
             warnOnUnsavedChanges: doNotCheck
         }
+        serverSideCondition {
+            type: item!=value
+            item: P91_LEVEL_NAME
+            value: PERIMETER
+        }
     )
 
     button promote (
@@ -229,6 +306,11 @@ page 91 (
         }
         behavior {
             warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: item!=value
+            item: P91_LEVEL_NAME
+            value: PERIMETER
         }
     )
 
@@ -270,18 +352,42 @@ page 91 (
         source {
             plsqlCode:
                 ```plsql
-                if :P91_LEVEL_NAME = 'INSTANCE' then
-                   select h.hostname, i.instance_name, i.port
-                     into :P91_HOSTNAME, :P91_INSTANCE_NAME, :P91_PORT
+-- Trois niveaux, et le troisieme n'est pas une entite decouverte :
+                -- PERIMETER designe une entree de la liste de collecte que plus
+                -- aucun run ne rapporte. Il n'y a rien a trancher dessus, et
+                -- surtout aucun entity_id a lire -- c'est ce que cette page
+                -- faisait avant, et elle levait no_data_found.
+                if :P91_LEVEL_NAME = 'PERIMETER' then
+                   return;
+                elsif :P91_LEVEL_NAME = 'INSTANCE' then
+                   select h.platform, h.hostname, i.instance_name,
+                          i.port, h.ports_seen
+                     into :P91_PLATFORM, :P91_HOSTNAME, :P91_INSTANCE_NAME,
+                          :P91_PORT, :P91_PORTS_SEEN
                      from disc_instance i
                      join disc_host h on h.disc_host_id = i.disc_host_id
                     where i.disc_instance_id = :P91_ENTITY_ID;
                 else
-                   select h.hostname, null, null
-                     into :P91_HOSTNAME, :P91_INSTANCE_NAME, :P91_PORT
+                   select h.platform, h.hostname, null, null, h.ports_seen
+                     into :P91_PLATFORM, :P91_HOSTNAME, :P91_INSTANCE_NAME,
+                          :P91_PORT, :P91_PORTS_SEEN
                      from disc_host h
                     where h.disc_host_id = :P91_ENTITY_ID;
                 end if;
+
+                -- Un port propose plutot qu'un champ vide, mais seulement quand
+                -- il n'y a pas d'ambiguite : plusieurs ports vus, c'est un choix
+                -- humain, et le pre-remplir serait le prendre a sa place.
+                if :P91_PORT is null and instr(:P91_PORTS_SEEN, ',') = 0 then
+                   :P91_PORT := to_number(trim(:P91_PORTS_SEEN)
+                                          default null on conversion error);
+                end if;
+
+                -- Amorces de saisie. Le SID est le point de depart le plus
+                -- probable du nom de service, pas sa reponse.
+                :P91_COLLECT_NAME := nvl(:P91_INSTANCE_NAME,
+                                         upper(regexp_substr(:P91_HOSTNAME, '^[^.]+')));
+                :P91_SERVICE_NAME := :P91_INSTANCE_NAME;
                 ```
         }
         execution {
@@ -323,10 +429,29 @@ page 91 (
         source {
             plsqlCode:
                 ```plsql
-                pkg_dbinv_discovery.promote_instance(
-                    p_disc_instance_id => :P91_ENTITY_ID,
-                    p_environment      => :P91_ENVIRONMENT,
-                    p_license_type     => :P91_LICENSE_TYPE );
+-- PostgreSQL n'a pas de grain instance dans la discovery, et un
+                -- constat MSSQL de niveau hote non plus : ces deux-la passent
+                -- par promote_host. Le paquetage refuse nommement ce qui ne peut
+                -- pas etre promu (MySQL, Oracle sans SID) plutot que d'echouer
+                -- sur une valeur nulle.
+                if :P91_LEVEL_NAME = 'INSTANCE' then
+                   pkg_dbinv_discovery.promote_instance(
+                       p_disc_instance_id => :P91_ENTITY_ID,
+                       p_environment      => :P91_ENVIRONMENT,
+                       p_license_type     => :P91_LICENSE_TYPE,
+                       p_collect_name     => :P91_COLLECT_NAME,
+                       p_service_name     => :P91_SERVICE_NAME,
+                       p_port             => to_number(:P91_PORT
+                                                       default null on conversion error) );
+                else
+                   pkg_dbinv_discovery.promote_host(
+                       p_disc_host_id => :P91_ENTITY_ID,
+                       p_environment  => :P91_ENVIRONMENT,
+                       p_license_type => :P91_LICENSE_TYPE,
+                       p_collect_name => :P91_COLLECT_NAME,
+                       p_port         => to_number(:P91_PORT
+                                                   default null on conversion error) );
+                end if;
                 ```
         }
         execution {

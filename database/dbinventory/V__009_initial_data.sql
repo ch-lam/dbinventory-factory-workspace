@@ -30,6 +30,13 @@ insert into licence_types ( license_type, description, scoring_impact ) values (
 insert into licence_types ( license_type, description, scoring_impact ) values ( 'STANDARD', 'Standard license type', 100 );
 insert into licence_types ( license_type, description, scoring_impact ) values ( 'SAP', 'SAP license type (bundle provider)', 0 );
 insert into licence_types ( license_type, description, scoring_impact ) values ( 'PROVIDER', 'PROVIDER license type (license is provided by a third party)', 0 );
+-- CHL et INCCI manquaient, alors que le parc les utilise : 45 entrees CHL et
+-- 6 INCCI dans le seul perimetre MSSQL. Un referentiel qui ne connait pas les
+-- valeurs en usage ne contraint rien, il empeche seulement de les saisir --
+-- c'est ce qui bloquait la promotion depuis la discovery, dont les listes
+-- deroulantes lisent cette table.
+insert into licence_types ( license_type, description, scoring_impact ) values ( 'CHL', 'Licence acquise et portee par le CHL', 100 );
+insert into licence_types ( license_type, description, scoring_impact ) values ( 'INCCI', 'Licence fournie dans le cadre INCCI', 0 );
 commit;
 
 delete from scoring_activity_list;

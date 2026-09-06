@@ -120,6 +120,51 @@ with lignes as (
    select 6, 'staging', 'postgres_hosts', to_char(count(*)) from postgres_hosts
    union all
    select 6, 'staging', 'postgres_databases', to_char(count(*)) from postgres_databases
+   union all
+   select 6, 'staging', 'discovery_mssql_inst', to_char(count(*)) from discovery_mssql_inst
+   union all
+   select 6, 'staging', 'discovery_linux_engines', to_char(count(*)) from discovery_linux_engines
+   union all
+   -- ---- discovery -----------------------------------------------------------
+   -- Rien ici ne descend de sysdate. days_since_last_seen et is_stale de
+   -- v_discovery_status en derivent, eux : ils vaudraient autre chose le
+   -- lendemain de la capture, et une reference qui les porterait serait fausse
+   -- sans que personne n'ait rien change. effective_status, au contraire, ne
+   -- depend que de triage_status et du perimetre.
+   select 7, 'discovery', 'run/' || source,
+          host_count || ' hotes, ' || finding_count || ' constats'
+     from disc_run
+   union all
+   -- La date de run, en clair : load_all a pour defaut trunc(sysdate), et sans
+   -- cette mesure une chaine qui daterait le run d'aujourd'hui passerait
+   -- inapercue jusqu'au lendemain.
+   select 7, 'discovery', 'run_date/' || source, to_char(run_date, 'YYYY-MM-DD')
+     from disc_run
+   union all
+   select 7, 'discovery', 'finding/' || platform || '/' || finding_level, to_char(count(*))
+     from disc_finding group by platform, finding_level
+   union all
+   select 7, 'discovery', 'host/' || platform || '/' || triage_status, to_char(count(*))
+     from disc_host group by platform, triage_status
+   union all
+   select 7, 'discovery', 'instance/' || platform || '/' || triage_status, to_char(count(*))
+     from disc_instance group by platform, triage_status
+   union all
+   select 7, 'discovery', 'status/' || platform || '/' || level_name || '/' || effective_status,
+          to_char(count(*))
+     from v_discovery_status group by platform, level_name, effective_status
+   union all
+   -- ---- perimetre de collecte ----------------------------------------------
+   -- Le perimetre est desormais alimente par le jeu, et c'est la cible de la
+   -- promotion : il se mesure.
+   select 8, 'perimetre', 'oracle/' || active, to_char(count(*))
+     from oracle_collect_list group by active
+   union all
+   select 8, 'perimetre', 'mssql/' || active, to_char(count(*))
+     from mssql_collect_list group by active
+   union all
+   select 8, 'perimetre', 'postgres/' || active, to_char(count(*))
+     from postgres_collect_list group by active
 )
 select section || '|' || k || '|' || v
   from lignes
@@ -266,6 +311,96 @@ begin
                               and a.entity_id = f.entity_id
                         where a.instance_id = e.instance_id );
    expect_zero('tout primaire PostgreSQL porte des constats SECURITY', l_n, 'primaire(s) sans constat');
+
+   -- 10. Les deux runs de discovery existent.
+   --     load_mssql et load_linux sortent sans rien faire quand leur table de
+   --     staging est vide : un fichier non depose ne produit donc AUCUN run,
+   --     et pas une erreur. C'est cette assertion qui le dit.
+   select count(distinct source) into l_n from disc_run;
+   if l_n = 2 then ok('les deux sources de discovery ont produit un run');
+   else fail('les deux sources de discovery ont produit un run',
+             l_n || ' source(s) au lieu de 2');
+   end if;
+
+   -- 11. La date de run est celle du snapshot.
+   --     pkg_dbinv_discovery.load_all a pour defaut trunc(sysdate) : si la
+   --     chaine oublie de passer la date, la reference devient fausse le
+   --     lendemain, et le diff ne dirait pas pourquoi.
+   select count(*) into l_n
+     from disc_run
+    where run_date <> ( select max(snapshot_date) from fact_scoring );
+   expect_zero('la discovery est datee du snapshot', l_n, 'run(s) a une autre date');
+
+   -- 12. COUVERTURE : les quatre statuts de reconciliation sont representes.
+   --     L'equivalent, pour la discovery, de l'assertion 5 sur les regles. Un
+   --     jeu qui cesserait d'exercer NOT_SEEN -- le cas qui compte le plus pour
+   --     le RSSI, une base collectee qui a disparu du parc -- retrecirait en
+   --     silence. MySQL n'a pas de table de perimetre : il ne peut etre que NEW
+   --     ou IGNORED, et c'est la definition, pas un trou.
+   l_txt := null;
+   for c in ( select p.platform, st.statut
+                from ( select 'ORACLE' platform from dual
+                       union all select 'MSSQL' from dual
+                       union all select 'POSTGRES' from dual
+                       union all select 'MYSQL' from dual ) p
+                cross join ( select 'NEW' statut from dual
+                             union all select 'COLLECTED' from dual
+                             union all select 'IGNORED' from dual
+                             union all select 'NOT_SEEN' from dual ) st
+               where not ( p.platform = 'MYSQL'
+                           and st.statut in ( 'COLLECTED', 'NOT_SEEN' ) )
+                 and not exists ( select 1
+                                    from v_discovery_status v
+                                   where v.platform = p.platform
+                                     and v.effective_status = st.statut )
+               order by p.platform, st.statut )
+   loop
+      l_txt := ltrim(l_txt || ', ') || c.platform || '/' || c.statut;
+   end loop;
+   if l_txt is null then
+      ok('les quatre statuts de reconciliation sont exerces sur chaque moteur');
+   else
+      fail('les quatre statuts de reconciliation sont exerces sur chaque moteur',
+           'absent(s) : ' || l_txt);
+   end if;
+
+   -- 13. Un constat ORACLE de niveau HOTE existe.
+   --     Le cas << Oracle installe, aucun SID resolu >>, que la promotion doit
+   --     refuser. Sans une donnee pour le declencher, ce refus n'est jamais
+   --     joue et pourrait disparaitre sans que rien ne le signale.
+   select count(*) into l_n
+     from disc_finding
+    where platform = 'ORACLE' and finding_level = 'HOST';
+   if l_n > 0 then ok('un constat ORACLE de niveau hote existe');
+   else fail('un constat ORACLE de niveau hote existe', 'aucun');
+   end if;
+
+   -- 14. Le fichier Linux n'a pas ete decale.
+   --     Le chargement est POSITIONNEL : une colonne de plus chez le producteur
+   --     et tout glisse d'un cran, sans erreur. load_findings_linux lit les
+   --     compteurs de processus a travers un to_number ... on conversion error,
+   --     donc un 'Y' decale devient un NULL silencieux, pas une exception.
+   --     Ces trois colonnes ne peuvent valoir que Y ou N, et ces trois-la que
+   --     des chiffres : c'est ce qui rend le decalage visible.
+   select count(*) into l_n
+     from discovery_linux_engines
+    where pg_pkg not in ( 'Y', 'N' )
+       or ora_pkg not in ( 'Y', 'N' )
+       or my_pkg not in ( 'Y', 'N' )
+       or not regexp_like(pg_proc, '^[0-9]+$')
+       or not regexp_like(ora_proc, '^[0-9]+$')
+       or not regexp_like(my_proc, '^[0-9]+$');
+   expect_zero('le fichier Linux est aligne sur son contrat', l_n, 'ligne(s) decalee(s)');
+
+   -- 15. Aucun nom du parc reel dans la discovery.
+   --     Le pendant de l'assertion 7, et il n'est pas theorique : le depot
+   --     contient discovery/windows/discovery_MSSQL_20260715.csv, un extrait
+   --     reel plein de .ad.chl.lu, a un cp pres de collect/.
+   select count(*) into l_n
+     from disc_host
+    where lower(hostname) like '%chl.lu%';
+   expect_zero('aucun hote residuel du parc reel dans la discovery', l_n,
+               'hote(s) en .chl.lu dans disc_host');
 
    dbms_output.put_line('T_004 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s).');
    if l_failed > 0 then

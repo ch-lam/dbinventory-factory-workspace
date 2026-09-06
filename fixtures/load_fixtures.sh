@@ -106,13 +106,53 @@ mkdir -p "${COLLECT_DIR}"
 rm -f "${COLLECT_DIR}"/*.csv
 cp "${SCRIPT_DIR}/out"/*.csv "${COLLECT_DIR}/"
 
-# ── Chargement ───────────────────────────────────────────────────────────────
+# ── Périmètre de collecte ────────────────────────────────────────────────────
+# Les *_collect_list sont VIDES sur une base fraîchement installée : aucune
+# migration ne les alimente, c'est la discovery qui les remplit une fois qu'un
+# humain a tranché. Sans elles, v_discovery_status ne peut rendre que NEW,
+# NOT_SEEN est structurellement vide, et gen_collect_lists.sh n'a rien à
+# régénérer — donc la moitié de ce que ce jeu doit démontrer n'existe pas.
+#
+# On les amorce depuis les .lst que generate.mjs vient d'écrire, par le script
+# prévu pour ça, plutôt qu'en SQL écrit ici : c'est la chaîne réelle, jouée à
+# l'envers. Le TRUNCATE est nécessaire, bootstrap n'émettant que des MERGE :
+# une entrée laissée par une génération précédente survivrait au changement de
+# parc et se présenterait en NOT_SEEN sans raison.
 export DBINVENTORY_CONN_NAME="${DB_CONN}"
+log "Amorçage du périmètre depuis les .lst générés..."
+PERIM_SQL="$(mktemp)"
+{
+    echo "whenever sqlerror exit failure rollback"
+    echo "truncate table oracle_collect_list;"
+    echo "truncate table mssql_collect_list;"
+    echo "truncate table postgres_collect_list;"
+    "${BIN_DIR}/bootstrap_collect_lists.sh" "${SCRIPT_DIR}/out"
+    echo "exit"
+} > "${PERIM_SQL}"
+PERIM_RC=0
+sqlcl_run "${DB_CONN}" "${PERIM_SQL}" > /dev/null || PERIM_RC=$?
+rm -f "${PERIM_SQL}"
+if [[ "${PERIM_RC}" -ne 0 ]]; then
+    echo "ERREUR: amorçage du périmètre impossible (code ${PERIM_RC})." >&2
+    exit 1
+fi
+
+# ── Chargement ───────────────────────────────────────────────────────────────
 cd "${BIN_DIR}"
 for engine in oracle mssql postgres; do
     log "Chargement ${engine}..."
     ./load_info_${engine}.sh
 done
+
+# La discovery est une chaîne indépendante : aucune table commune avec
+# l'inventaire, aucune clé étrangère entre les deux. Sa place ici tient à ce que
+# les loaders sont ce qui valide la FORME des fichiers — une régression de
+# format doit échouer avant qu'on dépense le temps de l'ETL.
+#
+# La date de run est celle du snapshot, pas trunc(sysdate) : sinon disc_run
+# change de date chaque jour et la référence est fausse le lendemain.
+log "Chargement discovery (run du ${SNAPSHOT})..."
+./load_info_discovery.sh "${SNAPSHOT}"
 
 # ── ETL ──────────────────────────────────────────────────────────────────────
 # La date de snapshot est passée EXPLICITEMENT. Avec le défaut trunc(sysdate),
@@ -140,6 +180,19 @@ rm -f "${ETL_SQL}"
 # chargee.
 if [[ "${ETL_RC}" -ne 0 ]]; then
     echo "ERREUR: l ETL a echoue (code ${ETL_RC}). Rien n a ete capture." >&2
+    exit 1
+fi
+
+# ── Triage ───────────────────────────────────────────────────────────────────
+# Les décisions humaines s'appliquent en dernier : elles ont besoin des
+# identifiants que le chargement de la discovery vient de créer, et elles
+# passent par l'API réelle (set_triage), pas par un UPDATE de circonstance.
+# C'est le seul exercice que cette procédure ait jamais eu.
+log "Décisions de triage de la discovery..."
+TRIAGE_RC=0
+sqlcl_run "${DB_CONN}" "${SCRIPT_DIR}/out/discovery_triage.sql" || TRIAGE_RC=$?
+if [[ "${TRIAGE_RC}" -ne 0 ]]; then
+    echo "ERREUR: les decisions de triage ont echoue (code ${TRIAGE_RC})." >&2
     exit 1
 fi
 

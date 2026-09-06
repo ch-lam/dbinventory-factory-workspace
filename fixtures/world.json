@@ -68,6 +68,79 @@
     "versions": ["13.16", "14.12", "15.8", "16.4", "17.2"]
   },
 
+  "discovery": {
+    "_comment": [
+      "Ce que la discovery VOIT, par opposition a ce que l'inventaire COLLECTE.",
+      "",
+      "Trois populations, et il faut les trois pour que v_discovery_status rende",
+      "ses quatre statuts :",
+      "  * les hotes du parc redecouverts            -> COLLECTED",
+      "  * les hotes du parc volontairement omis     -> NOT_SEEN",
+      "  * des installations sauvages, hors parc     -> NEW, puis IGNORED des",
+      "    qu'une decision de triage est posee dessus.",
+      "Et, quatrieme cas, une entree de perimetre DESACTIVEE mais toujours",
+      "decouverte : IGNORED aussi, par l'autre branche du CASE de la vue.",
+      "",
+      "Les hotes omis sont designes par INDICE et non tires : le choix doit etre",
+      "relisible dans le diff, et il porte une intention. Les indices retenus",
+      "sont ceux d'hotes ne portant qu'une seule entite, pour que le compte de",
+      "NOT_SEEN soit lisible ; et aucun ne porte l'entree commentee du .lst,",
+      "qu'une omission rendrait invisible au lieu de la montrer IGNORED.",
+      "",
+      "MySQL n'a pas de *_collect_list : il ne peut etre que NEW ou IGNORED.",
+      "Ce n'est pas un trou, c'est la definition -- dbInventory ne collecte pas",
+      "MySQL, et la discovery est le seul endroit ou ce parc existe.",
+      "",
+      "runDate vaut snapshotDate. days_since_last_seen et is_stale derivent de",
+      "sysdate : ils vaudront autre chose demain, et aucune mesure de reference",
+      "n'en descend (voir T_004)."
+    ],
+
+    "runDate": "2026-09-01",
+
+    "withheldHostIndexes": {
+      "oracle":   [19],
+      "mssql":    [53, 54],
+      "postgres": [2]
+    },
+
+    "wild": {
+      "oracle": [
+        { "host": "oraapp-dev-71", "sids": ["SANDBX1", "SANDBX2"], "procs": 2, "ports": "1521", "portGuess": "N" },
+        { "host": "oraapp-tst-72", "sids": [],                     "procs": 0, "ports": "-",    "portGuess": "-",
+          "_comment": "Oracle installe, aucun SID resolu : constat de niveau HOTE, que la promotion doit refuser." },
+        { "host": "oraapp-dev-73", "sids": ["LEGACYD"],            "procs": 1, "ports": "1522", "portGuess": "N",
+          "mysql": { "procs": 1, "ports": "3306", "portGuess": "N" },
+          "_comment": "Deux moteurs sur une machine : c'est le repliement du fichier Linux, jamais exerce sinon." }
+      ],
+      "mssql": [
+        { "host": "appsrv-prd-71", "instance": "SQLEXPRESS", "port": 1433,  "build": "15.0.4280.7",  "edition": "Express Edition" },
+        { "host": "appsrv-dev-72", "instance": "SQLEXPRESS", "port": 49172, "build": "14.0.3465.1",  "edition": "Express Edition" },
+        { "host": "appsrv-tst-73", "instance": "GESTION",    "port": 1433,  "build": "13.0.5893.48", "edition": "Standard Edition" }
+      ],
+      "postgres": [
+        { "host": "pgapp-prd-71", "procs": 1, "ports": "5433", "portGuess": "N" },
+        { "host": "pgapp-dev-72", "procs": 1, "ports": "5432", "portGuess": "N" }
+      ],
+      "mysql": [
+        { "host": "mysrv-prd-74", "procs": 2, "ports": "3306,3307", "portGuess": "N",
+          "_comment": "Deux ports : one_port doit refuser de choisir a la place de l'humain." },
+        { "host": "mysrv-tst-75", "procs": 1, "ports": "3306", "portGuess": "N" }
+      ]
+    },
+
+    "ignored": [
+      { "level": "INSTANCE", "platform": "ORACLE",   "host": "oraapp-dev-73", "instance": "LEGACYD",
+        "note": "Machine editeur : cataloguee, hors perimetre de collecte." },
+      { "level": "INSTANCE", "platform": "MSSQL",    "host": "appsrv-dev-72", "instance": "SQLEXPRESS",
+        "note": "SQL Express embarque avec l'application, sous responsabilite editeur." },
+      { "level": "HOST",     "platform": "POSTGRES", "host": "pgapp-prd-71",
+        "note": "Instance applicative embarquee, hors perimetre." },
+      { "level": "HOST",     "platform": "MYSQL",    "host": "mysrv-tst-75",
+        "note": "MySQL n'est pas collecte par dbInventory." }
+    ]
+  },
+
   "environments": {
     "PRD": 0.55,
     "TST": 0.22,

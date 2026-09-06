@@ -16,12 +16,14 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { makeRng } from './lib/rng.mjs';
-import { collectId } from './lib/csv.mjs';
+import { collectId, fileNameOf } from './lib/csv.mjs';
 import { CONTRACT } from './lib/contract.mjs';
 import { buildEstate } from './lib/estate.mjs';
 import { emitOracle } from './lib/emit_oracle.mjs';
 import { emitMssql } from './lib/emit_mssql.mjs';
 import { emitPostgres } from './lib/emit_postgres.mjs';
+import { buildDiscovery } from './lib/discovery.mjs';
+import { emitDiscovery } from './lib/emit_discovery.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] || join(HERE, 'out'));
@@ -38,6 +40,10 @@ const rng = makeRng(world.seed);
 const rngOracle = makeRng(world.seed + 101);
 const rngMssql = makeRng(world.seed + 202);
 const rngPostgres = makeRng(world.seed + 303);
+// La discovery a son propre flux, pour la meme raison : ajouter un hote
+// sauvage ne doit pas decaler un seul tirage des trois emetteurs de
+// collecte, sinon la reference se reecrit en entier pour rien.
+const rngDiscovery = makeRng(world.seed + 404);
 
 // Les dates sont lues en UTC : sans le 'T00:00:00Z', Node les interpréterait
 // dans le fuseau de la machine et le jeu produit ne serait plus le même selon
@@ -47,6 +53,9 @@ const snapshot = new Date(`${world.snapshotDate}T00:00:00Z`);
 const cid = collectId(collectDate);
 
 const estate = buildEstate(world, rng);
+// Apres buildEstate, et sans jamais toucher au flux partage : la discovery
+// LIT le parc, elle ne participe pas a sa construction.
+const discovery = buildDiscovery(world, estate, rngDiscovery);
 const base = { outDir, world, estate, cid, snapshot };
 
 // On repart d'un dossier propre : un CSV laissé par une génération précédente,
@@ -57,6 +66,7 @@ mkdirSync(outDir, { recursive: true });
 emitOracle({ ...base, rng: rngOracle });
 emitMssql({ ...base, rng: rngMssql });
 emitPostgres({ ...base, rng: rngPostgres });
+const discoveryCounts = emitDiscovery({ outDir, discovery });
 
 // ---------------------------------------------------------------- périmètre
 // Format attendu par les collecteurs, et régénéré par gen_collect_lists.sh
@@ -93,10 +103,14 @@ writeLst('postgres_database_lists.lst', '#ENVIRONMENT;LICENCE_TYPE;HOST:PORT', p
 // Chaque table du contrat doit avoir SON fichier, même vide : les loaders font
 // un LOAD inconditionnel sous WHENEVER SQLERROR EXIT FAILURE, donc une absence
 // ne dégrade pas le chargement, elle l'interrompt.
+// La comparaison porte sur les NOMS DE FICHIER : deux tables de discovery ne
+// portent pas le nom de leur fichier, parce que c'est le loader de production
+// qui decide de celui-ci.
 const expected = Object.keys(CONTRACT);
-const written = readdirSync(outDir).filter(f => f.endsWith('.csv')).map(f => f.replace(/\.csv$/, ''));
-const missing = expected.filter(t => !written.includes(t));
-const extra = written.filter(t => !expected.includes(t));
+const expectedFiles = expected.map(fileNameOf);
+const written = readdirSync(outDir).filter(f => f.endsWith('.csv'));
+const missing = expectedFiles.filter(f => !written.includes(f));
+const extra = written.filter(f => !expectedFiles.includes(f));
 if (missing.length) {
    console.error(`ERREUR: ${missing.length} fichier(s) attendu(s) non produit(s) : ${missing.join(', ')}`);
    process.exit(1);
@@ -110,7 +124,10 @@ if (extra.length) {
 const counts = {};
 let total = 0;
 for (const t of expected) {
-   const n = readFileSync(join(outDir, `${t}.csv`), 'utf8').split('\n').filter(l => l !== '').length;
+   const lines = readFileSync(join(outDir, fileNameOf(t)), 'utf8').split('\n').filter(l => l !== '');
+   // L'en-tete n'est pas une ligne de donnees : le compter fausserait le total
+   // et, plus tard, la mesure de staging de la reference.
+   const n = lines.length - (CONTRACT[t].format?.header ? 1 : 0);
    counts[t] = n;
    total += n;
 }
@@ -124,5 +141,8 @@ console.log(`MSSQL     : ${estate.mssql.hosts.length} hôtes, ${estate.mssql.ins
           + `${estate.mssql.instances.reduce((n, i) => n + i.databases.length, 0)} bases`);
 console.log(`PostgreSQL: ${estate.postgres.hosts.length} hôtes, `
           + `${estate.postgres.hosts.reduce((n, h) => n + h.databases.length, 0)} bases`);
-console.log(`Lignes    : oracle ${by('oracle')}, mssql ${by('mssql')}, postgres ${by('postgres')} — total ${total}`);
-console.log(`Sortie    : ${outDir}  (${expected.length} CSV + 3 .lst)`);
+console.log(`Découverte: ${discoveryCounts.mssql} instance(s) MSSQL, ${discoveryCounts.linux} hôte(s) Linux, `
+          + `${discoveryCounts.triage} décision(s) de triage`);
+console.log(`Lignes    : oracle ${by('oracle')}, mssql ${by('mssql')}, postgres ${by('postgres')}, `
+          + `discovery ${by('discovery')} — total ${total}`);
+console.log(`Sortie    : ${outDir}  (${expected.length} CSV + 3 .lst + 1 .sql)`);

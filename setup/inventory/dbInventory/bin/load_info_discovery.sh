@@ -33,6 +33,17 @@ DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
 DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
 MAIL_TO="lambert.christophe@chl.lu"
 
+# Même branche que les trois loaders moteur : sans elle, ce script ne sait
+# viser que la base codée en dur ci-dessus, et fixtures/load_fixtures.sh ne
+# peut pas le détourner vers la base de démonstration. Il chargerait alors la
+# discovery de démo dans la base de développement, que les garde-fous de
+# load_fixtures.sh existent précisément pour protéger.
+if [[ -n "${DBINVENTORY_CONN_NAME:-}" ]]; then
+    SQLCL_ARGS=( -S -name "${DBINVENTORY_CONN_NAME}" )
+else
+    SQLCL_ARGS=( -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" )
+fi
+
 # ── Date du run ───────────────────────────────────────────────────────────────
 RUN_DATE="${1:-$(date '+%Y-%m-%d')}"
 if ! [[ "${RUN_DATE}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
@@ -63,6 +74,13 @@ SRC_MSSQL="${COLLECT_DIR}/discovery_mssql.csv"
 SRC_LINUX="${COLLECT_DIR}/discovery_linux.csv"
 LOAD_MSSQL="${COLLECT_DIR}/discovery_mssql.load.csv"
 LOAD_LINUX="${COLLECT_DIR}/discovery_linux.load.csv"
+
+# Les commandes LOAD, elles, reçoivent un chemin RELATIF, comme dans les trois
+# loaders moteur. SQLcl est un binaire Windows : un chemin Git Bash absolu
+# (/g/Developpement/...) lui est illisible, il le lit comme C:\g\...
+# Le prix est que ce script doit tourner depuis bin/, ce que fait la chaîne.
+REL_MSSQL="../collect/discovery_mssql.load.csv"
+REL_LINUX="../collect/discovery_linux.load.csv"
 
 HAS_MSSQL=0
 HAS_LINUX=0
@@ -119,8 +137,8 @@ SET LOAD ERRORS UNLIMITED
 SET LOAD BATCHES_PER_COMMIT 0
 SET LOAD COMMIT OFF
 
-PROMPT -- LOADING: ${LOAD_MSSQL}
-LOAD discovery_mssql_inst ${LOAD_MSSQL}
+PROMPT -- LOADING: ${REL_MSSQL}
+LOAD discovery_mssql_inst ${REL_MSSQL}
 SQL_MSSQL
     fi
 
@@ -129,7 +147,7 @@ SQL_MSSQL
 TRUNCATE TABLE discovery_linux_engines;
 
 -- Chargement POSITIONNEL : le script Linux émet une ligne ';' sans en-tête,
--- sur un contrat de 11 colonnes documenté dans son propre cartouche.
+-- sur un contrat de 14 colonnes documenté dans son propre cartouche.
 SET LOADFORMAT CSV
 SET LOADFORMAT COLUMN_NAMES OFF
 SET LOADFORMAT DELIMITER ;
@@ -139,8 +157,8 @@ SET LOAD ERRORS UNLIMITED
 SET LOAD BATCHES_PER_COMMIT 0
 SET LOAD COMMIT OFF
 
-PROMPT -- LOADING: ${LOAD_LINUX}
-LOAD discovery_linux_engines ${LOAD_LINUX}
+PROMPT -- LOADING: ${REL_LINUX}
+LOAD discovery_linux_engines ${REL_LINUX}
 SQL_LINUX
     fi
 
@@ -178,14 +196,26 @@ log "Chargement de la discovery dans Oracle (run du ${RUN_DATE})..."
 log "Log : ${LOG_FILE}"
 
 SQLCL_EXIT=0
-sql -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" \
-    @"${SQL_SCRIPT}" 2>&1 | tee "${LOG_FILE}" || SQLCL_EXIT="${PIPESTATUS[0]}"
+# stdin depuis un vrai fichier, et JLine en mode dumb : sans ça, sous Git Bash,
+# SQLcl écrit "java.io.IOException: Fonction incorrecte" à la place du résultat
+# et rend 0 — le log paraîtrait propre. Sans effet sur le serveur Linux.
+SQLCL_STDIN="$(mktemp)"
+JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:--Duser.language=en} -Dorg.jline.terminal.provider=dumb" \
+sql "${SQLCL_ARGS[@]}" @"${SQL_SCRIPT}" < "${SQLCL_STDIN}" 2>&1 \
+    | tee "${LOG_FILE}" || SQLCL_EXIT="${PIPESTATUS[0]}"
+rm -f "${SQLCL_STDIN}"
 
 # =============================================================================
 # Analyse du log
 # =============================================================================
 send_error_mail() {
     local subject="$1" body="$2"
+    # Pas de mailx sur un poste de développement : l'absence de l'alerte ne
+    # doit ni masquer l'erreur qu'elle annonçait, ni faire échouer le script.
+    if ! command -v mailx >/dev/null 2>&1; then
+        log "mailx absent — alerte non envoyée : ${subject}"
+        return 0
+    fi
     mailx -s "${subject}" "${MAIL_TO}" <<EOF
 ${body}
 

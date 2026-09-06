@@ -127,9 +127,25 @@ export function buildEstate (world, rng) {
       const serverName = named ? `${host.short.toUpperCase()}/${instTag}` : host.short.toUpperCase();
       const v = weighted(rng, world.mssql.versions, world.mssql.versions.map(x => x.weight));
       const isFreeEdition = /express|developer/i.test(v.edition);
+      // Deux instances SQL Server ne peuvent pas écouter le MÊME port sur une
+      // même machine. On tire donc parmi les ports que l'hôte n'utilise pas
+      // déjà, 1433 compris — une instance nommée peut légitimement le prendre
+      // quand la machine n'a pas d'instance par défaut, et le parc réel en
+      // compte onze cas.
+      //
+      // Sans cette exclusion, une instance nommée pouvait tirer 1433 alors que
+      // l'instance par défaut y était : `mssql_collect_list` étant clé sur
+      // (hostname, port), les deux se confondaient en une seule ligne de
+      // périmètre, et une décision visant l'une s'appliquait à l'autre. Le
+      // défaut est resté invisible tant que rien ne consommait le périmètre.
+      //
+      // `rng.pick` consomme un tirage quelle que soit la taille de la liste :
+      // restreindre les candidats ne décale donc aucun tirage en aval.
+      const usedPorts = host.instances.map(x => x.port);
+      const freePorts = [1433, 49172, 55000, 51433].filter(p => !usedPorts.includes(p));
       const inst = {
          host, named, instTag, serverName,
-         port: named ? rng.pick([1433, 49172, 55000, 51433]) : 1433,
+         port: named ? rng.pick(freePorts) : 1433,
          build: v.build, edition: v.edition, isFreeEdition,
          license: isFreeEdition ? 'FREE' : host.license,
          collation: 'SQL_Latin1_General_CP1_CI_AS',

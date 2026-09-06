@@ -27,6 +27,13 @@ node fixtures/generate.mjs
 
 # Après un changement de règle VOULU : on recapture, puis on relit le diff git
 ./fixtures/check_baseline.sh DEMO_DBINVENTORY_dbinventory --capture
+
+# La promotion depuis la discovery — s'annule, ne déplace aucune mesure
+sql -S -name DEMO_DBINVENTORY_dbinventory @database/dbinventory/T_005_discovery_promotion.sql
+
+# La chaîne elle-même : les .lst régénérés DEPUIS LA BASE
+DBINVENTORY_CONN_NAME=DEMO_DBINVENTORY_dbinventory \
+  ./setup/inventory/dbInventory/bin/gen_collect_lists.sh /tmp/gen
 ```
 
 `load_fixtures.sh` refuse de tourner ailleurs que sur une base de démonstration, et il le
@@ -174,15 +181,97 @@ la saturation de stockage, verte sur 1034 constats parce qu'elle ne pouvait pas 
 
 ---
 
+## La discovery, et pourquoi elle est ici
+
+La discovery n'est pas de la collecte : elle répond à « qu'est-ce qui tourne
+réellement ? », quand la collecte répond à « comment va ce qu'on gère ? ». Le jeu
+la couvre depuis le 2026-09-06, et pas par souci d'exhaustivité — sans elle, la
+chaîne `discovery → promotion → *_collect_list → .lst` n'était **vérifiable
+nulle part**. Le périmètre de production du CHL est tenu à la main, il n'existe
+pas de lab assez large pour l'exercer, et `gen_collect_lists.sh` n'avait jamais
+tourné.
+
+Le bloc `discovery` de `world.json` déclare trois populations, et il en faut
+trois pour que `v_discovery_status` rende ses quatre statuts :
+
+| population | comment | statut obtenu |
+|---|---|---|
+| le parc redécouvert | tout ce qui n'est pas dans `withheldHostIndexes` | `COLLECTED` |
+| le parc omis | les indices d'hôtes listés là | `NOT_SEEN` |
+| les installations sauvages | `wild`, hors périmètre | `NEW` |
+| les sauvages tranchées | `ignored`, via `set_triage` | `IGNORED` |
+
+Les hôtes omis sont désignés **par indice et non tirés** : ce choix porte une
+intention, et il doit rester relisible dans le diff. Les indices retenus sont
+ceux d'hôtes ne portant qu'une entité, et aucun ne porte l'entrée commentée du
+`.lst` — qu'une omission rendrait invisible au lieu de la montrer `IGNORED`.
+
+Deux entrées existent uniquement pour des branches qui, sinon, ne seraient
+jamais atteintes. Un hôte Linux portant **deux moteurs** : le parc de démo sépare
+les hôtes Oracle des hôtes PostgreSQL, donc le repliement du fichier — une ligne
+par machine, couvrant trois moteurs — ne serait jamais exercé. Et des hôtes
+**MySQL**, qui n'ont aucune table de périmètre et dont la promotion doit refuser
+proprement : c'est le genre de branche qu'on n'écrit jamais faute de données pour
+la déclencher.
+
+### Deux formats, une seule machinerie
+
+Les deux fichiers produits ne sont pas des CSV de collecte :
+
+| fichier | séparateur | guillemets | en-tête | chargement |
+|---|---|---|---|---|
+| `discovery_mssql.csv` | `,` | oui | **oui** | **par nom** |
+| `discovery_linux.csv` | `;` | non | non | **positionnel** |
+
+Ils passent quand même par `writeCsv` et par le contrat. Les écrire à côté aurait
+été plus court, et aurait retiré au chargement positionnel la seule protection
+qu'il a. Le contrat refuse donc, dans un fichier sans guillemets, un champ vide
+(le producteur écrit `-`) et une valeur contenant le séparateur — c'est
+exactement pourquoi le fichier Linux sépare en `;` : `ora_sids` y liste des SID
+séparés par des virgules.
+
+Le **nom de fichier diffère du nom de table** (`discovery_mssql.csv` pour
+`discovery_mssql_inst`), parce que c'est `load_info_discovery.sh` qui le décide.
+C'est un contrat de production, pas à un jeu de test de le plier.
+
+### Ce que la référence mesure, et ce qu'elle ne mesurera jamais
+
+`effective_status` entre dans l'empreinte : il ne dépend que de `triage_status`
+et du périmètre. `days_since_last_seen` et `is_stale` n'y entrent pas, ni aucune
+mesure qui en dérive — ils descendent de `sysdate` nu, et vaudraient autre chose
+le lendemain de la capture. La date de run, elle, est mesurée **en clair** :
+`pkg_dbinv_discovery.load_all` a pour défaut `trunc(sysdate)`, et sans cette
+mesure une chaîne qui daterait le run d'aujourd'hui passerait inaperçue.
+
+### Le périmètre fait partie du jeu
+
+`load_fixtures.sh` amorce les trois `*_collect_list` depuis les `.lst` générés,
+par `bootstrap_collect_lists.sh`. Ce n'est pas une commodité : ces tables sont
+**vides sur une base neuve** — aucune migration ne les alimente, c'est la
+discovery qui les remplit une fois qu'un humain a tranché. Sans elles,
+`NOT_SEEN` est structurellement vide et la moitié de ce que ce jeu démontre
+n'existe pas.
+
+À ne pas coder en dur : trois paires d'instances MSSQL partagent hôte et port
+1433, donc **une seule ligne de périmètre pour deux instances**. Le modèle ne
+sait pas les distinguer — le parc réel en compte onze cas — et c'est la ligne
+`perimetre|mssql/1` de la référence qui fait foi, pas le compte d'instances.
+
 ## Ce que ce jeu de données ne couvre pas
 
 - **MySQL** : la page 50 reste vide. Elle ne contient aucune requête SQL, et il n'existe ni
   table de staging ni contrôle pour ce moteur. C'est l'état réel du produit, et l'entrée de
   menu est un jalon assumé.
-- **La discovery** et le **second millésime de collecte** (l'historique des faits) : prévus
-  en itération 2.
+- **Le second millésime de collecte** (l'historique des faits, donc `collect_id` généralisé
+  au modèle) : toujours à faire. Le jeu ne porte qu'un seul instantané.
+- **Le vieillissement de la discovery** : `days_since_last_seen` et `is_stale` descendent de
+  `sysdate` nu, donc aucune mesure de la référence n'en dérive. Les rendre mesurables
+  supposerait de les faire descendre du dernier `disc_run` plutôt que de l'horloge — ce qui
+  serait d'ailleurs plus juste : « pas revu au dernier run » veut dire quelque chose, « pas
+  revu depuis 30 jours » beaucoup moins quand la discovery tourne une fois par semaine.
 
-MongoDB ne figure plus dans cette liste : il est **sorti du périmètre** le 2026-09-05, page et
-entrée de menu supprimées. Et la conformité PostgreSQL n'y figure plus non plus — elle a été
+La **discovery** ne figure plus dans cette liste : elle a été livrée le 2026-09-06, avec la
+promotion vers les trois périmètres. MongoDB non plus : il est **sorti du périmètre** le
+2026-09-05, page et entrée de menu supprimées. Et la conformité PostgreSQL n'y figure plus non plus — elle a été
 livrée depuis : PostgreSQL est jugé sur les quatre domaines de score, et les CSV de ce jeu de
 données produisent bien des constats.

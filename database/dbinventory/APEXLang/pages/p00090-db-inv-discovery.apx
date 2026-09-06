@@ -210,6 +210,8 @@ page 90 (
                     items: {
                         P91_LEVEL_NAME: #LEVEL_NAME#
                         P91_ENTITY_ID: #ENTITY_ID#
+                        P91_HOSTNAME: #HOSTNAME#
+                        P91_PLATFORM: #PLATFORM#
                     }
                     clearCache: 91
                 }

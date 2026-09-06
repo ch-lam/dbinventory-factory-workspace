@@ -42,11 +42,26 @@ create or replace package pkg_dbinv_discovery as
    procedure load_linux ( p_run_date date default trunc(sysdate) );
    procedure load_all ( p_run_date date default trunc(sysdate) );
 
-   -- Adds a discovered instance to the collection perimeter.
+   -- Adds a discovered instance to the collection perimeter (MSSQL, Oracle).
+   -- collect_name, service_name and port are human input: Oracle needs all
+   -- three, MSSQL needs none. See the body for why they are not guessed.
    procedure promote_instance (
       p_disc_instance_id number,
       p_environment      varchar2,
-      p_license_type     varchar2
+      p_license_type     varchar2,
+      p_collect_name     varchar2 default null,
+      p_service_name     varchar2 default null,
+      p_port             number default null
+   );
+
+   -- Same, at host level (PostgreSQL, and the MSSQL host whose WMI refused).
+   -- PostgreSQL has no instance grain in the discovery, so it has no other way in.
+   procedure promote_host (
+      p_disc_host_id number,
+      p_environment  varchar2,
+      p_license_type varchar2,
+      p_collect_name varchar2 default null,
+      p_port         number default null
    );
 
    -- Records a triage decision (NEW / IGNORED) on a host or an instance.
@@ -372,67 +387,155 @@ create or replace package body pkg_dbinv_discovery as
 
 
    -- ---------------------------------------------------------------------
+   -- one_port
+   -- The port a host is listening on, when there is exactly one candidate.
+   --
+   -- disc_host.ports_seen holds what the Linux detection reported: a
+   -- comma-separated list, or a single port, or nothing. Oracle and PostgreSQL
+   -- perimeters need ONE port, and this returns it only when the answer is not
+   -- a guess -- several ports listed means the human must choose, and saying
+   -- nothing is how this function says so.
+   -- ---------------------------------------------------------------------
+   function one_port ( p_ports_seen varchar2 ) return number is
+      l_clean varchar2(100 char) := trim(p_ports_seen);
+   begin
+      if l_clean is null or instr(l_clean, ',') > 0 then
+         return null;
+      end if;
+      return to_number(l_clean default null on conversion error);
+   end one_port;
+
+   -- ---------------------------------------------------------------------
    -- promote_instance
-   -- Adds a discovered instance to the collection perimeter, which lives in
+   -- Adds a discovered INSTANCE to the collection perimeter, which lives in
    -- the *_collect_list tables. Re-promoting an entry that was disabled
    -- reactivates it rather than failing.
    --
-   -- Only MSSQL is supported: it is the only platform where discovery yields
-   -- everything the perimeter needs (FQDN + port). Oracle needs a service name
-   -- that a SID does not give us, and Oracle/Postgres additionally need a
-   -- collect_name, which is a human choice, not something to fabricate here.
+   -- Two platforms reach this level, and they need different things, because
+   -- their perimeter tables are shaped differently:
+   --   * MSSQL     keyed on (hostname, port), both of which the Windows
+   --               discovery reads from the registry. Nothing to add.
+   --   * ORACLE    keyed on collect_name, and holding an easy_connect_tns
+   --               (host:port/service). The discovery yields a SID from
+   --               ora_pmon_<SID> -- which is NOT a service name -- and the
+   --               listener ports at HOST level, never per instance. So the
+   --               service name, the collect_name and, when the host listens
+   --               on several ports, the port itself are human input. They are
+   --               asked for rather than guessed: an easy_connect built on a
+   --               SID would produce a perimeter entry that silently fails to
+   --               connect every night.
+   --
+   -- PostgreSQL never reaches this level (the Linux detection does not descend
+   -- below the host) and MySQL has no perimeter table at all. Both are refused
+   -- here, by name, rather than left to fail on a null.
    -- ---------------------------------------------------------------------
    procedure promote_instance (
       p_disc_instance_id number,
       p_environment      varchar2,
-      p_license_type     varchar2
+      p_license_type     varchar2,
+      p_collect_name     varchar2 default null,
+      p_service_name     varchar2 default null,
+      p_port             number default null
    ) is
-      l_platform varchar2(10 char);
-      l_hostname varchar2(150 char);
-      l_instance varchar2(128 char);
-      l_port     number;
+      l_platform   varchar2(10 char);
+      l_hostname   varchar2(150 char);
+      l_instance   varchar2(128 char);
+      l_port       number;
+      l_host_ports varchar2(100 char);
+      l_tns        varchar2(150 char);
    begin
-      select i.platform, h.hostname, i.instance_name, i.port
-        into l_platform, l_hostname, l_instance, l_port
+      select i.platform, h.hostname, i.instance_name, i.port, h.ports_seen
+        into l_platform, l_hostname, l_instance, l_port, l_host_ports
         from disc_instance i
         join disc_host h
       on h.disc_host_id = i.disc_host_id
        where i.disc_instance_id = p_disc_instance_id;
 
-      if l_platform != 'MSSQL' then
+      if l_platform = 'MYSQL' then
          raise_application_error(-20001,
-            'Promotion is only supported for MSSQL. ' || l_platform
-            || ' needs a connection string the discovery does not provide.');
+            'MySQL has no collection perimeter: dbInventory does not collect it. '
+            || 'Record the decision with set_triage instead.');
+      elsif l_platform = 'POSTGRES' then
+         raise_application_error(-20007,
+            'PostgreSQL is discovered at host level, not instance level: '
+            || 'use promote_host.');
+      elsif l_platform not in ( 'MSSQL', 'ORACLE' ) then
+         raise_application_error(-20001,
+            'Promotion is not supported for ' || l_platform || '.');
       end if;
+
+      -- The port: what discovery knows, unless the caller overrides it. Oracle
+      -- knows it only at host level, and only when the host listens on one.
+      l_port := coalesce(p_port, l_port, one_port(l_host_ports));
 
       if l_port is null then
          raise_application_error(-20002,
-            'Instance ' || l_hostname || '\' || l_instance
+            'Instance ' || l_hostname || ' / ' || l_instance
             || ' has no known TCP port: it cannot be collected. '
-            || 'Re-run the Windows discovery so it reads the port from the registry.');
+            || case l_platform
+                  when 'MSSQL' then
+                     'Re-run the Windows discovery so it reads the port from the registry.'
+                  else
+                     'The listener ports seen on the host were: '
+                     || nvl(l_host_ports, '(none)') || '. Pass the one to collect.'
+               end);
       end if;
 
-      -- Matched case-insensitively, although the primary key of the perimeter is
-      -- the raw (hostname, port): the two spellings are the same machine, and a
-      -- case-sensitive match would insert a second row instead of reactivating
-      -- the first, putting the host twice in the generated .lst and collecting
-      -- it twice. The perimeter really does hold mixed case (ora-dev vs ORA-DEV
-      -- in the Oracle list), and v_discovery_status already reconciles with
-      -- lower() - this is the same rule, applied on the write side.
-      -- The existing spelling is kept on update; only a genuinely new host is
-      -- inserted with the spelling discovery reported.
-      merge into mssql_collect_list cl
-      using ( select l_hostname as hostname, l_port as port from dual ) s
-      on ( lower(cl.hostname) = lower(s.hostname)
-           and cl.port = s.port )
-      when matched then
-         update
-            set cl.environment  = p_environment,
-                cl.license_type = p_license_type,
-                cl.active       = 1
-      when not matched then
-         insert ( hostname, port, environment, license_type, active )
-         values ( s.hostname, s.port, p_environment, p_license_type, 1 );
+      if l_platform = 'MSSQL' then
+
+         -- Matched case-insensitively, although the primary key of the perimeter is
+         -- the raw (hostname, port): the two spellings are the same machine, and a
+         -- case-sensitive match would insert a second row instead of reactivating
+         -- the first, putting the host twice in the generated .lst and collecting
+         -- it twice. The perimeter really does hold mixed case (ora-dev vs ORA-DEV
+         -- in the Oracle list), and v_discovery_status already reconciles with
+         -- lower() - this is the same rule, applied on the write side.
+         -- The existing spelling is kept on update; only a genuinely new host is
+         -- inserted with the spelling discovery reported.
+         merge into mssql_collect_list cl
+         using ( select l_hostname as hostname, l_port as port from dual ) s
+         on ( lower(cl.hostname) = lower(s.hostname)
+              and cl.port = s.port )
+         when matched then
+            update
+               set cl.environment  = p_environment,
+                   cl.license_type = p_license_type,
+                   cl.active       = 1
+         when not matched then
+            insert ( hostname, port, environment, license_type, active )
+            values ( s.hostname, s.port, p_environment, p_license_type, 1 );
+
+      else
+
+         if p_collect_name is null then
+            raise_application_error(-20008,
+               'Oracle perimeter entries are keyed on a collect_name, which is a '
+               || 'human choice: pass one for ' || l_hostname || ' / ' || l_instance || '.');
+         end if;
+
+         if p_service_name is null then
+            raise_application_error(-20009,
+               'Oracle needs the database SERVICE name to build its connect string. '
+               || 'The discovery only found the SID ' || l_instance
+               || ', which is not the same thing.');
+         end if;
+
+         l_tns := l_hostname || ':' || l_port || '/' || p_service_name;
+
+         merge into oracle_collect_list cl
+         using ( select upper(p_collect_name) as collect_name from dual ) s
+         on ( upper(cl.collect_name) = s.collect_name )
+         when matched then
+            update
+               set cl.easy_connect_tns = l_tns,
+                   cl.environment      = p_environment,
+                   cl.license_type     = p_license_type,
+                   cl.active           = 1
+         when not matched then
+            insert ( collect_name, easy_connect_tns, environment, license_type, active )
+            values ( s.collect_name, l_tns, p_environment, p_license_type, 1 );
+
+      end if;
 
       update disc_instance
          set triage_status = 'NEW',
@@ -446,6 +549,114 @@ create or replace package body pkg_dbinv_discovery as
          raise_application_error(-20003,
             'No discovered instance with id ' || p_disc_instance_id || '.');
    end promote_instance;
+
+   -- ---------------------------------------------------------------------
+   -- promote_host
+   -- The host-level counterpart. It exists because PostgreSQL is only ever
+   -- discovered at host level: detect_db_engines.sh reports "an engine is
+   -- installed and listening on this port" and cannot name an instance, so
+   -- there is no disc_instance row to pass to promote_instance. Forcing an
+   -- instance id that does not exist would have been the alternative.
+   --
+   -- It also serves the MSSQL machine whose port answered while WMI refused:
+   -- the host is known, the instance is not, and hostname + port is exactly
+   -- what mssql_collect_list is keyed on.
+   --
+   -- Oracle is refused here: a host-level Oracle finding means the software is
+   -- installed but no SID was resolved, and without a SID there is no service,
+   -- hence no connect string. That is a discovery to re-run, not a decision to
+   -- record.
+   -- ---------------------------------------------------------------------
+   procedure promote_host (
+      p_disc_host_id number,
+      p_environment  varchar2,
+      p_license_type varchar2,
+      p_collect_name varchar2 default null,
+      p_port         number default null
+   ) is
+      l_platform   varchar2(10 char);
+      l_hostname   varchar2(150 char);
+      l_host_ports varchar2(100 char);
+      l_port       number;
+   begin
+      select h.platform, h.hostname, h.ports_seen
+        into l_platform, l_hostname, l_host_ports
+        from disc_host h
+       where h.disc_host_id = p_disc_host_id;
+
+      if l_platform = 'MYSQL' then
+         raise_application_error(-20001,
+            'MySQL has no collection perimeter: dbInventory does not collect it. '
+            || 'Record the decision with set_triage instead.');
+      elsif l_platform = 'ORACLE' then
+         raise_application_error(-20010,
+            'Oracle was found installed on ' || l_hostname
+            || ' but no SID was resolved, so no service and no connect string. '
+            || 'Re-run the discovery on that host rather than recording a guess.');
+      elsif l_platform not in ( 'MSSQL', 'POSTGRES' ) then
+         raise_application_error(-20001,
+            'Promotion is not supported for ' || l_platform || '.');
+      end if;
+
+      l_port := coalesce(p_port, one_port(l_host_ports));
+
+      if l_port is null then
+         raise_application_error(-20002,
+            'Host ' || l_hostname || ' has no single known port: it cannot be '
+            || 'collected. Ports seen: ' || nvl(l_host_ports, '(none)')
+            || '. Pass the one to collect.');
+      end if;
+
+      if l_platform = 'MSSQL' then
+
+         merge into mssql_collect_list cl
+         using ( select l_hostname as hostname, l_port as port from dual ) s
+         on ( lower(cl.hostname) = lower(s.hostname)
+              and cl.port = s.port )
+         when matched then
+            update
+               set cl.environment  = p_environment,
+                   cl.license_type = p_license_type,
+                   cl.active       = 1
+         when not matched then
+            insert ( hostname, port, environment, license_type, active )
+            values ( s.hostname, s.port, p_environment, p_license_type, 1 );
+
+      else
+
+         if p_collect_name is null then
+            raise_application_error(-20008,
+               'PostgreSQL perimeter entries are keyed on a collect_name, which is '
+               || 'a human choice: pass one for ' || l_hostname || '.');
+         end if;
+
+         merge into postgres_collect_list cl
+         using ( select upper(p_collect_name) as collect_name from dual ) s
+         on ( upper(cl.collect_name) = s.collect_name )
+         when matched then
+            update
+               set cl.hostname     = l_hostname,
+                   cl.port         = l_port,
+                   cl.environment  = p_environment,
+                   cl.license_type = p_license_type,
+                   cl.active       = 1
+         when not matched then
+            insert ( collect_name, hostname, port, environment, license_type, active )
+            values ( s.collect_name, l_hostname, l_port, p_environment, p_license_type, 1 );
+
+      end if;
+
+      update disc_host
+         set triage_status = 'NEW',
+             triage_note   = null
+       where disc_host_id = p_disc_host_id;
+
+      -- No commit, same reason as promote_instance.
+   exception
+      when no_data_found then
+         raise_application_error(-20003,
+            'No discovered host with id ' || p_disc_host_id || '.');
+   end promote_host;
 
 
    -- ---------------------------------------------------------------------

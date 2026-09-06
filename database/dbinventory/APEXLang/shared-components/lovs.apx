@@ -133,9 +133,14 @@ lov discovery-environment (
         type: sqlQuery
         sqlQuery:
             ```sql
-            select distinct environment d,
-                   environment r
-              from mssql_collect_list
+            -- Le référentiel, pas le périmètre : ces deux listes servent à
+            -- REMPLIR les *_collect_list. Les lire depuis mssql_collect_list
+            -- les rendait vides sur une base fraîche, donc toute première
+            -- promotion impossible. Et elles ne montraient que MSSQL alors
+            -- que la promotion couvre désormais les trois moteurs.
+            select environment d,
+                   envt_short_code r
+              from environments
              order by 1
             ```
     }
@@ -151,9 +156,9 @@ lov discovery-license (
         type: sqlQuery
         sqlQuery:
             ```sql
-            select distinct license_type d,
+            select license_type d,
                    license_type r
-              from mssql_collect_list
+              from licence_types
              order by 1
             ```
     }

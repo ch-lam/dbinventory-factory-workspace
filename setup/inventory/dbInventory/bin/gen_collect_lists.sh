@@ -32,6 +32,16 @@ DBINVENTORY_USER="dbinventory"
 DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
 DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
 
+# Même branche que les load_info_*.sh. Sans elle ce script ne sait viser que
+# la base codée en dur ci-dessus, donc il ne peut être exercé ni sur la base
+# de démonstration ni ailleurs — et c'est pourtant lui qui décide, chaque
+# nuit, du périmètre que la collecte va lire.
+if [[ -n "${DBINVENTORY_CONN_NAME:-}" ]]; then
+    SQLCL_ARGS=( -S -name "${DBINVENTORY_CONN_NAME}" )
+else
+    SQLCL_ARGS=( -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" )
+fi
+
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 
 if [[ ! -d "${OUT_DIR}" ]]; then
@@ -45,9 +55,19 @@ fi
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
+# SPOOL est exécuté par SQLcl, pas par le shell : sous Git Bash il faut lui
+# donner un chemin qu'un binaire Windows sait résoudre, sinon il écrit dans
+# C:\tmp\... et les contrôles ci-dessous ne trouvent aucun fichier. Sans
+# effet sur le serveur Linux, où cygpath n'existe pas.
+if command -v cygpath >/dev/null 2>&1; then
+    SPOOL_DIR="$(cygpath -m "${TMP_DIR}")"
+else
+    SPOOL_DIR="${TMP_DIR}"
+fi
+
 log "Génération des listes de collecte depuis la base..."
 
-sql -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" <<SQLCL_SESSION
+sql "${SQLCL_ARGS[@]}" <<SQLCL_SESSION
 WHENEVER SQLERROR EXIT FAILURE
 SET FEEDBACK OFF
 SET ECHO OFF
@@ -57,21 +77,21 @@ SET LINESIZE 500
 SET TRIMSPOOL ON
 SET TERMOUT OFF
 
-SPOOL ${TMP_DIR}/mssql_database_lists.lst
+SPOOL ${SPOOL_DIR}/mssql_database_lists.lst
 SELECT CASE WHEN active = 1 THEN '' ELSE '#' END
        || environment || ';' || license_type || ';' || hostname || ':' || port
   FROM mssql_collect_list
  ORDER BY upper(hostname), port;
 SPOOL OFF
 
-SPOOL ${TMP_DIR}/oracle_database_lists.lst
+SPOOL ${SPOOL_DIR}/oracle_database_lists.lst
 SELECT CASE WHEN active = 1 THEN '' ELSE '#' END
        || environment || ';' || license_type || ';' || easy_connect_tns
   FROM oracle_collect_list
  ORDER BY upper(collect_name);
 SPOOL OFF
 
-SPOOL ${TMP_DIR}/postgres_database_lists.lst
+SPOOL ${SPOOL_DIR}/postgres_database_lists.lst
 SELECT CASE WHEN active = 1 THEN '' ELSE '#' END
        || environment || ';' || license_type || ';' || hostname || ':' || port
   FROM postgres_collect_list

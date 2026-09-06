@@ -211,7 +211,7 @@ page 90 (
                         P91_LEVEL_NAME: #LEVEL_NAME#
                         P91_ENTITY_ID: #ENTITY_ID#
                     }
-                    clearCache: 41
+                    clearCache: 91
                 }
                 linkText: #HOSTNAME#
             }

@@ -90,35 +90,52 @@ comment on column discovery_mssql_inst.tcpport is 'TCP port read from the instan
 -- ------------------------------------------------------------
 -- discovery_linux_engines
 -- Mirrors the single ';' line emitted per host by detect_db_engines.sh.
--- Fixed 11-column contract documented in the script header. No header line in
--- the file, so this one is loaded positionally.
+--
+-- Fixed 14-column contract, and the column ORDER here is the contract: the
+-- file carries no header, so load_info_discovery.sh loads it positionally and
+-- a column inserted anywhere but at its emitted position shifts every field
+-- after it, silently. The order below is the one the script prints.
+--
+-- It said 11 columns until 2026-09-06, while the script had been emitting 14
+-- since its v2. Every real line was therefore shifted from the fifth field on
+-- (ORA_PKG landing in ora_proc, ORA_SIDS in ora_port), and the three trailing
+-- fields dropped. The *_PORT_GUESS columns are what v2 added, and they carry
+-- real signal: a port attributed by convention because the standard port
+-- answered is not a port proven to belong to a process, and that difference is
+-- exactly what a human weighs before promoting an instance into the perimeter.
 -- ------------------------------------------------------------
 create table discovery_linux_engines (
-   hostn    varchar2(150 char),
-   pg_pkg   varchar2(1 char),
-   pg_proc  varchar2(10 char),
-   pg_port  varchar2(100 char),
-   ora_pkg  varchar2(1 char),
-   ora_proc varchar2(10 char),
-   ora_sids varchar2(400 char),
-   ora_port varchar2(100 char),
-   my_pkg   varchar2(1 char),
-   my_proc  varchar2(10 char),
-   my_port  varchar2(100 char)
+   hostn          varchar2(150 char),
+   pg_pkg         varchar2(1 char),
+   pg_proc        varchar2(10 char),
+   pg_port        varchar2(100 char),
+   pg_port_guess  varchar2(1 char),
+   ora_pkg        varchar2(1 char),
+   ora_proc       varchar2(10 char),
+   ora_sids       varchar2(400 char),
+   ora_port       varchar2(100 char),
+   ora_port_guess varchar2(1 char),
+   my_pkg         varchar2(1 char),
+   my_proc        varchar2(10 char),
+   my_port        varchar2(100 char),
+   my_port_guess  varchar2(1 char)
 );
 
 comment on table discovery_linux_engines is 'Staging for the Linux engine detection (detect_db_engines.sh, pushed by SALT). One wide row per host covering three engines; truncated on each load.';
 comment on column discovery_linux_engines.hostn is 'Host name as reported by hostname(1).';
 comment on column discovery_linux_engines.pg_pkg is 'Y when a PostgreSQL server package or binary is installed.';
 comment on column discovery_linux_engines.pg_proc is 'Number of postgres/postmaster processes running.';
-comment on column discovery_linux_engines.pg_port is 'Listening ports attributed to PostgreSQL, or - when none. A trailing ? means the standard port answered but could not be mapped to a process.';
+comment on column discovery_linux_engines.pg_port is 'Listening ports attributed to PostgreSQL, or - when none.';
+comment on column discovery_linux_engines.pg_port_guess is 'Y when the PostgreSQL port was attributed because the standard port answered, without proof it belongs to a running process; N when the mapping was confirmed by PID.';
 comment on column discovery_linux_engines.ora_pkg is 'Y when Oracle is installed (oratab, oraInst.loc or rpm).';
 comment on column discovery_linux_engines.ora_proc is 'Number of Oracle instances detected through ora_pmon_<SID>.';
 comment on column discovery_linux_engines.ora_sids is 'Comma-separated list of Oracle SIDs, or - when none.';
 comment on column discovery_linux_engines.ora_port is 'Listening ports attributed to the Oracle listener, or - when none.';
+comment on column discovery_linux_engines.ora_port_guess is 'Y when the Oracle port was attributed because the standard port answered, without proof it belongs to a running process; N when the mapping was confirmed by PID.';
 comment on column discovery_linux_engines.my_pkg is 'Y when a MySQL or MariaDB server package or binary is installed.';
 comment on column discovery_linux_engines.my_proc is 'Number of mysqld/mariadbd processes running.';
 comment on column discovery_linux_engines.my_port is 'Listening ports attributed to MySQL/MariaDB, or - when none.';
+comment on column discovery_linux_engines.my_port_guess is 'Y when the MySQL/MariaDB port was attributed because the standard port answered, without proof it belongs to a running process; N when the mapping was confirmed by PID.';
 
 
 -- ============================================================
@@ -295,6 +312,18 @@ comment on column disc_instance.triage_note is 'Why the instance was ignored, or
 -- single source of truth. Storing it would create a second truth about the
 -- perimeter that could silently drift from the first.
 --
+-- level_name:
+--   INSTANCE   a discovered instance (MSSQL instance, Oracle SID)
+--   HOST       a discovered host on which no instance could be named, which is
+--              every PostgreSQL and MySQL finding: the Linux detection reports
+--              "engine present on this port" and never descends below the host
+--   PERIMETER  not a discovery finding at all -- an entry of the collect list
+--              that no run has reported. It carries no entity_id because there
+--              is nothing discovered to point at, and the triage screen has
+--              nothing to decide about it. It said INSTANCE until 2026-09-06,
+--              which made the screen link it to a triage dialog that could only
+--              fail on a null id.
+--
 -- effective_status:
 --   COLLECTED  discovered and in the collection perimeter (active)
 --   IGNORED    deliberately out of scope, either triaged as such or present in
@@ -306,7 +335,7 @@ comment on column disc_instance.triage_note is 'Why the instance was ignored, or
 -- that stops being discovered may have been decommissioned or may simply have
 -- been down on the day of the run.
 --
--- Matching a discovered instance to its perimeter entry:
+-- Matching a discovered MSSQL instance to its perimeter entry:
 --   * on (hostname, port) whenever discovery knows the port - the only exact
 --     rule, and the one that applies once the Windows discovery reads TcpPort
 --     from the registry;
@@ -318,6 +347,26 @@ comment on column disc_instance.triage_note is 'Why the instance was ignored, or
 -- are collected today while running a NAMED instance declared on 1433.
 -- Matching on hostname alone would be wrong the other way round: on a machine
 -- running two instances it would report both as collected when only one is.
+--
+-- Matching an Oracle SID: oracle_collect_list holds neither a hostname nor a
+-- port, only easy_connect_tns (host:port/service), so both are parsed out of
+-- it. The comparison is SID against SERVICE, which is an approximation the
+-- model cannot avoid -- a SID is not a service name, and the discovery has no
+-- way to learn the service. It is deliberately made per-service and not
+-- per-host: a single machine commonly carries several databases, of which only
+-- some are collected, and a host-level match would declare all of them
+-- COLLECTED. A false negative here reads as NEW, which a human then triages;
+-- a false positive would silently hide an uncollected database.
+--
+-- Matching a PostgreSQL host: postgres_collect_list is keyed on hostname, and
+-- the discovery does not descend below the host, so hostname is the whole rule.
+--
+-- Host names are compared on their first label as well as in full: the Windows
+-- discovery reports FQDNs, hostname(1) on Linux usually does not, and the
+-- perimeter holds whichever was typed. Comparing only in full would report a
+-- collected Linux host as NEW forever. The looseness is bounded by the platform
+-- being part of every match, and by the CHL running a single domain.
+--
 -- The match is a scalar subquery rather than a join so that a host with several
 -- perimeter rows can never multiply the discovery rows.
 create or replace view v_discovery_status as
@@ -347,16 +396,26 @@ create or replace view v_discovery_status as
      from disc_instance di
      join disc_host dh
    on dh.disc_host_id = di.disc_host_id
-     outer apply ( select max(cl.active) as collect_active
-                     from mssql_collect_list cl
-                    where dh.platform = 'MSSQL'
-                      and lower(cl.hostname) = lower(dh.hostname)
-                      and ( cl.port = di.port
-                            or ( di.port is null
-                                 and ( di.instance_name = 'MSSQLSERVER'
-                                       or 1 = ( select count(*)
-                                                  from disc_instance x
-                                                 where x.disc_host_id = di.disc_host_id ) ) ) ) ) m
+     outer apply ( select max(active) as collect_active
+                     from ( select cl.active
+                              from mssql_collect_list cl
+                             where dh.platform = 'MSSQL'
+                               and lower(cl.hostname) = lower(dh.hostname)
+                               and ( cl.port = di.port
+                                     or ( di.port is null
+                                          and ( di.instance_name = 'MSSQLSERVER'
+                                                or 1 = ( select count(*)
+                                                           from disc_instance x
+                                                          where x.disc_host_id = di.disc_host_id ) ) ) )
+                            union all
+                            select cl.active
+                              from oracle_collect_list cl
+                             where dh.platform = 'ORACLE'
+                               and lower(regexp_substr(cl.easy_connect_tns, '^[^:/]+'))
+                                   in ( lower(dh.hostname),
+                                        lower(regexp_substr(dh.hostname, '^[^.]+')) )
+                               and lower(regexp_substr(regexp_substr(cl.easy_connect_tns, '[^/]+$'), '^[^.]+'))
+                                   = lower(di.instance_name) ) ) m
     union all
    select 'HOST'                                      as level_name,
           dh.disc_host_id                             as entity_id,
@@ -375,25 +434,43 @@ create or replace view v_discovery_status as
              else 0
           end                                         as is_stale,
           case
-             when dh.triage_status = 'IGNORED' then 'IGNORED'
+             when m.collect_active = 1 then 'COLLECTED'
+             when dh.triage_status = 'IGNORED'
+                  or m.collect_active = 0 then 'IGNORED'
              else 'NEW'
           end                                         as effective_status,
           dh.triage_note                              as triage_note
      from disc_host dh
+     outer apply ( select max(active) as collect_active
+                     from ( select cl.active
+                              from postgres_collect_list cl
+                             where dh.platform = 'POSTGRES'
+                               and lower(cl.hostname)
+                                   in ( lower(dh.hostname),
+                                        lower(regexp_substr(dh.hostname, '^[^.]+')) )
+                            union all
+                            -- A host-level MSSQL finding is the "port answered,
+                            -- WMI refused" case: the machine is known, the
+                            -- instance is not. Hostname is all there is to match.
+                            select cl.active
+                              from mssql_collect_list cl
+                             where dh.platform = 'MSSQL'
+                               and lower(cl.hostname) = lower(dh.hostname) ) ) m
     where not exists (
       select 1
         from disc_instance di
        where di.disc_host_id = dh.disc_host_id
    )
     union all
--- The reverse reading: hosts we actively collect that no discovery run has ever
--- reported. Either the discovery perimeter does not reach them, or they are gone.
-   select 'INSTANCE'                                  as level_name,
+-- The reverse reading: perimeter entries we actively collect that no discovery
+-- run has ever reported. Either the discovery does not reach them, or they are
+-- gone. MySQL has no perimeter table, so it cannot appear here at all.
+   select 'PERIMETER'                                 as level_name,
           cast(null as number)                        as entity_id,
-          'MSSQL'                                     as platform,
-          cl.hostname                                 as hostname,
-          cast(null as varchar2(128 char))            as instance_name,
-          cl.port                                     as port,
+          p.platform                                  as platform,
+          p.hostname                                  as hostname,
+          p.instance_name                             as instance_name,
+          p.port                                      as port,
           cast(null as varchar2(100 char))            as edition,
           cast(null as varchar2(50 char))             as engine_version,
           cast(null as number)                        as is_free_edition,
@@ -403,13 +480,33 @@ create or replace view v_discovery_status as
           0                                           as is_stale,
           'NOT_SEEN'                                  as effective_status,
           cast(null as varchar2(400 char))            as triage_note
-     from mssql_collect_list cl
-    where cl.active = 1
-      and not exists (
+     from ( select 'MSSQL'                                  as platform,
+                   cl.hostname                              as hostname,
+                   cast(null as varchar2(128 char))         as instance_name,
+                   cl.port                                  as port
+              from mssql_collect_list cl
+             where cl.active = 1
+            union all
+            select 'ORACLE',
+                   regexp_substr(cl.easy_connect_tns, '^[^:/]+'),
+                   cast(regexp_substr(regexp_substr(cl.easy_connect_tns, '[^/]+$'), '^[^.]+')
+                        as varchar2(128 char)),
+                   to_number(regexp_substr(cl.easy_connect_tns, ':([0-9]+)', 1, 1, null, 1)
+                             default null on conversion error)
+              from oracle_collect_list cl
+             where cl.active = 1
+            union all
+            select 'POSTGRES',
+                   cl.hostname,
+                   cast(null as varchar2(128 char)),
+                   cl.port
+              from postgres_collect_list cl
+             where cl.active = 1 ) p
+    where not exists (
       select 1
         from disc_host dh
-       where dh.platform = 'MSSQL'
-         and lower(dh.hostname) = lower(cl.hostname)
+       where dh.platform = p.platform
+         and lower(dh.hostname) in ( lower(p.hostname),
+                                     lower(regexp_substr(p.hostname, '^[^.]+')) )
    );
-
-comment on table v_discovery_status is 'Reconciliation of the discovery findings against the collection perimeter. Drives the APEX triage screen. Collected status is derived from *_collect_list, never stored.';
+comment on table v_discovery_status is 'Reconciliation of the discovery findings against the collection perimeter, over the three engines that have one. Drives the APEX triage screen. Collected status is derived from *_collect_list, never stored. level_name PERIMETER marks a row that is not a discovery finding but a collect list entry nothing reported, and therefore carries no entity_id.';

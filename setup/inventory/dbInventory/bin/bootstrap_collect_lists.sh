@@ -38,7 +38,16 @@ die() { echo "ERREUR: $*" >&2; exit 1; }
 
 # Les .lst peuvent arriver en CRLF (édités sous Windows, ou sortis d'un checkout
 # core.autocrlf) : le \r final se retrouverait sinon collé au port ou au service.
-clean_lines() { sed 's/\r$//' "$1" | grep -v '^[[:space:]]*$'; }
+#
+# La ligne d'en-tete est ecartee : gen_collect_lists.sh n'en produit pas, mais
+# les .lst tenus a la main en portent une (#ENVIRONMENT;LICENCE_TYPE;...), et
+# comme elle commence par un '#' elle passerait pour une entree desactivee. On
+# amorcerait alors un hote nomme EZCONNECT, sans que rien ne le signale.
+clean_lines() {
+    sed 's/\r$//' "$1" \
+        | grep -v '^[[:space:]]*$' \
+        | grep -iv '^#*[[:space:]]*ENVIRONMENT[[:space:]]*;'
+}
 
 # Une valeur de périmètre ne contient jamais d'apostrophe, mais on ne construit
 # pas du SQL sans en doubler une : c'est le genre de garantie qui se démode.

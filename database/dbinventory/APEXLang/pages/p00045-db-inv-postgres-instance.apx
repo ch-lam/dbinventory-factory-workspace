@@ -160,7 +160,12 @@ page 45 (
         }
         appearance {
             template: @/standard
-            templateOptions: #DEFAULT#
+            templateOptions: [
+                #DEFAULT#
+                t-Region--removeHeader js-removeLandmark
+                t-Region--noPadding
+            ]
+            cssClasses: nis2-region
         }
         reportLayout {
             numberOfRows: 1

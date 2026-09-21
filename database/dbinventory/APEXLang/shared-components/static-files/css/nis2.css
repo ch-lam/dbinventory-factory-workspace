@@ -1,0 +1,59 @@
+/* Barre de posture NIS2 des pages 25/26, 35/36 et 45/46.
+   Declaree par chacune de ces six pages via css { fileUrls }, et nulle part
+   ailleurs : le style vit ici une seule fois, et une page qui l'utilise le dit.
+
+   Variables de theme, jamais de couleur en dur -- la barre doit suivre
+   vita-dark comme le reste de l'application. */
+
+.nis2-bar {
+   display: flex;
+   width: 100%;
+   gap: 2px;
+}
+
+/* Le neutre est le DEFAUT : un troncon qui ne recoit aucune classe de statut
+   reste gris. Une classe oubliee ne peut donc pas faire passer un trou pour
+   un vert -- l'erreur possible penche du bon cote. */
+.nis2-seg {
+   flex: 1 1 0;
+   min-width: 0;
+   text-align: center;
+   padding: 8px 4px;
+   border-radius: 2px;
+   background-color: var(--ut-component-highlight-background-color);
+   color: var(--ut-component-text-default-color);
+}
+
+.nis2-value {
+   display: block;
+   font-size: 20px;
+   font-weight: 600;
+   line-height: 1.2;
+}
+
+/* L'ellipse est ce qui tient la grille quand la fenetre retrecit : CONTINUITY
+   se tronque, les six troncons gardent leur sixieme de largeur. */
+.nis2-label {
+   display: block;
+   font-size: 10px;
+   text-transform: uppercase;
+   letter-spacing: 0.05em;
+   opacity: 0.85;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+}
+
+.nis2-seg.is-critical { background-color: var(--ut-palette-danger);  color: var(--ut-palette-danger-contrast); }
+.nis2-seg.is-warning  { background-color: var(--ut-palette-warning); color: var(--ut-palette-warning-contrast); }
+.nis2-seg.is-ok       { background-color: var(--ut-palette-success); color: var(--ut-palette-success-contrast); }
+.nis2-seg.is-waived   { background-color: var(--ut-palette-primary); color: var(--ut-palette-primary-contrast); }
+.nis2-seg.is-none     { opacity: 0.55; }
+
+/* La bande ne porte aucun titre : la region masque le sien par
+   t-Region--removeHeader, et l'en-tete de colonne se masque ici faute d'option
+   dans le template de rapport Standard -- verifie dans le dictionnaire APEX, il
+   n'en propose aucune. La barre se suffit a elle-meme, chaque troncon portant
+   son libelle. */
+.nis2-region thead { display: none; }
+.nis2-region td { padding: 0; border: none; }

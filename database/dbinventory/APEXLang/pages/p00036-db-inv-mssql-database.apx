@@ -9,6 +9,9 @@ page 36 (
     navigation {
         cursorFocus: doNotFocusCursor
     }
+    css {
+        fileUrls: #APP_FILES#css/nis2.css
+    }
     security {
         pageAccessProtection: argumentsMustHaveChecksum
         formAutoComplete: false
@@ -99,6 +102,102 @@ page 36 (
                 ```
             used: always
         }
+    )
+
+    region mssql-database-nis2 (
+        name: NIS2 Posture
+        title: NIS2 Posture
+        type: classicReport
+        comments {
+            comments: Read-only synthesis band, at the grain of this database and its storage units only - the same perimeter as the Compliance Findings report at the bottom of this page. An instance-grain finding is deliberately NOT repeated here: one setting left wrong on the instance would otherwise redden every database it carries, once per database for a single fix. The bar's CSS lives once, on the global page p00000.
+        }
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                -- La barre est assemblee ici plutot que par 24 colonnes cachees et un
+                -- htmlExpression facon p10011-top-users : ces six pages se maintiennent
+                -- a la main depuis que leur generateur a disparu, et l'autre forme leur
+                -- couterait 300 lignes chacune pour le meme rendu.
+                --
+                -- apex_escape.html sur chaque donnee : le balisage est a nous, les
+                -- donnees ne le sont pas. title et description de ref_nis2_domain sont
+                -- saisissables, et un & y suffirait a casser la barre.
+                select '<div class="nis2-bar">' ||
+                       listagg( '<span class="nis2-seg ' || cls
+                                || '" title="' || apex_escape.html( tip ) || '">'
+                                || '<span class="nis2-value">' || apex_escape.html( badge ) || '</span>'
+                                || '<span class="nis2-label">' || apex_escape.html( lbl ) || '</span>'
+                                || '</span>', '' )
+                          within group ( order by display_order )
+                       || '</div>' bar
+                  from ( select p.display_order,
+                                p.nis2_domain_code lbl,
+                                case p.status
+                                   when 'NOT_ASSESSED' then '--'
+                                   when 'DEROGATED'    then to_char( p.derogated )
+                                   else to_char( p.open_gaps )
+                                end badge,
+                                -- le neutre est le defaut : une classe oubliee laisse un
+                                -- troncon gris, elle ne peut pas faire passer un trou
+                                -- pour un vert
+                                case p.status
+                                   when 'CRITICAL'  then 'is-critical'
+                                   when 'WARNING'   then 'is-warning'
+                                   when 'DEROGATED' then 'is-waived'
+                                   when 'OK'        then 'is-ok'
+                                   else 'is-none'
+                                end cls,
+                                p.title || ' - ' || p.summary tip
+                           from v_nis2_posture p
+                          where p.entity_type = 'DATABASE'
+                            and p.entity_id = :P36_DATABASE_ID )
+                ```
+            pageItemsToSubmit: P36_DATABASE_ID
+        }
+        layout {
+            sequence: 7
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--removeHeader js-removeLandmark
+                t-Region--noPadding
+            ]
+            cssClasses: nis2-region
+        }
+        reportLayout {
+            numberOfRows: 1
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--hideNoPagination
+            ]
+        }
+        messages {
+            whenNoDataFound: No NIS2 posture for this selection.
+        }
+
+        column BAR (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Article 21(2)
+            }
+            layout {
+                sequence: 10
+            }
+            security {
+                escapeSpecialChars: false
+            }
+        )
+
     )
 
     region mssql-database-identity (

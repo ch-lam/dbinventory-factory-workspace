@@ -629,6 +629,130 @@ update ref_control_rule set origin = 'HOUSE_CONFLICT', benchmark_code = 'CIS_MSS
 
 
 -- ============================================================
+-- ref_nis2_domain
+-- ------------------------------------------------------------
+-- Six of the ten measures of NIS2 article 21(2): those a database can attest
+-- about ITSELF, from what the collect already brings back. The four left out --
+-- (d) supply chain, (f) effectiveness review, (g) training and hygiene beyond
+-- configuration, (j) secured emergency communication -- are real obligations,
+-- simply not ones this inventory can evidence. Declaring them here would put
+-- four permanently grey blocks on every card and teach the reader to ignore
+-- grey, which is the one colour that has to keep meaning something.
+--
+-- No version column, unlike ref_benchmark: article 21(2) is the text of the
+-- directive, not an edition the organisation picks.
+-- ============================================================
+insert into ref_nis2_domain ( nis2_domain_code, display_order, title, article_ref, description )
+   values ( 'ACCESS', 1, 'Access Control', 'Art. 21(2)(i)',
+            'Who may connect and what they may do: privileged grants, account and password policy, authentication methods, default and orphaned accounts, rights held by PUBLIC.' );
+insert into ref_nis2_domain ( nis2_domain_code, display_order, title, article_ref, description )
+   values ( 'CRYPTO', 2, 'Cryptography', 'Art. 21(2)(h)',
+            'Encryption at rest and in transit: tablespace and database encryption, key algorithms, forced TLS and its minimum protocol version.' );
+insert into ref_nis2_domain ( nis2_domain_code, display_order, title, article_ref, description )
+   values ( 'LOGGING', 3, 'Logging and Detection', 'Art. 21(2)(b)',
+            'What the engine records of what happens to it: audit activation and policies, connection logging, error log retention. Incident HANDLING is not in scope -- this inventory attests that the trace exists, it does not watch it.' );
+insert into ref_nis2_domain ( nis2_domain_code, display_order, title, article_ref, description )
+   values ( 'CONTINUITY', 4, 'Business Continuity', 'Art. 21(2)(c)',
+            'What stands between the service and a stop: backup freshness, WAL archiving, storage saturation, and the hard engine ceilings such as transaction id wraparound.' );
+insert into ref_nis2_domain ( nis2_domain_code, display_order, title, article_ref, description )
+   values ( 'HARDENING', 5, 'System Hardening', 'Art. 21(2)(a)',
+            'Attack surface left enabled by configuration: command and automation surfaces, external file and network access, exposure of the instance itself.' );
+insert into ref_nis2_domain ( nis2_domain_code, display_order, title, article_ref, description )
+   values ( 'VULN', 6, 'Vulnerability Management', 'Art. 21(2)(e)',
+            'Whether the engine can still receive a fix at all: major version support status and patch level.' );
+
+
+-- ============================================================
+-- NIS2 classification of the rules
+-- ------------------------------------------------------------
+-- One domain per rule. Written as six set-based updates for the same reason as
+-- the provenance block above: the classification is reviewed as a whole, and
+-- reading it as a list is what makes a wrong entry visible. A rule_code typed
+-- wrong here updates nothing and leaves its rule unclassified, which the T_004
+-- assertion reports by name.
+--
+-- Two placements that are not obvious, and are deliberate:
+--   * MSSQL_DBPROP_TRUSTWORTHY_OFF and MSSQL_CFG_CROSS_DB_CHAINING sit in
+--     ACCESS, not HARDENING. Both are privilege escalation paths across
+--     database boundaries; what they put at risk is who ends up with what.
+--   * ORACLE_PRM_SEC_PROTO_ERR_TRACE is LOGGING (it asks for the protocol error
+--     to be recorded) while ORACLE_PRM_SEC_PROTO_ERR_FURTHER is HARDENING (it
+--     asks for the session to be dropped). Same parameter family, two different
+--     measures.
+-- ============================================================
+update ref_control_rule set nis2_domain_code = 'ACCESS'
+ where rule_code in (
+   'MSSQL_LOGIN_SYSADMIN_EXPIRATION', 'MSSQL_LOGIN_POLICY_CHECKED',
+   'MSSQL_SA_RENAMED', 'MSSQL_SA_DISABLED', 'MSSQL_AUTH_WINDOWS_ONLY',
+   'MSSQL_GROUP_NO_LOCAL_PERMISSION', 'MSSQL_GUEST_NO_CONNECT',
+   'MSSQL_NO_ORPHANED_USER', 'MSSQL_PUBLIC_DEFAULT_PERMISSION',
+   'MSSQL_DBPROP_TRUSTWORTHY_OFF', 'MSSQL_CFG_CROSS_DB_CHAINING',
+   'ORACLE_PRF_FAILED_LOGIN_ATTEMPTS', 'ORACLE_PRF_PASSWORD_LIFE_TIME',
+   'ORACLE_PRF_PASSWORD_LOCK_TIME', 'ORACLE_PRF_PASSWORD_GRACE_TIME',
+   'ORACLE_PRF_PASSWORD_REUSE_MAX', 'ORACLE_PRF_PASSWORD_REUSE_TIME',
+   'ORACLE_PRF_PASSWORD_VERIFY_FUNCTION', 'ORACLE_PRF_SESSIONS_PER_USER',
+   'ORACLE_PRF_INACTIVE_ACCOUNT_TIME',
+   'ORACLE_HIGH_SYS_PRIVS_GRANT', 'ORACLE_HIGH_ROLE_PRIVS_GRANT',
+   'ORACLE_HIGH_TAB_PRIVS_PUBLIC', 'ORACLE_ADMIN_PWFILE_SYS_ONLY',
+   'ORACLE_NO_DEFAULT_PASSWORD', 'ORACLE_NO_DEFAULT_PROFILE',
+   'ORACLE_NO_USERMIG_TABLE',
+   'ORACLE_PRM_O7_DICT_ACCESS', 'ORACLE_PRM_REMOTE_OS_AUTHENT',
+   'ORACLE_PRM_REMOTE_OS_ROLES', 'ORACLE_PRM_OS_ROLES',
+   'ORACLE_PRM_SEC_CASE_SENSITIVE', 'ORACLE_PRM_SEC_MAX_FAILED_LOGIN',
+   'ORACLE_PRM_SYS_LOGON_DELAY',
+   'PG_ROLE_NO_EXTRA_SUPERUSER', 'PG_ROLE_NO_BYPASSRLS',
+   'PG_ROLE_REPLICATION_LIMITED', 'PG_MEMBER_NO_SERVER_PROGRAM',
+   'PG_MEMBER_NO_SERVER_FILES', 'PG_MEMBER_NO_WRITE_ALL_DATA',
+   'PG_HBA_NO_TRUST', 'PG_HBA_NO_WEAK_METHOD', 'PG_PUBLIC_NO_CREATE',
+   'PG_PRM_PASSWORD_ENCRYPTION' );
+
+update ref_control_rule set nis2_domain_code = 'CRYPTO'
+ where rule_code in (
+   'MSSQL_REG_FORCE_ENCRYPTION', 'MSSQL_ENC_STRONG_ALGORITHM',
+   'ORACLE_TABLESPACE_ENCRYPTED', 'ORACLE_NETWORK_ENCRYPTION_ON',
+   'PG_PRM_SSL_ON', 'PG_PRM_SSL_MIN_PROTOCOL' );
+
+update ref_control_rule set nis2_domain_code = 'LOGGING'
+ where rule_code in (
+   'MSSQL_AUDIT_LEVEL_LOGIN_FAILURES', 'MSSQL_SRVAUDIT_ACTION_GROUP_ON',
+   'MSSQL_CFG_DEFAULT_TRACE', 'MSSQL_REG_NUM_ERRORLOG_FILES',
+   'ORACLE_PRM_AUDIT_TRAIL', 'ORACLE_PRM_AUDIT_SYS_OPERATIONS',
+   'ORACLE_PRM_UNIFIED_AUDITING', 'ORACLE_PRM_SEC_PROTO_ERR_TRACE',
+   'ORACLE_AUDIT_CIS_POLICY_ON',
+   'PG_PRM_LOG_CONNECTIONS', 'PG_PRM_LOG_DISCONNECTIONS',
+   'PG_PRM_LOG_STATEMENT', 'PG_PRM_PGAUDIT_LOADED' );
+
+update ref_control_rule set nis2_domain_code = 'CONTINUITY'
+ where rule_code in (
+   'MSSQL_BACKUP_FRESHNESS_SLA', 'MSSQL_STORAGE_PCT_USED',
+   'MSSQL_DBPROP_AUTO_CLOSE_OFF',
+   'ORACLE_BACKUP_FRESHNESS_SLA', 'ORACLE_STORAGE_PCT_USED',
+   'PG_ARCHIVE_MODE_ON', 'PG_BACKUP_FRESHNESS_SLA', 'PG_XID_WRAPAROUND' );
+
+update ref_control_rule set nis2_domain_code = 'HARDENING'
+ where rule_code in (
+   'MSSQL_CFG_ADHOC_DIST_QUERIES', 'MSSQL_CFG_CLR_ENABLED',
+   'MSSQL_CFG_CLR_STRICT_SECURITY', 'MSSQL_CFG_DATABASE_MAIL_XPS',
+   'MSSQL_CFG_OLE_AUTOMATION', 'MSSQL_CFG_REMOTE_ACCESS',
+   'MSSQL_CFG_REMOTE_ADMIN_CONN', 'MSSQL_CFG_SCAN_STARTUP_PROCS',
+   'MSSQL_CFG_XP_CMDSHELL', 'MSSQL_REG_HIDE_INSTANCE', 'MSSQL_REG_TCP_PORT',
+   'ORACLE_PRM_UTL_FILE_DIR', 'ORACLE_PRM_RESOURCE_LIMIT',
+   'ORACLE_PRM_SEC_BANNER', 'ORACLE_PRM_SEC_PROTO_ERR_FURTHER',
+   'ORACLE_PRM_PDB_OS_CREDENTIAL' );
+
+update ref_control_rule set nis2_domain_code = 'VULN'
+ where rule_code in (
+   'MSSQL_ENGINE_SUPPORTED', 'MSSQL_ENGINE_PATCH_CURRENT',
+   'ORACLE_ENGINE_SUPPORTED', 'PG_ENGINE_SUPPORTED' );
+
+-- PostgreSQL has NO rule in HARDENING, and that is a finding, not an oversight:
+-- the Postgres collect brings back parameters that are all authentication,
+-- logging or transport, and nothing that reduces an execution surface the way
+-- xp_cmdshell or utl_file_dir do. Its cards will show a grey block there until
+-- such a rule exists. Left visible on purpose.
+
+
+-- ============================================================
 -- ref_scoring_weight   (environment defaults to '*' = all environments)
 -- ============================================================
 

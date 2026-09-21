@@ -402,6 +402,66 @@ begin
    expect_zero('aucun hote residuel du parc reel dans la discovery', l_n,
                'hote(s) en .chl.lu dans disc_host');
 
+
+   -- 16. Toute règle active porte un domaine NIS2.
+   --     La colonne est nullable exprès : une contrainte NOT NULL dirait que
+   --     quelque chose n'est pas classé, cette assertion dit QUOI. Une règle
+   --     non classée ne casse rien -- elle disparaît simplement de la bande,
+   --     et un écart réel cesse d'être compté sans que rien ne rougisse.
+   select count(*), listagg(rule_code, ', ') within group ( order by rule_code )
+     into l_n, l_txt
+     from ref_control_rule
+    where active = 1
+      and nis2_domain_code is null;
+   if l_n = 0 then
+      ok('toute regle active porte un domaine NIS2');
+   else
+      fail('toute regle active porte un domaine NIS2',
+           l_n || ' regle(s) non classee(s) : ' || substr(l_txt, 1, 900));
+   end if;
+
+   -- 17. Chaque instance et chaque base a sa bande complète.
+   --     C'est l'assertion qui protège le produit cartésien de la vue. Sans
+   --     lui, un domaine sans constat DISPARAÎT au lieu de s'afficher en gris,
+   --     et un bloc absent se lit exactement comme un bloc conforme.
+   select count(*) into l_n
+     from ( select e.entity_type, e.entity_id
+              from ( select 'INSTANCE' entity_type, instance_id entity_id from dim_instance
+                     union all
+                     select 'DATABASE', database_id from dim_database ) e
+              left join v_nis2_posture p
+                on p.entity_type = e.entity_type
+               and p.entity_id = e.entity_id
+             group by e.entity_type, e.entity_id
+            having count(p.nis2_domain_code) <> ( select count(*) from ref_nis2_domain ) );
+   expect_zero('chaque entite porte un bloc par domaine NIS2', l_n, 'entite(s) a la bande incomplete');
+
+   -- 18. Le statut affiché suit les comptes qui le justifient.
+   --     La bande est lue en une seconde, sans son détail : une pastille verte
+   --     posée sur un écart ouvert ne se rattrape nulle part.
+   select count(*) into l_n
+     from v_nis2_posture
+    where ( rules_evaluated = 0 and status <> 'NOT_ASSESSED' )
+       or ( rules_evaluated > 0 and status = 'NOT_ASSESSED' )
+       or ( open_gaps > 0 and status not in ( 'CRITICAL', 'WARNING' ) )
+       or ( open_gaps = 0 and status in ( 'CRITICAL', 'WARNING' ) );
+   expect_zero('le statut NIS2 suit ses comptes', l_n, 'ligne(s) incoherente(s)');
+
+   -- 19. Aucun domaine NIS2 déclaré sans la moindre règle.
+   --     Un domaine vide serait gris sur TOUTE carte des trois moteurs, et
+   --     apprendrait au lecteur à ignorer le gris -- la seule couleur dont on
+   --     a besoin qu'elle continue de vouloir dire quelque chose.
+   select count(*), listagg(d.nis2_domain_code, ', ') within group ( order by d.display_order )
+     into l_n, l_txt
+     from ref_nis2_domain d
+    where not exists ( select 1 from ref_control_rule r
+                        where r.nis2_domain_code = d.nis2_domain_code and r.active = 1 );
+   if l_n = 0 then
+      ok('chaque domaine NIS2 porte au moins une regle active');
+   else
+      fail('chaque domaine NIS2 porte au moins une regle active',
+           l_n || ' domaine(s) vide(s) : ' || l_txt);
+   end if;
    dbms_output.put_line('T_004 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s).');
    if l_failed > 0 then
       raise_application_error(-20903,

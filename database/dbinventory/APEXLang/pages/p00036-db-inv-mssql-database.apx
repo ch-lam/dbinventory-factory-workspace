@@ -101,6 +101,87 @@ page 36 (
         }
     )
 
+    region mssql-database-nis2 (
+        name: NIS2 Posture
+        title: NIS2 Posture
+        type: cards
+        comments {
+            comments: Read-only synthesis band, at the grain of this database and its storage units only - the same perimeter as the Compliance Findings report at the bottom of this page. An instance-grain finding is deliberately NOT repeated here: one setting left wrong on the instance would otherwise redden every database it carries, once per database for a single fix. Hardening and support are instance matters, so their blocks stay neutral on every database, and that is the honest answer rather than a green one.
+        }
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select p.nis2_domain_code,
+                       p.title domain_title,
+                       p.article_ref,
+                       p.summary,
+                       case p.status
+                          when 'NOT_ASSESSED' then '-'
+                          when 'DEROGATED'    then to_char( p.derogated )
+                          else to_char( p.open_gaps )
+                       end badge_value,
+                       case p.status
+                          when 'CRITICAL'  then 'Critical'
+                          when 'WARNING'   then 'Warning'
+                          when 'DEROGATED' then 'Waived'
+                          when 'OK'        then 'Compliant'
+                          else 'Not assessed'
+                       end status_label,
+                       -- No class at all for NOT_ASSESSED: the neutral card IS the
+                       -- grey we want, and nothing has to be invented in the palette
+                       -- to say that nothing was evaluated here.
+                       case p.status
+                          when 'CRITICAL'  then 'u-color-9-border'
+                          when 'WARNING'   then 'u-color-7-border'
+                          when 'DEROGATED' then 'u-color-1-border'
+                          when 'OK'        then 'u-color-4-border'
+                       end card_class,
+                       case p.status
+                          when 'CRITICAL'  then 'u-color-9'
+                          when 'WARNING'   then 'u-color-7'
+                          when 'DEROGATED' then 'u-color-1'
+                          when 'OK'        then 'u-color-4'
+                       end status_color
+                  from v_nis2_posture p
+                 where p.entity_type = 'DATABASE'
+                   and p.entity_id = :P36_DATABASE_ID
+                 order by p.display_order
+                ```
+            pageItemsToSubmit: P36_DATABASE_ID
+        }
+        layout {
+            sequence: 7
+            slot: body
+        }
+        appearance {
+            template: @/cards-container
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            gridColumns: 3
+        }
+        card {
+            cssClasses: &CARD_CLASS.
+            primaryKeyColumn1: NIS2_DOMAIN_CODE
+        }
+        title {
+            column: DOMAIN_TITLE
+        }
+        body {
+            column: SUMMARY
+        }
+        secondaryBody {
+            column: ARTICLE_REF
+        }
+        iconAndBadge {
+            badgeColumn: BADGE_VALUE
+            badgeLabel: &STATUS_LABEL.
+            badgeCssClasses: &STATUS_COLOR.
+        }
+    )
+
     region mssql-database-identity (
         name: Database
         title: Database

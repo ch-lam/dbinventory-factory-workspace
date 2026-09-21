@@ -99,6 +99,87 @@ page 25 (
         }
     )
 
+    region oracle-instance-nis2 (
+        name: NIS2 Posture
+        title: NIS2 Posture
+        type: cards
+        comments {
+            comments: Read-only synthesis band. It rolls the whole chain up - the instance, its databases, their storage units - which is exactly the perimeter of the Compliance Findings report at the bottom of this page. Narrow one without the other and the band counts what the list does not show.
+        }
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select p.nis2_domain_code,
+                       p.title domain_title,
+                       p.article_ref,
+                       p.summary,
+                       case p.status
+                          when 'NOT_ASSESSED' then '-'
+                          when 'DEROGATED'    then to_char( p.derogated )
+                          else to_char( p.open_gaps )
+                       end badge_value,
+                       case p.status
+                          when 'CRITICAL'  then 'Critical'
+                          when 'WARNING'   then 'Warning'
+                          when 'DEROGATED' then 'Waived'
+                          when 'OK'        then 'Compliant'
+                          else 'Not assessed'
+                       end status_label,
+                       -- No class at all for NOT_ASSESSED: the neutral card IS the
+                       -- grey we want, and nothing has to be invented in the palette
+                       -- to say that nothing was evaluated here.
+                       case p.status
+                          when 'CRITICAL'  then 'u-color-9-border'
+                          when 'WARNING'   then 'u-color-7-border'
+                          when 'DEROGATED' then 'u-color-1-border'
+                          when 'OK'        then 'u-color-4-border'
+                       end card_class,
+                       case p.status
+                          when 'CRITICAL'  then 'u-color-9'
+                          when 'WARNING'   then 'u-color-7'
+                          when 'DEROGATED' then 'u-color-1'
+                          when 'OK'        then 'u-color-4'
+                       end status_color
+                  from v_nis2_posture p
+                 where p.entity_type = 'INSTANCE'
+                   and p.entity_id = :P25_INSTANCE_ID
+                 order by p.display_order
+                ```
+            pageItemsToSubmit: P25_INSTANCE_ID
+        }
+        layout {
+            sequence: 7
+            slot: body
+        }
+        appearance {
+            template: @/cards-container
+            templateOptions: #DEFAULT#
+        }
+        componentAppearance {
+            gridColumns: 3
+        }
+        card {
+            cssClasses: &CARD_CLASS.
+            primaryKeyColumn1: NIS2_DOMAIN_CODE
+        }
+        title {
+            column: DOMAIN_TITLE
+        }
+        body {
+            column: SUMMARY
+        }
+        secondaryBody {
+            column: ARTICLE_REF
+        }
+        iconAndBadge {
+            badgeColumn: BADGE_VALUE
+            badgeLabel: &STATUS_LABEL.
+            badgeCssClasses: &STATUS_COLOR.
+        }
+    )
+
     region oracle-instance-host (
         name: Server
         title: Server
@@ -851,12 +932,13 @@ page 25 (
                        case when f.exception_id is not null then 'Granted derogation'
                             when f.is_norm_exception = 1 then 'Accepted by the norm'
                             else 'Open'
-                       end exception_status
+                       end exception_status,
+                       f.entity_type scope
                   from fact_control_finding f
                   join ref_control_rule r on r.rule_code = f.rule_code and r.active = 1
                   join ref_control rc on rc.control_code = r.control_code and rc.active = 1
-                 where f.entity_type = 'INSTANCE'
-                   and f.entity_id = :P25_INSTANCE_ID
+                  join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+                 where a.instance_id = :P25_INSTANCE_ID
                    and f.is_compliant = 0
                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
                  order by rc.category, r.title, f.item_key
@@ -918,6 +1000,22 @@ page 25 (
             layout {
                 sequence: 30
                 columnAlignment: center
+            }
+        )
+
+        column SCOPE (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Grain
+                alignment: center
+            }
+            layout {
+                sequence: 35
+                columnAlignment: center
+            }
+            comments {
+                comments: INSTANCE for a rule evaluated on the instance itself, DATABASE or STORAGE for one evaluated below it - all three belong to this instance through v_entity_ancestry, and all three are counted by the NIS2 band above.
             }
         )
 

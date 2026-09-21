@@ -9,6 +9,9 @@ page 35 (
     navigation {
         cursorFocus: doNotFocusCursor
     }
+    css {
+        fileUrls: #APP_FILES#css/nis2.css
+    }
     security {
         pageAccessProtection: argumentsMustHaveChecksum
         formAutoComplete: false
@@ -102,50 +105,52 @@ page 35 (
     region mssql-instance-nis2 (
         name: NIS2 Posture
         title: NIS2 Posture
-        type: cards
+        type: classicReport
         comments {
-            comments: Read-only synthesis band. It rolls the whole chain up - the instance, its databases, their storage units - which is exactly the perimeter of the Compliance Findings report at the bottom of this page. Narrow one without the other and the band counts what the list does not show.
+            comments: Read-only synthesis band. It rolls the whole chain up - the instance, its databases, their storage units - which is exactly the perimeter of the Compliance Findings report at the bottom of this page. Narrow one without the other and the band counts what the list does not show. The bar's CSS lives once, on the global page p00000.
         }
         source {
             location: localDatabase
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select p.nis2_domain_code,
-                       p.title domain_title,
-                       p.article_ref,
-                       p.summary,
-                       case p.status
-                          when 'NOT_ASSESSED' then '-'
-                          when 'DEROGATED'    then to_char( p.derogated )
-                          else to_char( p.open_gaps )
-                       end badge_value,
-                       case p.status
-                          when 'CRITICAL'  then 'Critical'
-                          when 'WARNING'   then 'Warning'
-                          when 'DEROGATED' then 'Waived'
-                          when 'OK'        then 'Compliant'
-                          else 'Not assessed'
-                       end status_label,
-                       -- No class at all for NOT_ASSESSED: the neutral card IS the
-                       -- grey we want, and nothing has to be invented in the palette
-                       -- to say that nothing was evaluated here.
-                       case p.status
-                          when 'CRITICAL'  then 'u-color-9-border'
-                          when 'WARNING'   then 'u-color-7-border'
-                          when 'DEROGATED' then 'u-color-1-border'
-                          when 'OK'        then 'u-color-4-border'
-                       end card_class,
-                       case p.status
-                          when 'CRITICAL'  then 'u-color-9'
-                          when 'WARNING'   then 'u-color-7'
-                          when 'DEROGATED' then 'u-color-1'
-                          when 'OK'        then 'u-color-4'
-                       end status_color
-                  from v_nis2_posture p
-                 where p.entity_type = 'INSTANCE'
-                   and p.entity_id = :P35_INSTANCE_ID
-                 order by p.display_order
+                -- La barre est assemblee ici plutot que par 24 colonnes cachees et un
+                -- htmlExpression facon p10011-top-users : ces six pages se maintiennent
+                -- a la main depuis que leur generateur a disparu, et l'autre forme leur
+                -- couterait 300 lignes chacune pour le meme rendu.
+                --
+                -- apex_escape.html sur chaque donnee : le balisage est a nous, les
+                -- donnees ne le sont pas. title et description de ref_nis2_domain sont
+                -- saisissables, et un & y suffirait a casser la barre.
+                select '<div class="nis2-bar">' ||
+                       listagg( '<span class="nis2-seg ' || cls
+                                || '" title="' || apex_escape.html( tip ) || '">'
+                                || '<span class="nis2-value">' || apex_escape.html( badge ) || '</span>'
+                                || '<span class="nis2-label">' || apex_escape.html( lbl ) || '</span>'
+                                || '</span>', '' )
+                          within group ( order by display_order )
+                       || '</div>' bar
+                  from ( select p.display_order,
+                                p.nis2_domain_code lbl,
+                                case p.status
+                                   when 'NOT_ASSESSED' then '--'
+                                   when 'DEROGATED'    then to_char( p.derogated )
+                                   else to_char( p.open_gaps )
+                                end badge,
+                                -- le neutre est le defaut : une classe oubliee laisse un
+                                -- troncon gris, elle ne peut pas faire passer un trou
+                                -- pour un vert
+                                case p.status
+                                   when 'CRITICAL'  then 'is-critical'
+                                   when 'WARNING'   then 'is-warning'
+                                   when 'DEROGATED' then 'is-waived'
+                                   when 'OK'        then 'is-ok'
+                                   else 'is-none'
+                                end cls,
+                                p.title || ' - ' || p.summary tip
+                           from v_nis2_posture p
+                          where p.entity_type = 'INSTANCE'
+                            and p.entity_id = :P35_INSTANCE_ID )
                 ```
             pageItemsToSubmit: P35_INSTANCE_ID
         }
@@ -154,30 +159,38 @@ page 35 (
             slot: body
         }
         appearance {
-            template: @/cards-container
+            template: @/standard
             templateOptions: #DEFAULT#
         }
+        reportLayout {
+            numberOfRows: 1
+        }
         componentAppearance {
-            gridColumns: 3
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--hideNoPagination
+            ]
         }
-        card {
-            cssClasses: &CARD_CLASS.
-            primaryKeyColumn1: NIS2_DOMAIN_CODE
+        messages {
+            whenNoDataFound: No NIS2 posture for this selection.
         }
-        title {
-            column: DOMAIN_TITLE
-        }
-        body {
-            column: SUMMARY
-        }
-        secondaryBody {
-            column: ARTICLE_REF
-        }
-        iconAndBadge {
-            badgeColumn: BADGE_VALUE
-            badgeLabel: &STATUS_LABEL.
-            badgeCssClasses: &STATUS_COLOR.
-        }
+
+        column BAR (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Article 21(2)
+            }
+            layout {
+                sequence: 10
+            }
+            security {
+                escapeSpecialChars: false
+            }
+        )
+
     )
 
     region mssql-instance-host (

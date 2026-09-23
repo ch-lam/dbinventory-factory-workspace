@@ -19,9 +19,17 @@
 --   3. an append-only journal protected by a trigger
 --   4. a periodic-review worklist as a view
 --
--- Grain: the registry stops at the GROUP and never names individuals. Groups are
--- expected to map to directory groups, so ldap_dn and external_ref are carried
--- from the start -- adding them later means backfilling by hand.
+-- Grain: groups first, people second. The registry was built to stop at the
+-- GROUP and never name individuals, on the grounds that people move and
+-- distribution lists do not. That held until the question was asked at three in
+-- the morning: a dl@ address does not say who to wake. So ref_application_contact
+-- names people, alongside the groups rather than instead of them -- a group is
+-- still the durable answer, and a contact is the one that answers tonight.
+-- Both carry the same reachability rule, and a contact's role comes from the
+-- same catalogue as a group's type, so the two are read in one vocabulary.
+--
+-- Groups are expected to map to directory groups, so ldap_dn and external_ref are
+-- carried from the start -- adding them later means backfilling by hand.
 -- ============================================================================
 
 alter session set current_schema=dbinventory;
@@ -83,6 +91,18 @@ create table ref_application (
    review_due_date  date,
    last_review_date date,
    last_review_by   varchar2(100 char),
+   -- Software and support: what this application is made of, and until when.
+   sourcing         varchar2(20 char) default 'UNKNOWN' not null,
+   vendor_name      varchar2(200 char),
+   product_version  varchar2(100 char),
+   support_end_date date,
+   -- Continuity: what happens when it falls over.
+   rto_minutes      number,
+   rpo_minutes      number,
+   service_window   varchar2(100 char),
+   -- Data: what the DPO needs to know before anyone else asks.
+   data_sensitivity varchar2(20 char) default 'UNKNOWN' not null,
+   processing_register_ref varchar2(200 char),
    active           number(1) default 1 not null,
    created_by       varchar2(100 char) default on null nvl(sys_context('APEX$SESSION','APP_USER'), user) not null,
    created_date     date default on null sysdate not null,
@@ -92,6 +112,10 @@ create table ref_application (
    constraint ref_application_uk unique ( app_code ),
    constraint ref_application_crit_ck check ( criticality in ( 'CRITICAL', 'HIGH', 'STANDARD', 'LOW' ) ),
    constraint ref_application_life_ck check ( lifecycle_status in ( 'PROJECT', 'ACTIVE', 'DECOMMISSIONING', 'RETIRED' ) ),
+   constraint ref_application_sourc_ck check ( sourcing in ( 'UNKNOWN', 'INTERNAL', 'PACKAGE', 'SAAS', 'OTHER' ) ),
+   constraint ref_application_dsens_ck check ( data_sensitivity in ( 'UNKNOWN', 'NONE', 'PERSONAL', 'SENSITIVE', 'HEALTH' ) ),
+   constraint ref_application_rto_ck check ( rto_minutes is null or rto_minutes >= 0 ),
+   constraint ref_application_rpo_ck check ( rpo_minutes is null or rpo_minutes >= 0 ),
    constraint ref_application_active_ck check ( active in ( 0, 1 ) )
 );
 
@@ -105,6 +129,15 @@ comment on column ref_application.lifecycle_status is 'Where the application is 
 comment on column ref_application.review_due_date is 'When the registry entry itself is next due for review; contacts rot faster than anything else here.';
 comment on column ref_application.last_review_date is 'When it was last reviewed.';
 comment on column ref_application.last_review_by is 'Who reviewed it.';
+comment on column ref_application.sourcing is 'Where the software comes from (UNKNOWN, INTERNAL, PACKAGE, SAAS, OTHER); decides who to call first when it breaks.';
+comment on column ref_application.vendor_name is 'Publisher or integrator, when the software is not built here.';
+comment on column ref_application.product_version is 'Version actually running in production, as the vendor names it.';
+comment on column ref_application.support_end_date is 'When the vendor stops supporting that version; the date that turns an upgrade into an incident.';
+comment on column ref_application.rto_minutes is 'Recovery Time Objective in minutes: how long the business accepts to be without it.';
+comment on column ref_application.rpo_minutes is 'Recovery Point Objective in minutes: how much work the business accepts to lose.';
+comment on column ref_application.service_window is 'When the application must be available, in plain words (24/7, working hours, ...).';
+comment on column ref_application.data_sensitivity is 'Nature of the data handled (UNKNOWN, NONE, PERSONAL, SENSITIVE, HEALTH). HEALTH is kept apart from SENSITIVE on purpose: here it is the common case, and merging the two would hide the one fact the DPO is looking for.';
+comment on column ref_application.processing_register_ref is 'Reference of the matching entry in the processing register (GDPR art. 30), when there is one.';
 comment on column ref_application.active is 'Operational kill switch: 0 hides the application without deleting its history.';
 
 
@@ -171,7 +204,7 @@ create table ref_application_group (
                                            or external_ref is not null )
 );
 
-comment on table ref_application_group is 'Groups responsible for an application, with the means of reaching them; the registry stops here and never names individuals.';
+comment on table ref_application_group is 'Groups responsible for an application, with the means of reaching them; the durable answer to "whose is this", where ref_application_contact holds the one that answers tonight.';
 comment on column ref_application_group.group_id is 'Technical primary key.';
 comment on column ref_application_group.application_id is 'Application the group belongs to (FK to ref_application).';
 comment on column ref_application_group.group_type_code is 'Nature of the group (FK to ref_application_group_type).';
@@ -184,6 +217,68 @@ comment on column ref_application_group.note is 'Anything a future reader needs 
 comment on column ref_application_group.active is 'Operational kill switch.';
 
 create index ref_app_grp_app_ix on ref_application_group ( application_id );
+
+
+-- ============================================================
+-- ref_application_contact
+-- ------------------------------------------------------------
+-- The named people, added after the fact -- see the note on grain at the top of
+-- this file for why the registry no longer stops at the group.
+--
+-- No group_id. A contact's role is a foreign key to ref_application_group_type,
+-- the very catalogue the groups use, which gives the grouping by role without
+-- tying a person to a particular group row. That matters twice: the contact
+-- screen needs no list of values filtered by application, which nothing else in
+-- this application does, and removing a group does not orphan the people.
+--
+-- Same reachability rule as the groups, for the same reason: an entry nobody can
+-- reach is worse than no entry, because you believe you have one. is_primary is
+-- advisory and deliberately unconstrained -- two primaries on an application is
+-- a data-quality question, not something to refuse at three in the morning.
+-- ============================================================
+create table ref_application_contact (
+   contact_id     number generated by default on null as identity,
+   application_id number not null,
+   contact_role   varchar2(20 char) not null,
+   full_name      varchar2(200 char) not null,
+   job_title      varchar2(200 char),
+   email          varchar2(400 char),
+   phone          varchar2(50 char),
+   ldap_login     varchar2(100 char),
+   is_primary     number(1) default 0 not null,
+   note           varchar2(1000 char),
+   active         number(1) default 1 not null,
+   created_by     varchar2(100 char) default on null nvl(sys_context('APEX$SESSION','APP_USER'), user) not null,
+   created_date   date default on null sysdate not null,
+   updated_by     varchar2(100 char),
+   updated_date   date,
+   constraint ref_app_ctc_pk primary key ( contact_id ),
+   constraint ref_app_ctc_uk unique ( application_id, contact_role, full_name ),
+   constraint ref_app_ctc_app_fk foreign key ( application_id )
+      references ref_application ( application_id ),
+   constraint ref_app_ctc_role_fk foreign key ( contact_role )
+      references ref_application_group_type ( group_type_code ),
+   constraint ref_app_ctc_active_ck check ( active in ( 0, 1 ) ),
+   constraint ref_app_ctc_prim_ck check ( is_primary in ( 0, 1 ) ),
+   constraint ref_app_ctc_reach_ck check ( email is not null
+                                           or phone is not null
+                                           or ldap_login is not null )
+);
+
+comment on table ref_application_contact is 'People named as contacts for an application, with the means of reaching them; complements ref_application_group rather than replacing it.';
+comment on column ref_application_contact.contact_id is 'Technical primary key.';
+comment on column ref_application_contact.application_id is 'Application the person is a contact for (FK to ref_application).';
+comment on column ref_application_contact.contact_role is 'What this person answers for (FK to ref_application_group_type, the same catalogue the groups use).';
+comment on column ref_application_contact.full_name is 'Name of the person, as a colleague would write it.';
+comment on column ref_application_contact.job_title is 'Their function, which is what survives when the name changes.';
+comment on column ref_application_contact.email is 'Address of the person, as opposed to the distribution list carried by the group.';
+comment on column ref_application_contact.phone is 'Number to call, including out of hours when there is one.';
+comment on column ref_application_contact.ldap_login is 'Directory login, the identifier that does not change when the display name does.';
+comment on column ref_application_contact.is_primary is 'Whether this is the first person to try; advisory, not enforced.';
+comment on column ref_application_contact.note is 'Anything a future reader needs about this person, such as when not to call them.';
+comment on column ref_application_contact.active is 'Operational kill switch: 0 retires the contact without losing the journal.';
+
+create index ref_app_ctc_app_ix on ref_application_contact ( application_id );
 
 
 -- ============================================================
@@ -362,6 +457,7 @@ create table ref_application_event (
    constraint ref_app_evt_type_ck check ( event_type in (
       'CREATED', 'UPDATED', 'DEACTIVATED', 'REVIEWED',
       'GROUP_ADDED', 'GROUP_UPDATED', 'GROUP_REMOVED',
+      'CONTACT_ADDED', 'CONTACT_UPDATED', 'CONTACT_REMOVED',
       'ENTITY_LINKED', 'ENTITY_UNLINKED',
       'DOCUMENT_ADDED', 'DOCUMENT_REMOVED', 'DOCUMENT_REVIEWED',
       'SOURCE_ADDED', 'SOURCE_REMOVED' ) )
@@ -542,10 +638,20 @@ create or replace view v_application_overview as
           a.lifecycle_status,
           a.review_due_date,
           a.last_review_date,
+          a.sourcing,
+          a.vendor_name,
+          a.product_version,
+          a.support_end_date,
+          a.rto_minutes,
+          a.rpo_minutes,
+          a.service_window,
+          a.data_sensitivity,
           ( select count(*) from v_application_database ad
              where ad.application_id = a.application_id ) database_count,
           ( select count(*) from ref_application_group g
              where g.application_id = a.application_id and g.active = 1 ) group_count,
+          ( select count(*) from ref_application_contact c
+             where c.application_id = a.application_id and c.active = 1 ) contact_count,
           ( select count(*) from ref_application_document d
              where d.application_id = a.application_id and d.active = 1 ) document_count,
           ( select count(*) from ref_application_source s
@@ -568,3 +674,68 @@ create or replace view v_application_overview as
     where a.active = 1;
 
 comment on table v_application_overview is 'One row per active application with its resolved database count, its satellites and its review state; the source of the application list screen.';
+
+
+-- ============================================================
+-- v_entity_application
+-- ------------------------------------------------------------
+-- The registry read from the other end: given a host, an instance or a database,
+-- which applications claim it. Without this, the relation only exists in one
+-- direction and the question actually asked -- "whose is this database" -- is the
+-- one that has no screen.
+--
+-- One view rather than a query per page. Six inventory pages consume it (the
+-- instance and database pages of the three engines), and a view is the only way
+-- for the six to be unable to disagree.
+--
+-- attached_at survives at DATABASE level and is dropped above it. On a database
+-- it is a real distinction -- reached explicitly, or swept in with its whole
+-- instance -- and detaching the two is a different action. On an instance or a
+-- host it would only restate the level you are already looking at.
+-- ============================================================
+create or replace view v_entity_application as
+   -- The three literals are cast on purpose. Without it, a UNION of character
+   -- literals of different lengths resolves to CHAR of the longest, so 'HOST'
+   -- would arrive padded to eight characters and a region filtering on
+   -- entity_type = 'HOST' would be relying on blank-padded comparison rules to
+   -- come out right. A view read by six screens does not get to depend on that.
+   select cast('DATABASE' as varchar2(20 char)) entity_type,
+          ad.database_id   entity_id,
+          ad.application_id,
+          a.app_code,
+          a.app_name,
+          a.criticality,
+          a.lifecycle_status,
+          a.data_sensitivity,
+          ad.attached_at
+     from v_application_database ad
+     join ref_application a
+       on a.application_id = ad.application_id
+   union all
+   select distinct cast('INSTANCE' as varchar2(20 char)),
+          ad.instance_id,
+          ad.application_id,
+          a.app_code,
+          a.app_name,
+          a.criticality,
+          a.lifecycle_status,
+          a.data_sensitivity,
+          cast(null as varchar2(20 char))
+     from v_application_database ad
+     join ref_application a
+       on a.application_id = ad.application_id
+   union all
+   select distinct cast('HOST' as varchar2(20 char)),
+          ad.host_id,
+          ad.application_id,
+          a.app_code,
+          a.app_name,
+          a.criticality,
+          a.lifecycle_status,
+          a.data_sensitivity,
+          cast(null as varchar2(20 char))
+     from v_application_database ad
+     join ref_application a
+       on a.application_id = ad.application_id;
+
+comment on table v_entity_application is 'Applications claiming a given inventory entity, at host, instance or database level; the registry read from the inventory rather than from the application.';

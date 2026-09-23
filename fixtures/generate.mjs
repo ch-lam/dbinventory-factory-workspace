@@ -24,6 +24,7 @@ import { emitMssql } from './lib/emit_mssql.mjs';
 import { emitPostgres } from './lib/emit_postgres.mjs';
 import { buildDiscovery } from './lib/discovery.mjs';
 import { emitDiscovery } from './lib/emit_discovery.mjs';
+import { emitApplications } from './lib/emit_applications.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(process.argv[2] || join(HERE, 'out'));
@@ -67,6 +68,9 @@ emitOracle({ ...base, rng: rngOracle });
 emitMssql({ ...base, rng: rngMssql });
 emitPostgres({ ...base, rng: rngPostgres });
 const discoveryCounts = emitDiscovery({ outDir, discovery });
+// Le registre applicatif n'est pas une collecte : il ne produit aucun CSV et
+// n'entre pas dans le contrat. Il sort un script, joué après l'ETL.
+const appCounts = emitApplications({ outDir, world, estate });
 
 // ---------------------------------------------------------------- périmètre
 // Format attendu par les collecteurs, et régénéré par gen_collect_lists.sh
@@ -143,6 +147,9 @@ console.log(`PostgreSQL: ${estate.postgres.hosts.length} hôtes, `
           + `${estate.postgres.hosts.reduce((n, h) => n + h.databases.length, 0)} bases`);
 console.log(`Découverte: ${discoveryCounts.mssql} instance(s) MSSQL, ${discoveryCounts.linux} hôte(s) Linux, `
           + `${discoveryCounts.triage} décision(s) de triage`);
+console.log(`Registre  : ${appCounts.applications} application(s), ${appCounts.links} rattachement(s), `
+          + `${appCounts.groups} groupe(s), ${appCounts.contacts} contact(s), `
+          + `${appCounts.documents} document(s), ${appCounts.sources} dépôt(s)`);
 console.log(`Lignes    : oracle ${by('oracle')}, mssql ${by('mssql')}, postgres ${by('postgres')}, `
           + `discovery ${by('discovery')} — total ${total}`);
-console.log(`Sortie    : ${outDir}  (${expected.length} CSV + 3 .lst + 1 .sql)`);
+console.log(`Sortie    : ${outDir}  (${expected.length} CSV + 3 .lst + 2 .sql)`);

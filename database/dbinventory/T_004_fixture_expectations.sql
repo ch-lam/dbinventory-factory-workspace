@@ -165,6 +165,45 @@ with lignes as (
    union all
    select 8, 'perimetre', 'postgres/' || active, to_char(count(*))
      from postgres_collect_list group by active
+   union all
+   -- ---- registre applicatif -------------------------------------------------
+   -- Ce que le registre couvre, et surtout ce qu'il ne couvre pas. Rien ici ne
+   -- descend de sysdate : les etats de revue en descendent, eux, et une
+   -- reference qui les porterait deviendrait fausse toute seule.
+   select 9, 'application', 'criticality/' || criticality, to_char(count(*))
+     from ref_application group by criticality
+   union all
+   select 9, 'application', 'sourcing/' || sourcing, to_char(count(*))
+     from ref_application group by sourcing
+   union all
+   select 9, 'application', 'sensitivity/' || data_sensitivity, to_char(count(*))
+     from ref_application group by data_sensitivity
+   union all
+   select 9, 'application', 'lifecycle/' || lifecycle_status, to_char(count(*))
+     from ref_application group by lifecycle_status
+   union all
+   select 9, 'application', 'attachment/' || entity_type, to_char(count(*))
+     from ref_application_entity where active = 1 group by entity_type
+   union all
+   select 9, 'application', 'group/' || group_type_code, to_char(count(*))
+     from ref_application_group where active = 1 group by group_type_code
+   union all
+   select 9, 'application', 'contact/' || contact_role, to_char(count(*))
+     from ref_application_contact where active = 1 group by contact_role
+   union all
+   select 9, 'application', 'document/' || doc_kind, to_char(count(*))
+     from ref_application_document where active = 1 group by doc_kind
+   union all
+   select 9, 'application', 'source', to_char(count(*))
+     from ref_application_source where active = 1
+   union all
+   -- La cascade, mesuree des deux cotes. 90 rattachements couvrant 90 bases
+   -- voudrait dire qu'elle ne cascade rien.
+   select 9, 'application', 'covered_database', to_char(count(distinct database_id))
+     from v_application_database
+   union all
+   select 9, 'application', 'unclaimed_database', to_char(count(*))
+     from v_database_without_application
 )
 select section || '|' || k || '|' || v
   from lignes
@@ -462,6 +501,124 @@ begin
       fail('chaque domaine NIS2 porte au moins une regle active',
            l_n || ' domaine(s) vide(s) : ' || l_txt);
    end if;
+   -- 20. Toute application du registre a au moins un groupe responsable.
+   --     Une entree sans personne derriere est exactement ce que ce registre
+   --     existe pour supprimer : elle repond "oui" a "est-ce inventorie ?" et
+   --     rien a "qui j'appelle ?".
+   select count(*), listagg(a.app_code, ', ') within group ( order by a.app_code )
+     into l_n, l_txt
+     from ref_application a
+    where a.active = 1
+      and not exists ( select 1 from ref_application_group g
+                        where g.application_id = a.application_id and g.active = 1 );
+   if l_n = 0 then
+      ok('chaque application porte au moins un groupe responsable');
+   else
+      fail('chaque application porte au moins un groupe responsable',
+           l_n || ' application(s) sans groupe : ' || l_txt);
+   end if;
+
+   -- 21. Tout contact nomme est joignable.
+   --     La contrainte du modele le garantit deja ; on le mesure quand meme,
+   --     parce que la contrainte peut etre relachee un jour et que c'est
+   --     precisement le jour ou personne ne s'en apercevra.
+   select count(*) into l_n
+     from ref_application_contact
+    where active = 1
+      and email is null and phone is null and ldap_login is null;
+   expect_zero('chaque contact nomme est joignable', l_n, 'contact(s) injoignable(s)');
+
+   -- 22. La cascade de rattachement resout PLUS de bases qu'il n'y a de lignes
+   --     de rattachement. C'est toute l'economie du modele : rattacher une
+   --     instance couvre ses bases sans les enumerer. Une egalite stricte
+   --     voudrait dire que chaque rattachement ne couvre qu'une base, donc que
+   --     plus rien ne cascade -- et le jeu passerait sans rien prouver.
+   declare
+      l_links pls_integer;
+      l_dbs   pls_integer;
+   begin
+      select count(*) into l_links from ref_application_entity where active = 1;
+      select count(distinct database_id) into l_dbs from v_application_database;
+      if l_dbs > l_links then
+         ok('la cascade de rattachement couvre ' || l_dbs || ' base(s) pour '
+            || l_links || ' rattachement(s)');
+      else
+         fail('la cascade de rattachement couvre plus que ses lignes',
+              l_dbs || ' base(s) couverte(s) pour ' || l_links || ' rattachement(s)');
+      end if;
+   end;
+
+   -- 23. Il reste des bases non reclamees.
+   --     C'est le produit utile du registre, pas un defaut : la liste de ce
+   --     qu'il reste a faire. Un jeu ou tout serait reclame n'exercerait jamais
+   --     l'ecran qui la porte, et ne montrerait pas le seul chiffre qui bouge
+   --     quand l'ETL decouvre une base.
+   select count(*) into l_n from v_database_without_application;
+   if l_n > 0 then
+      ok(l_n || ' base(s) non reclamee(s), comme attendu');
+   else
+      fail('il reste des bases non reclamees',
+           'toutes les bases sont reclamees : le backlog du registre ne se voit plus');
+   end if;
+
+   -- 24. Les deux bouts de la relation comptent pareil.
+   --     v_entity_application alimente les six ecrans d'inventaire,
+   --     v_application_database alimente l'ecran d'application. Un desaccord
+   --     afficherait une base reclamee d'un cote et orpheline de l'autre.
+   select count(*) into l_n
+     from ( select application_id, database_id from v_application_database
+            minus
+            select application_id, entity_id from v_entity_application
+             where entity_type = 'DATABASE' );
+   expect_zero('les deux lectures de la couverture concordent', l_n, 'ecart(s)');
+
+   -- 25. Les quatre etats de revue d'application sont representes.
+   --     Meme raison que la couverture des regles : un etat jamais produit est
+   --     un etat jamais teste. Ces etats descendent de sysdate, donc ils sont
+   --     vrais au chargement -- rejouer load_fixtures les repose.
+   select count(distinct review_rank) into l_n from v_application_overview;
+   if l_n = 4 then
+      ok('les quatre etats de revue d''application sont representes');
+   else
+      fail('les quatre etats de revue d''application sont representes',
+           'seulement ' || l_n || ' etat(s) sur 4');
+   end if;
+
+   -- 26. Les cinq rangs de revue documentaire sont representes.
+   select count(distinct review_rank) into l_n from v_application_document_review;
+   if l_n = 5 then
+      ok('les cinq rangs de revue documentaire sont representes');
+   else
+      fail('les cinq rangs de revue documentaire sont representes',
+           'seulement ' || l_n || ' rang(s) sur 5');
+   end if;
+
+   -- 27. Les trois niveaux de rattachement sont exerces.
+   --     HOST, INSTANCE et DATABASE ne suivent pas le meme chemin dans
+   --     v_application_database : un niveau absent du jeu est une branche du
+   --     CASE que rien ne parcourt.
+   select count(distinct entity_type) into l_n
+     from ref_application_entity where active = 1;
+   if l_n = 3 then
+      ok('les trois niveaux de rattachement sont exerces');
+   else
+      fail('les trois niveaux de rattachement sont exerces',
+           'seulement ' || l_n || ' niveau(x) sur 3');
+   end if;
+
+   -- 28. Aucun rattachement ne pend dans le vide.
+   --     La reference est polymorphe : aucune cle etrangere ne peut la
+   --     proteger, et un rattachement vers une entite disparue ne resout aucune
+   --     base -- ce qui se lit exactement comme une application que personne
+   --     n'a rattachee.
+   select count(*) into l_n
+     from ref_application_entity e
+    where e.active = 1
+      and not exists ( select 1 from v_entity_ancestry a
+                        where a.entity_type = e.entity_type
+                          and a.entity_id = e.entity_id );
+   expect_zero('chaque rattachement vise une entite qui existe', l_n, 'rattachement(s) orphelin(s)');
+
    dbms_output.put_line('T_004 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s).');
    if l_failed > 0 then
       raise_application_error(-20903,

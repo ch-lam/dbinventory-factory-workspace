@@ -1,0 +1,455 @@
+page 86 (
+    name: DB Inv. - Application Contact
+    alias: DB-INV-APPLICATION-CONTACT
+    title: DB Inv. - Application Contact
+    appearance {
+        pageMode: modalDialog
+        dialogTemplate: @/modal-dialog
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+        warnOnUnsavedChanges: false
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region contact (
+        name: Named contact
+        title: Named contact
+        type: staticContent
+        source {
+            htmlCode:
+                ```
+                <p>A named person <strong>in addition to</strong> the group, not
+                instead of it. The group is the answer that survives someone
+                leaving; this is the one that answers tonight.</p>
+                <p>Record the role from the same list the groups use, so both can
+                be read together.</p>
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: contentBody
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: The registry deliberately stopped at the group for its first year, on the grounds that people move and distribution lists do not. That held until the question was asked at three in the morning, and a dl@ address did not say who to wake. The advice in the region body exists so whoever uses this screen in two years understands the division of labour rather than filling both with the same thing.
+        }
+    )
+
+    pageItem P86_CONTACT_ID (
+        type: hidden
+        layout {
+            sequence: 10
+            region: @contact
+            slot: regionBody
+        }
+    )
+
+    pageItem P86_APPLICATION_ID (
+        type: hidden
+        layout {
+            sequence: 20
+            region: @contact
+            slot: regionBody
+        }
+    )
+
+    pageItem P86_CONTACT_ROLE (
+        type: selectList
+        label {
+            label: Role
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-group-type
+            displayNullValue: false
+        }
+        layout {
+            sequence: 30
+            region: @contact
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+        }
+        validation {
+            valueRequired: true
+        }
+        help {
+            helpText: The same catalogue the responsible groups use, so a reader can put a face next to a group without translating between two vocabularies.
+        }
+    )
+
+    pageItem P86_FULL_NAME (
+        type: textField
+        label {
+            label: Name
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @contact
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+            width: 60
+        }
+        validation {
+            valueRequired: true
+            maxLength: 200
+        }
+    )
+
+    pageItem P86_JOB_TITLE (
+        type: textField
+        label {
+            label: Function
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @contact
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 60
+        }
+        validation {
+            maxLength: 200
+        }
+        help {
+            helpText: What they do, which is what remains useful after they leave and the name stops matching anybody.
+        }
+    )
+
+    pageItem P86_EMAIL (
+        type: textField
+        label {
+            label: Address
+            alignment: right
+        }
+        layout {
+            sequence: 60
+            region: @contact
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 60
+        }
+        validation {
+            maxLength: 400
+        }
+        help {
+            helpText: The person's own address. The distribution list belongs on the group, not here.
+        }
+    )
+
+    pageItem P86_PHONE (
+        type: textField
+        label {
+            label: Phone
+            alignment: right
+        }
+        layout {
+            sequence: 70
+            region: @contact
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 30
+        }
+        validation {
+            maxLength: 50
+        }
+        help {
+            helpText: The number that works out of hours, if there is one. That is the reason this screen exists.
+        }
+    )
+
+    pageItem P86_LDAP_LOGIN (
+        type: textField
+        label {
+            label: Directory login
+            alignment: right
+        }
+        layout {
+            sequence: 80
+            region: @contact
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 30
+        }
+        validation {
+            maxLength: 100
+        }
+        help {
+            helpText: The identifier that does not change when the display name does; the only field here that can be matched against the directory later.
+        }
+    )
+
+    pageItem P86_IS_PRIMARY (
+        type: selectList
+        label {
+            label: First to try
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-contact-primary
+            displayNullValue: false
+        }
+        layout {
+            sequence: 90
+            region: @contact
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Advisory, not enforced. Two people marked first is a question for the next review, not something to refuse at three in the morning.
+        }
+    )
+
+    pageItem P86_NOTE (
+        type: textarea
+        label {
+            label: Note
+            alignment: right
+        }
+        layout {
+            sequence: 100
+            region: @contact
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            height: 2
+        }
+        validation {
+            maxLength: 1000
+        }
+        help {
+            helpText: Anything a future reader needs, such as when not to call this person.
+        }
+    )
+
+    button cancel (
+        buttonName: CANCEL
+        label: Cancel
+        layout {
+            sequence: 10
+            region: @contact
+            slot: close
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: definedByDynamicAction
+        }
+    )
+
+    button remove (
+        buttonName: REMOVE
+        label: Remove
+        layout {
+            sequence: 20
+            region: @contact
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+        comments {
+            comments: No confirmation prompt, for the same reason as the group screen: APEXlang has no property for one and confirmMessage is rejected. Tolerable here because Remove deactivates rather than deletes, and the journal keeps the name and the reason.
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P86_CONTACT_ID
+        }
+    )
+
+    button save (
+        buttonName: SAVE
+        label: Save
+        layout {
+            sequence: 30
+            region: @contact
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+    )
+
+    dynamicAction cancel-dialog (
+        name: Cancel Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: click
+            selectionType: button
+            button: @cancel
+        }
+
+        action native-cancel-dialog (
+            action: cancelDialog
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    process load-contact (
+        name: Load Contact
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                if :P86_CONTACT_ID is not null then
+                   select c.application_id, c.contact_role, c.full_name, c.job_title,
+                          c.email, c.phone, c.ldap_login, to_char(c.is_primary), c.note
+                     into :P86_APPLICATION_ID, :P86_CONTACT_ROLE, :P86_FULL_NAME, :P86_JOB_TITLE,
+                          :P86_EMAIL, :P86_PHONE, :P86_LDAP_LOGIN, :P86_IS_PRIMARY, :P86_NOTE
+                     from ref_application_contact c
+                    where c.contact_id = :P86_CONTACT_ID;
+                else
+                   :P86_IS_PRIMARY := '0';
+                end if;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: beforeHeader
+        }
+    )
+
+    process save-contact (
+        name: Save Contact
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                -- Refused here rather than left to the check constraint, which
+                -- would report a constraint name where this reports the decision.
+                if :P86_EMAIL is null
+                   and :P86_PHONE is null
+                   and :P86_LDAP_LOGIN is null then
+                   raise_application_error(-20052,
+                      'Give at least one way of reaching this person: an address, a phone number or a directory login. A contact nobody can reach is worse than no contact, because you believe you have one.');
+                end if;
+
+                if :P86_CONTACT_ID is null then
+                   :P86_CONTACT_ID := pkg_dbinv_application.add_contact(
+                      p_application_id => :P86_APPLICATION_ID,
+                      p_contact_role   => :P86_CONTACT_ROLE,
+                      p_full_name      => :P86_FULL_NAME,
+                      p_job_title      => :P86_JOB_TITLE,
+                      p_email          => :P86_EMAIL,
+                      p_phone          => :P86_PHONE,
+                      p_ldap_login     => :P86_LDAP_LOGIN,
+                      p_is_primary     => to_number(:P86_IS_PRIMARY),
+                      p_note           => :P86_NOTE );
+                else
+                   -- update_contact overwrites with what it is given, NULL
+                   -- included: this form holds every field, so an emptied box is
+                   -- a deliberate act and must actually empty the column.
+                   pkg_dbinv_application.update_contact(
+                      p_contact_id   => :P86_CONTACT_ID,
+                      p_contact_role => :P86_CONTACT_ROLE,
+                      p_full_name    => :P86_FULL_NAME,
+                      p_job_title    => :P86_JOB_TITLE,
+                      p_email        => :P86_EMAIL,
+                      p_phone        => :P86_PHONE,
+                      p_ldap_login   => :P86_LDAP_LOGIN,
+                      p_is_primary   => to_number(:P86_IS_PRIMARY),
+                      p_note         => :P86_NOTE );
+                end if;
+                ```
+        }
+        execution {
+            sequence: 20
+        }
+        serverSideCondition {
+            whenButtonPressed: @save
+        }
+        successMessage {
+            successMessage: Contact saved
+        }
+    )
+
+    process remove-contact (
+        name: Remove Contact
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                pkg_dbinv_application.remove_contact(
+                   p_contact_id => :P86_CONTACT_ID,
+                   p_reason     => 'removed from the contact screen' );
+                ```
+        }
+        execution {
+            sequence: 30
+        }
+        serverSideCondition {
+            whenButtonPressed: @remove
+        }
+        successMessage {
+            successMessage: Contact removed - it is deactivated, not deleted, so the history survives
+        }
+    )
+
+    process close-contact-dialog (
+        name: Close Contact Dialog
+        type: closeDialog
+        execution {
+            sequence: 90
+        }
+    )
+
+)

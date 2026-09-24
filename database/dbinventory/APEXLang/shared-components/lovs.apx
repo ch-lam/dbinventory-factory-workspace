@@ -48,6 +48,63 @@ lov application-criticality (
     }
 )
 
+lov application-contact-primary (
+    name: APPLICATION_CONTACT_PRIMARY
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'No' d, '0' r, 1 o from dual
+            union all select 'Yes, try this person first', '1', 2 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-data-sensitivity (
+    name: APPLICATION_DATA_SENSITIVITY
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Not known yet' d, 'UNKNOWN' r, 1 o from dual
+            union all select 'No personal data', 'NONE', 2 from dual
+            union all select 'Personal data', 'PERSONAL', 3 from dual
+            union all select 'Sensitive data', 'SENSITIVE', 4 from dual
+            union all select 'Health data', 'HEALTH', 5 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
+lov application-sourcing (
+    name: APPLICATION_SOURCING
+    source {
+        type: sqlQuery
+        sqlQuery:
+            ```sql
+            select 'Not known yet' d, 'UNKNOWN' r, 1 o from dual
+            union all select 'Built in-house', 'INTERNAL', 2 from dual
+            union all select 'Vendor package', 'PACKAGE', 3 from dual
+            union all select 'SaaS', 'SAAS', 4 from dual
+            union all select 'Other', 'OTHER', 5 from dual
+             order by 3
+            ```
+    }
+    columnMapping {
+        return: R
+        display: D
+    }
+)
+
 lov application-doc-kind (
     name: APPLICATION_DOC_KIND
     source {

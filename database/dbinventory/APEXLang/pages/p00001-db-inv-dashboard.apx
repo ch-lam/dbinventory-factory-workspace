@@ -248,6 +248,113 @@ page 1 (
 
     )
 
+    region application-coverage (
+        name: Application coverage
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select ( select count(*) from ref_application where active = 1 ) applications,
+                       ( select count(distinct database_id) from v_application_database ) covered,
+                       ( select count(*) from v_database_without_application ) unclaimed
+                  from dual
+                ```
+        }
+        layout {
+            sequence: 35
+            slot: body
+            column: 1
+            columnSpan: 12
+        }
+        appearance {
+            template: @/blank-with-attributes-no-grid
+            templateOptions: [
+                #DEFAULT#
+                t-Form--stretchInputs
+            ]
+        }
+        comments {
+            comments: Unclaimed is the number this band exists for, and the only one on this page that measures work rather than state. It never falls to zero on its own: a database appears there the moment the ETL discovers it, which is exactly when somebody should be asked whose it is.
+        }
+        reportLayout {
+            numberOfRows: 1
+        }
+        componentAppearance {
+            template: @/badge-list
+            templateOptions: [
+                #DEFAULT#
+                u-colors
+                t-BadgeList--large
+                t-BadgeList--dash
+                t-BadgeList--fixed
+                t-Report--hideNoPagination
+            ]
+        }
+
+        column APPLICATIONS (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Applications
+                alignment: end
+            }
+            layout {
+                sequence: 10
+                columnAlignment: end
+            }
+            link {
+                target: {
+                    page: 80
+                }
+                linkText: #APPLICATIONS#
+            }
+        )
+
+        column COVERED (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Databases covered
+                alignment: end
+            }
+            layout {
+                sequence: 20
+                columnAlignment: end
+            }
+            link {
+                target: {
+                    page: 80
+                }
+                linkText: #COVERED#
+            }
+        )
+
+        column UNCLAIMED (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Databases unclaimed
+                alignment: end
+            }
+            layout {
+                sequence: 30
+                columnAlignment: end
+            }
+            link {
+                target: {
+                    page: 80
+                }
+                linkText: #UNCLAIMED#
+            }
+        )
+
+    )
+
     region environment-distribution (
         name: Environments
         title: Environments

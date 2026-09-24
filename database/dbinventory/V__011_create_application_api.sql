@@ -60,6 +60,32 @@ create or replace package pkg_dbinv_application as
 
    procedure deactivate_application ( p_application_id number, p_reason varchar2 );
 
+   -- The profile: software, continuity, data, and the review date.
+   -- ---------------------------------------------------------------------
+   -- Separate from update_application, and with the opposite null semantics.
+   -- update_application only overwrites what it is given, which is right for a
+   -- caller that knows one field. This one is called by a form that holds every
+   -- field at once, where clearing a box is a deliberate act -- so what is passed
+   -- overwrites, NULL included.
+   --
+   -- review_due_date lives here rather than in create_application because the
+   -- screen has to be able to set it at creation. It could not: the create path
+   -- dropped the date that had just been typed, silently.
+   procedure set_profile (
+      p_application_id  number,
+      p_sourcing        varchar2 default null,
+      p_vendor_name     varchar2 default null,
+      p_product_version varchar2 default null,
+      p_support_end_date date default null,
+      p_rto_minutes     number default null,
+      p_rpo_minutes     number default null,
+      p_service_window  varchar2 default null,
+      p_data_sensitivity varchar2 default null,
+      p_register_ref    varchar2 default null,
+      p_review_due_date date default null,
+      p_note            varchar2 default null
+   );
+
    procedure record_review (
       p_application_id number,
       p_note           varchar2 default null,
@@ -90,6 +116,39 @@ create or replace package pkg_dbinv_application as
    );
 
    procedure remove_group ( p_group_id number, p_reason varchar2 default null );
+
+   -- ---------------------------------------------------------------------
+   -- Named contacts
+   -- ---------------------------------------------------------------------
+   -- Same shape as the groups, deliberately: whoever has read the three group
+   -- routines has read these three. update_contact overwrites with what it is
+   -- given, NULL included, for the same reason set_profile does -- it is called
+   -- by a form holding every field, where an emptied box means "remove this".
+   function add_contact (
+      p_application_id number,
+      p_contact_role   varchar2,
+      p_full_name      varchar2,
+      p_job_title      varchar2 default null,
+      p_email          varchar2 default null,
+      p_phone          varchar2 default null,
+      p_ldap_login     varchar2 default null,
+      p_is_primary     number default 0,
+      p_note           varchar2 default null
+   ) return number;
+
+   procedure update_contact (
+      p_contact_id   number,
+      p_contact_role varchar2,
+      p_full_name    varchar2,
+      p_job_title    varchar2 default null,
+      p_email        varchar2 default null,
+      p_phone        varchar2 default null,
+      p_ldap_login   varchar2 default null,
+      p_is_primary   number default 0,
+      p_note         varchar2 default null
+   );
+
+   procedure remove_contact ( p_contact_id number, p_reason varchar2 default null );
 
    -- ---------------------------------------------------------------------
    -- Attachment to the inventory
@@ -301,6 +360,47 @@ create or replace package body pkg_dbinv_application as
    end deactivate_application;
 
 
+   procedure set_profile (
+      p_application_id  number,
+      p_sourcing        varchar2 default null,
+      p_vendor_name     varchar2 default null,
+      p_product_version varchar2 default null,
+      p_support_end_date date default null,
+      p_rto_minutes     number default null,
+      p_rpo_minutes     number default null,
+      p_service_window  varchar2 default null,
+      p_data_sensitivity varchar2 default null,
+      p_register_ref    varchar2 default null,
+      p_review_due_date date default null,
+      p_note            varchar2 default null
+   ) is
+   begin
+      require_application(p_application_id);
+      set_reason(p_note);
+
+      -- No nvl() anywhere here, on purpose: the caller is a form that holds the
+      -- whole profile, so an empty box means "this is not known" and must be
+      -- stored as such. The two not-null columns are the exception -- their
+      -- default is the honest answer when nothing is chosen.
+      update ref_application
+         set sourcing                = nvl(upper(p_sourcing), 'UNKNOWN'),
+             vendor_name             = p_vendor_name,
+             product_version         = p_product_version,
+             support_end_date        = p_support_end_date,
+             rto_minutes             = p_rto_minutes,
+             rpo_minutes             = p_rpo_minutes,
+             service_window          = p_service_window,
+             data_sensitivity        = nvl(upper(p_data_sensitivity), 'UNKNOWN'),
+             processing_register_ref = p_register_ref,
+             review_due_date         = p_review_due_date,
+             updated_by              = nvl(sys_context('APEX$SESSION','APP_USER'), user),
+             updated_date            = sysdate
+       where application_id = p_application_id;
+
+      set_reason(null);
+   end set_profile;
+
+
    procedure record_review (
       p_application_id number,
       p_note           varchar2 default null,
@@ -397,6 +497,91 @@ create or replace package body pkg_dbinv_application as
       end if;
       set_reason(null);
    end remove_group;
+
+
+   -- ---------------------------------------------------------------------
+   -- Named contacts
+   -- ---------------------------------------------------------------------
+   function add_contact (
+      p_application_id number,
+      p_contact_role   varchar2,
+      p_full_name      varchar2,
+      p_job_title      varchar2 default null,
+      p_email          varchar2 default null,
+      p_phone          varchar2 default null,
+      p_ldap_login     varchar2 default null,
+      p_is_primary     number default 0,
+      p_note           varchar2 default null
+   ) return number is
+      l_id number;
+   begin
+      require_application(p_application_id);
+
+      insert into ref_application_contact (
+         application_id, contact_role, full_name, job_title,
+         email, phone, ldap_login, is_primary, note )
+      values (
+         p_application_id, upper(p_contact_role), p_full_name, p_job_title,
+         p_email, p_phone, p_ldap_login, nvl(p_is_primary, 0), p_note )
+      returning contact_id into l_id;
+
+      return l_id;
+   end add_contact;
+
+
+   procedure update_contact (
+      p_contact_id   number,
+      p_contact_role varchar2,
+      p_full_name    varchar2,
+      p_job_title    varchar2 default null,
+      p_email        varchar2 default null,
+      p_phone        varchar2 default null,
+      p_ldap_login   varchar2 default null,
+      p_is_primary   number default 0,
+      p_note         varchar2 default null
+   ) is
+   begin
+      set_reason(p_note);
+
+      -- Overwrites, NULL included: a contact screen that cannot clear an old
+      -- phone number is a contact screen that hands out old phone numbers.
+      update ref_application_contact
+         set contact_role = upper(p_contact_role),
+             full_name    = p_full_name,
+             job_title    = p_job_title,
+             email        = p_email,
+             phone        = p_phone,
+             ldap_login   = p_ldap_login,
+             is_primary   = nvl(p_is_primary, 0),
+             note         = p_note,
+             updated_by   = nvl(sys_context('APEX$SESSION','APP_USER'), user),
+             updated_date = sysdate
+       where contact_id = p_contact_id;
+
+      if sql%rowcount = 0 then
+         set_reason(null);
+         raise_application_error(-20037, 'Contact ' || p_contact_id || ' does not exist.');
+      end if;
+      set_reason(null);
+   end update_contact;
+
+
+   procedure remove_contact ( p_contact_id number, p_reason varchar2 default null ) is
+   begin
+      set_reason(p_reason);
+
+      -- Deactivated, not deleted, like the groups. Who used to be the contact is
+      -- exactly what gets asked once something has gone wrong.
+      update ref_application_contact
+         set active = 0, updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
+       where contact_id = p_contact_id;
+
+      if sql%rowcount = 0 then
+         set_reason(null);
+         raise_application_error(-20037, 'Contact ' || p_contact_id || ' does not exist.');
+      end if;
+      set_reason(null);
+   end remove_contact;
 
 
    -- ---------------------------------------------------------------------
@@ -627,6 +812,45 @@ begin
       values (
          :new.application_id, 'GROUP_UPDATED', :new.group_name,
          pkg_dbinv_application.current_reason, :old.contact_email, :new.contact_email );
+   end if;
+end;
+/
+
+
+-- The contacts journal. Same shape as the groups', and it has to be: a reader
+-- comparing "who was responsible" against "who was the contact" reads two
+-- streams of the same table, and they must speak alike.
+--
+-- The value carried is the way of reaching the person -- address, then phone,
+-- then directory login. That is the field which rots, and the one whose previous
+-- value somebody will want back.
+create or replace trigger ref_app_ctc_journal
+   after insert or update or delete on ref_application_contact
+   for each row
+begin
+   if inserting then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, new_value )
+      values (
+         :new.application_id, 'CONTACT_ADDED', :new.full_name, :new.contact_role,
+         nvl(:new.email, nvl(:new.phone, :new.ldap_login)) );
+
+   elsif deleting or ( :old.active = 1 and :new.active = 0 ) then
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, old_value )
+      values (
+         :old.application_id, 'CONTACT_REMOVED', :old.full_name,
+         pkg_dbinv_application.current_reason,
+         nvl(:old.email, nvl(:old.phone, :old.ldap_login)) );
+
+   else
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, old_value, new_value )
+      values (
+         :new.application_id, 'CONTACT_UPDATED', :new.full_name,
+         pkg_dbinv_application.current_reason,
+         nvl(:old.email, nvl(:old.phone, :old.ldap_login)),
+         nvl(:new.email, nvl(:new.phone, :new.ldap_login)) );
    end if;
 end;
 /

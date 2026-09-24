@@ -31,6 +31,40 @@ page 81 (
         }
     )
 
+    region software (
+        name: Software and support
+        title: Software and support
+        type: staticContent
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Kept apart from the identity block on purpose. Identity is what the application is; this is what it is made of and until when somebody else will fix it. The support end date is the one field here that turns into an incident on a known day, which is why it is a date and not a sentence in the description.
+        }
+    )
+
+    region continuity (
+        name: Continuity and data
+        title: Continuity and data
+        type: staticContent
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: The block the RSSI and the DPO read, and the reason the registry is worth filling in beyond a phone number. Recovery objectives say what a failure costs; data sensitivity says what a breach costs. Health data is its own value rather than a flavour of sensitive, because in this estate it is the common case and merging the two would hide the one answer the DPO came for.
+        }
+    )
+
     region attachments (
         name: Attachments
         title: Attachments
@@ -63,7 +97,7 @@ page 81 (
                 ```
         }
         layout {
-            sequence: 20
+            sequence: 40
             slot: body
         }
         appearance {
@@ -188,7 +222,7 @@ page 81 (
                 ```
         }
         layout {
-            sequence: 30
+            sequence: 50
             slot: body
         }
         appearance {
@@ -308,7 +342,7 @@ page 81 (
                 ```
         }
         layout {
-            sequence: 40
+            sequence: 60
             slot: body
         }
         appearance {
@@ -419,6 +453,168 @@ page 81 (
 
     )
 
+    region contacts (
+        name: Named contacts
+        title: Named contacts
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select t.label,
+                       c.full_name,
+                       c.job_title,
+                       c.email,
+                       c.phone,
+                       c.ldap_login,
+                       case c.is_primary when 1 then 'Yes' end first_to_try,
+                       t.sort_order * 10 + ( 1 - c.is_primary ) sort_key,
+                       c.contact_id
+                  from ref_application_contact c
+                  join ref_application_group_type t
+                    on t.group_type_code = c.contact_role
+                 where c.application_id = :P81_APPLICATION_ID
+                   and c.active = 1
+                ```
+        }
+        layout {
+            sequence: 70
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Sits directly under the groups because it answers the same question at a different range. The sort key puts the people marked first to try at the top of their role, which is the order somebody reads this list in when something is already broken.
+        }
+        reportLayout {
+            numberOfRows: 20
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+            ]
+        }
+        messages {
+            whenNoDataFound: No named contact - only groups are recorded for this application
+        }
+
+        column CONTACT_ID (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 6
+            }
+        )
+
+        column SORT_KEY (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+            sorting {
+                defaultSequence: 1
+            }
+        )
+
+        column LABEL (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            heading {
+                heading: Role
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        column FULL_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Name
+            }
+            layout {
+                sequence: 20
+            }
+            link {
+                target: {
+                    page: 86
+                    items: {
+                        P86_CONTACT_ID: #CONTACT_ID#
+                    }
+                    clearCache: 86
+                }
+                linkText: #FULL_NAME#
+            }
+        )
+
+        column FIRST_TO_TRY (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: First to try
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column JOB_TITLE (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Function
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column EMAIL (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Address
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column PHONE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Phone
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column LDAP_LOGIN (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Directory login
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+    )
+
     region documents (
         name: Documentation
         title: Documentation
@@ -441,7 +637,7 @@ page 81 (
                 ```
         }
         layout {
-            sequence: 50
+            sequence: 80
             slot: body
         }
         appearance {
@@ -449,7 +645,7 @@ page 81 (
             templateOptions: #DEFAULT#
         }
         comments {
-            comments: A document is stored, linked, or both. The location column shows the file name when there is one and the URL otherwise, so a reader can tell at a glance which documents live here and which only have a pointer. Upload is not yet wired on this page - see the note in the plan about the fileUpload storage type, which cannot be expressed in the .apx and is reset by every import.
+            comments: A document is stored, linked, or both. The location column shows the file name when there is one and the URL otherwise, so a reader can tell at a glance which documents live here and which only have a pointer. Upload happens on page 85 and works, with one manual step after every import: the fileUpload storage type cannot be expressed in the .apx and is reset to a BLOB column it has no source for. post_import.sh fails the deployment until it is put back - see APEXLang/DEPLOY.md.
         }
         reportLayout {
             numberOfRows: 20
@@ -575,7 +771,7 @@ page 81 (
                 ```
         }
         layout {
-            sequence: 60
+            sequence: 90
             slot: body
         }
         appearance {
@@ -685,7 +881,7 @@ page 81 (
                 ```
         }
         layout {
-            sequence: 70
+            sequence: 100
             slot: body
         }
         appearance {
@@ -969,6 +1165,226 @@ page 81 (
         }
     )
 
+    pageItem P81_SOURCING (
+        type: selectList
+        label {
+            label: Sourcing
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-sourcing
+            displayNullValue: false
+        }
+        layout {
+            sequence: 10
+            region: @software
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Where the software comes from. It decides who is called first when it breaks - our own team, or somebody with a contract.
+        }
+    )
+
+    pageItem P81_VENDOR_NAME (
+        type: textField
+        label {
+            label: Vendor
+            alignment: right
+        }
+        layout {
+            sequence: 20
+            region: @software
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 60
+        }
+        validation {
+            maxLength: 200
+        }
+    )
+
+    pageItem P81_PRODUCT_VERSION (
+        type: textField
+        label {
+            label: Version in production
+            alignment: right
+        }
+        layout {
+            sequence: 30
+            region: @software
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 30
+        }
+        validation {
+            maxLength: 100
+        }
+        help {
+            helpText: The version actually running, named the way the vendor names it - so it can be matched against their support matrix without interpretation.
+        }
+    )
+
+    pageItem P81_SUPPORT_END_DATE (
+        type: datePicker
+        label {
+            label: Support ends
+            alignment: right
+        }
+        layout {
+            sequence: 40
+            region: @software
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: The day an upgrade stops being a project and becomes an incident.
+        }
+    )
+
+    pageItem P81_RTO_MINUTES (
+        type: textField
+        label {
+            label: RTO (minutes)
+            alignment: right
+        }
+        layout {
+            sequence: 10
+            region: @continuity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 10
+        }
+        validation {
+            maxLength: 9
+        }
+        help {
+            helpText: Recovery Time Objective: how long the business accepts to be without this application. Four hours is 240.
+        }
+    )
+
+    pageItem P81_RPO_MINUTES (
+        type: textField
+        label {
+            label: RPO (minutes)
+            alignment: right
+        }
+        layout {
+            sequence: 20
+            region: @continuity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 10
+        }
+        validation {
+            maxLength: 9
+        }
+        help {
+            helpText: Recovery Point Objective: how much work the business accepts to lose. It is the number that decides how often the database is backed up, so it is worth arguing about once.
+        }
+    )
+
+    pageItem P81_SERVICE_WINDOW (
+        type: textField
+        label {
+            label: Service window
+            alignment: right
+        }
+        layout {
+            sequence: 30
+            region: @continuity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 40
+        }
+        validation {
+            maxLength: 100
+        }
+        help {
+            helpText: When it must be available, in plain words - 24/7, working hours, weekdays only.
+        }
+    )
+
+    pageItem P81_DATA_SENSITIVITY (
+        type: selectList
+        label {
+            label: Data handled
+            alignment: right
+        }
+        lov {
+            type: sharedComponent
+            lov: @application-data-sensitivity
+            displayNullValue: false
+        }
+        layout {
+            sequence: 40
+            region: @continuity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        help {
+            helpText: Health data is listed separately from sensitive data on purpose: here it is the common case, and merging the two would hide the one answer worth having.
+        }
+    )
+
+    pageItem P81_PROCESSING_REGISTER_REF (
+        type: textField
+        label {
+            label: Processing register
+            alignment: right
+        }
+        layout {
+            sequence: 50
+            region: @continuity
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 40
+        }
+        validation {
+            maxLength: 200
+        }
+        help {
+            helpText: Reference of the matching entry in the processing register (GDPR article 30), when there is one. This field is a pointer, not a second register.
+        }
+    )
+
     button add-document (
         buttonName: ADD_DOCUMENT
         label: Add Document
@@ -1047,6 +1463,35 @@ page 81 (
                     P82_APPLICATION_ID: &P81_APPLICATION_ID.
                 }
                 clearCache: 82
+            }
+            warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: itemIsNotNull
+            item: @P81_APPLICATION_ID
+        }
+    )
+
+    button add-contact (
+        buttonName: ADD_CONTACT
+        label: Add Contact
+        layout {
+            sequence: 10
+            region: @contacts
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: redirectThisApp
+            target: {
+                page: 86
+                items: {
+                    P86_APPLICATION_ID: &P81_APPLICATION_ID.
+                }
+                clearCache: 86
             }
             warnOnUnsavedChanges: doNotCheck
         }
@@ -1156,15 +1601,23 @@ page 81 (
                    select a.app_code, a.app_name, a.description, a.criticality,
                           a.lifecycle_status, a.review_due_date,
                           nvl(to_char(a.last_review_date, 'YYYY-MM-DD')
-                              || ' by ' || a.last_review_by, 'never')
+                              || ' by ' || a.last_review_by, 'never'),
+                          a.sourcing, a.vendor_name, a.product_version, a.support_end_date,
+                          to_char(a.rto_minutes), to_char(a.rpo_minutes), a.service_window,
+                          a.data_sensitivity, a.processing_register_ref
                      into :P81_APP_CODE, :P81_APP_NAME, :P81_DESCRIPTION, :P81_CRITICALITY,
-                          :P81_LIFECYCLE_STATUS, :P81_REVIEW_DUE_DATE, :P81_LAST_REVIEW
+                          :P81_LIFECYCLE_STATUS, :P81_REVIEW_DUE_DATE, :P81_LAST_REVIEW,
+                          :P81_SOURCING, :P81_VENDOR_NAME, :P81_PRODUCT_VERSION, :P81_SUPPORT_END_DATE,
+                          :P81_RTO_MINUTES, :P81_RPO_MINUTES, :P81_SERVICE_WINDOW,
+                          :P81_DATA_SENSITIVITY, :P81_PROCESSING_REGISTER_REF
                      from ref_application a
                     where a.application_id = :P81_APPLICATION_ID;
                 else
                    :P81_CRITICALITY := 'STANDARD';
                    :P81_LIFECYCLE_STATUS := 'ACTIVE';
                    :P81_LAST_REVIEW := 'never';
+                   :P81_SOURCING := 'UNKNOWN';
+                   :P81_DATA_SENSITIVITY := 'UNKNOWN';
                 end if;
                 ```
         }
@@ -1184,26 +1637,61 @@ page 81 (
                 -- journal is written by a trigger either way, so a future screen
                 -- that forgets this call still leaves a trace -- it just leaves
                 -- one without a reason attached.
-                if :P81_APPLICATION_ID is null then
-                   :P81_APPLICATION_ID := pkg_dbinv_application.create_application(
-                      p_app_code         => :P81_APP_CODE,
-                      p_app_name         => :P81_APP_NAME,
-                      p_description      => :P81_DESCRIPTION,
-                      p_criticality      => :P81_CRITICALITY,
-                      p_lifecycle_status => :P81_LIFECYCLE_STATUS );
-                else
-                   pkg_dbinv_application.update_application(
-                      p_application_id   => :P81_APPLICATION_ID,
-                      p_app_name         => :P81_APP_NAME,
-                      p_description      => :P81_DESCRIPTION,
-                      p_criticality      => :P81_CRITICALITY,
-                      p_lifecycle_status => :P81_LIFECYCLE_STATUS,
-                      p_note             => 'edited from the application screen' );
+                declare
+                   l_rto number;
+                   l_rpo number;
 
-                   update ref_application
-                      set review_due_date = :P81_REVIEW_DUE_DATE
-                    where application_id = :P81_APPLICATION_ID;
-                end if;
+                   -- Caught here rather than left to ORA-01722, which names a
+                   -- conversion and not the box that was typed in.
+                   function minutes ( p_value varchar2, p_label varchar2 ) return number is
+                   begin
+                      if p_value is null then
+                         return null;
+                      end if;
+                      return to_number(trim(p_value));
+                   exception
+                      when others then
+                         raise_application_error(-20053,
+                            p_label || ' must be a number of minutes. Four hours is 240.');
+                   end minutes;
+                begin
+                   l_rto := minutes(:P81_RTO_MINUTES, 'RTO');
+                   l_rpo := minutes(:P81_RPO_MINUTES, 'RPO');
+
+                   if :P81_APPLICATION_ID is null then
+                      :P81_APPLICATION_ID := pkg_dbinv_application.create_application(
+                         p_app_code         => :P81_APP_CODE,
+                         p_app_name         => :P81_APP_NAME,
+                         p_description      => :P81_DESCRIPTION,
+                         p_criticality      => :P81_CRITICALITY,
+                         p_lifecycle_status => :P81_LIFECYCLE_STATUS );
+                   else
+                      pkg_dbinv_application.update_application(
+                         p_application_id   => :P81_APPLICATION_ID,
+                         p_app_name         => :P81_APP_NAME,
+                         p_description      => :P81_DESCRIPTION,
+                         p_criticality      => :P81_CRITICALITY,
+                         p_lifecycle_status => :P81_LIFECYCLE_STATUS,
+                         p_note             => 'edited from the application screen' );
+                   end if;
+
+                   -- Both branches, on purpose. This used to run only on update,
+                   -- so a review date typed on the creation screen was dropped
+                   -- without a word and the entry came back as never planned.
+                   pkg_dbinv_application.set_profile(
+                      p_application_id   => :P81_APPLICATION_ID,
+                      p_sourcing         => :P81_SOURCING,
+                      p_vendor_name      => :P81_VENDOR_NAME,
+                      p_product_version  => :P81_PRODUCT_VERSION,
+                      p_support_end_date => :P81_SUPPORT_END_DATE,
+                      p_rto_minutes      => l_rto,
+                      p_rpo_minutes      => l_rpo,
+                      p_service_window   => :P81_SERVICE_WINDOW,
+                      p_data_sensitivity => :P81_DATA_SENSITIVITY,
+                      p_register_ref     => :P81_PROCESSING_REGISTER_REF,
+                      p_review_due_date  => :P81_REVIEW_DUE_DATE,
+                      p_note             => 'edited from the application screen' );
+                end;
                 ```
         }
         execution {

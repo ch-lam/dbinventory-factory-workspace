@@ -141,6 +141,157 @@
     ]
   },
 
+  "applications": {
+    "_comment": [
+      "Le registre applicatif du jeu de demonstration.",
+      "",
+      "Les applications ne sont PAS collectees : personne ne les decouvre, elles",
+      "se saisissent. Elles n'ont donc ni CSV ni ETL -- l'emetteur produit un",
+      "script qui appelle pkg_dbinv_application, exactement comme le fait l'ecran.",
+      "Passer par l'API et non par des INSERT est deliberé : c'est ce qui exerce",
+      "les refus, les triggers de journal et le calcul des dates de revue.",
+      "",
+      "RATTACHEMENT. Chaque application porte un jeton `app`, celui-la meme dont",
+      "l'estate nomme ses bases : l'application DOSSIER couvre les bases nommees",
+      "d'apres DOSSIER. Rien n'est donc ecrit en dur, et la couverture reste",
+      "lisible. `attach` dit a quel NIVEAU : les trois sont representes, parce que",
+      "la cascade de v_application_database n'est eprouvee que si elle a les trois",
+      "a resoudre.",
+      "",
+      "CE QUI N'EST PAS COUVERT. Le catalogue ne prend qu'une partie des jetons du",
+      "parc. Le reste alimente v_database_without_application, qui est le vrai",
+      "produit de ce registre : la liste de ce qu'il reste a reclamer. Une demo ou",
+      "tout est reclame ne montrerait pas l'ecran qui sert.",
+      "",
+      "REVUES. `review` couvre les quatre etats de v_application_overview, et",
+      "`docReview` les cinq rangs de v_application_document_review. Un rang absent",
+      "est un rang non teste."
+    ],
+
+    "catalogue": [
+      { "app": "DOSSIER", "code": "DPI", "name": "Dossier Patient Informatise",
+        "criticality": "CRITICAL", "lifecycle": "ACTIVE", "attach": "instance",
+        "sourcing": "PACKAGE", "vendor": "Meridian Health Systems", "version": "8.4.2",
+        "supportEnd": "2028-06-30", "rto": 60, "rpo": 5, "window": "24/7",
+        "sensitivity": "HEALTH", "register": "RT-2019-004", "review": "current",
+        "roles": ["ADMIN", "BUSINESS", "VENDOR", "SECURITY"],
+        "docs": ["current", "due-soon"], "repos": 0 },
+
+      { "app": "LABO", "code": "SIL", "name": "Systeme d'Information du Laboratoire",
+        "criticality": "CRITICAL", "lifecycle": "ACTIVE", "attach": "instance",
+        "sourcing": "PACKAGE", "vendor": "Nordlab AG", "version": "12.1",
+        "supportEnd": "2027-03-31", "rto": 120, "rpo": 15, "window": "24/7",
+        "sensitivity": "HEALTH", "register": "RT-2019-011", "review": "overdue",
+        "roles": ["ADMIN", "BUSINESS", "VENDOR"],
+        "docs": ["overdue", "never"], "repos": 0 },
+
+      { "app": "IMAGERIE", "code": "PACS", "name": "Archivage et diffusion d'images",
+        "criticality": "CRITICAL", "lifecycle": "ACTIVE", "attach": "host",
+        "sourcing": "PACKAGE", "vendor": "Visiora Imaging", "version": "6.9.1",
+        "supportEnd": "2026-12-31", "rto": 240, "rpo": 60, "window": "24/7",
+        "sensitivity": "HEALTH", "register": "RT-2020-002", "review": "never",
+        "roles": ["ADMIN", "VENDOR", "SECURITY"],
+        "docs": ["current", "unplanned"], "repos": 0 },
+
+      { "app": "PHARMA", "code": "PHARMA", "name": "Circuit du medicament",
+        "criticality": "CRITICAL", "lifecycle": "ACTIVE", "attach": "instance",
+        "sourcing": "PACKAGE", "vendor": "Meridian Health Systems", "version": "8.4.2",
+        "supportEnd": "2028-06-30", "rto": 60, "rpo": 5, "window": "24/7",
+        "sensitivity": "HEALTH", "register": "RT-2019-007", "review": "current",
+        "roles": ["ADMIN", "BUSINESS", "SUPPORT"],
+        "docs": ["current"], "repos": 0 },
+
+      { "app": "URGENCE", "code": "URG", "name": "Dossier des urgences",
+        "criticality": "CRITICAL", "lifecycle": "ACTIVE", "attach": "database",
+        "sourcing": "INTERNAL", "vendor": null, "version": "2026.2",
+        "supportEnd": null, "rto": 30, "rpo": 5, "window": "24/7",
+        "sensitivity": "HEALTH", "register": "RT-2021-001", "review": "current",
+        "roles": ["ADMIN", "BUSINESS"],
+        "docs": ["due-soon"], "repos": 2 },
+
+      { "app": "ADMIS", "code": "GAP", "name": "Gestion administrative du patient",
+        "criticality": "HIGH", "lifecycle": "ACTIVE", "attach": "instance",
+        "sourcing": "PACKAGE", "vendor": "Meridian Health Systems", "version": "7.8.0",
+        "supportEnd": "2027-09-30", "rto": 240, "rpo": 30, "window": "24/7",
+        "sensitivity": "PERSONAL", "register": "RT-2019-001", "review": "current",
+        "roles": ["ADMIN", "BUSINESS", "SUPPORT"],
+        "docs": ["current", "overdue"], "repos": 0 },
+
+      { "app": "FACTUR", "code": "FACT", "name": "Facturation et recouvrement",
+        "criticality": "HIGH", "lifecycle": "ACTIVE", "attach": "database",
+        "sourcing": "PACKAGE", "vendor": "Aldeb Finance", "version": "R14",
+        "supportEnd": "2029-12-31", "rto": 480, "rpo": 60, "window": "7h-20h ouvres",
+        "sensitivity": "PERSONAL", "register": "RT-2020-009", "review": "unplanned",
+        "roles": ["ADMIN", "BUSINESS"],
+        "docs": ["never"], "repos": 0 },
+
+      { "app": "PAIE", "code": "PAIE", "name": "Paie et declarations sociales",
+        "criticality": "HIGH", "lifecycle": "ACTIVE", "attach": "database",
+        "sourcing": "SAAS", "vendor": "Cegapaie", "version": "cloud",
+        "supportEnd": null, "rto": 1440, "rpo": 1440, "window": "7h-19h ouvres",
+        "sensitivity": "SENSITIVE", "register": "RT-2019-022", "review": "current",
+        "roles": ["ADMIN", "BUSINESS", "VENDOR"],
+        "docs": ["current"], "repos": 0 },
+
+      { "app": "QUALITE", "code": "GED", "name": "Gestion documentaire qualite",
+        "criticality": "STANDARD", "lifecycle": "ACTIVE", "attach": "instance",
+        "sourcing": "INTERNAL", "vendor": null, "version": "1.12",
+        "supportEnd": null, "rto": 1440, "rpo": 1440, "window": "7h-19h ouvres",
+        "sensitivity": "NONE", "register": null, "review": "overdue",
+        "roles": ["ADMIN"],
+        "docs": ["unplanned"], "repos": 1 },
+
+      { "app": "BIOMED", "code": "BIOMED", "name": "Parc des dispositifs medicaux",
+        "criticality": "LOW", "lifecycle": "DECOMMISSIONING", "attach": "database",
+        "sourcing": "OTHER", "vendor": "Repris en interne", "version": "3.2",
+        "supportEnd": "2026-03-31", "rto": null, "rpo": null, "window": "heures ouvrables",
+        "sensitivity": "UNKNOWN", "register": null, "review": "never",
+        "roles": ["ADMIN"],
+        "docs": [], "repos": 0 }
+    ],
+
+    "_groupsComment": [
+      "Un groupe par role declare, nomme et joignable selon ces gabarits. La",
+      "contrainte d'atteignabilite du modele refuse un groupe sans aucun moyen de",
+      "contact : les gabarits en donnent donc toujours au moins un."
+    ],
+    "groupTemplates": {
+      "ADMIN":    { "name": "Equipe {code} - exploitation", "mail": "dl-{lcode}-exploit", "ldap": "GG_{code}_EXPLOIT" },
+      "BUSINESS": { "name": "Referents metier {code}",      "mail": "dl-{lcode}-metier",  "ldap": "GG_{code}_METIER" },
+      "VENDOR":   { "name": "{vendor} - support contractuel", "mail": null, "ldap": null, "external": "CONTRAT-{code}" },
+      "SUPPORT":  { "name": "Centre de services",           "mail": "servicedesk",        "ldap": "GG_SERVICEDESK" },
+      "SECURITY": { "name": "Securite des systemes d'information", "mail": "rssi",        "ldap": "GG_RSSI" }
+    },
+
+    "_contactsComment": [
+      "Des personnes nommees, prises dans un vivier fixe et attribuees par rang.",
+      "Deux par application au plus : la demo doit montrer la difference entre un",
+      "groupe et une personne, pas peupler un annuaire."
+    ],
+    "people": [
+      { "name": "Anne Vermeulen",  "title": "Administratrice de bases de donnees", "login": "avermeulen", "phone": "+352 4411 2201" },
+      { "name": "Karim Benali",    "title": "Administrateur systeme",              "login": "kbenali",    "phone": "+352 4411 2202" },
+      { "name": "Sofia Marchetti", "title": "Responsable applicative",             "login": "smarchetti", "phone": "+352 4411 2203" },
+      { "name": "Tom Jacobs",      "title": "Cadre de sante referent",             "login": "tjacobs",    "phone": "+352 4411 2204" },
+      { "name": "Lena Dupont",     "title": "Cheffe de projet SI",                 "login": "ldupont",    "phone": "+352 4411 2205" },
+      { "name": "Pierre Roth",     "title": "Ingenieur d'exploitation",            "login": "proth",      "phone": "+352 4411 2206" }
+    ],
+
+    "_docsComment": [
+      "Les cinq etats de v_application_document_review, un document par etat",
+      "demande. Tous portent une URL et aucun ne porte de fichier : stocker un",
+      "BLOB depuis le generateur exigerait DBMS_CRYPTO pour l'empreinte, et",
+      "T_002 couvre deja ce chemin."
+    ],
+    "docKinds": {
+      "current":   { "kind": "RUNBOOK",   "title": "Procedure d'exploitation" },
+      "due-soon":  { "kind": "PROCEDURE", "title": "Plan de reprise" },
+      "overdue":   { "kind": "CONTRACT",  "title": "Contrat de maintenance" },
+      "never":     { "kind": "DIAGRAM",   "title": "Schema d'architecture" },
+      "unplanned": { "kind": "OTHER",     "title": "Notes de reprise" }
+    }
+  },
+
   "environments": {
     "PRD": 0.55,
     "TST": 0.22,

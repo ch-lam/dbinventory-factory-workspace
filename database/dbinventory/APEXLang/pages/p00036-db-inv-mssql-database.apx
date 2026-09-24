@@ -398,6 +398,130 @@ page 36 (
 
     )
 
+    region mssql-database-applications (
+        name: Applications
+        title: Applications
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select ea.app_code,
+                       ea.app_name,
+                       ea.criticality,
+                       ea.data_sensitivity,
+                       ea.attached_at,
+                       ea.application_id
+                  from v_entity_application ea
+                 where ea.entity_type = 'DATABASE'
+                   and ea.entity_id = :P36_DATABASE_ID
+                ```
+            pageItemsToSubmit: P36_DATABASE_ID
+        }
+        layout {
+            sequence: 15
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: The registry read from the inventory rather than from the application. Without it the relation only exists one way and the question actually asked at the console -- whose is this, who do I call -- has no screen. The query goes through v_entity_application so this page and the application page cannot disagree about what "covered" means. attached_at is shown because it changes what detaching would do: a database reached because its whole instance belongs to the application is a different statement from one named explicitly.
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--horizontalBorders
+            ]
+        }
+        messages {
+            whenNoDataFound: No application claims this database - nobody has said whose it is
+        }
+
+        column APP_CODE (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Code
+            }
+            layout {
+                sequence: 10
+            }
+            sorting {
+                defaultSequence: 1
+            }
+            link {
+                target: {
+                    page: 81
+                    items: {
+                        P81_APPLICATION_ID: #APPLICATION_ID#
+                    }
+                    clearCache: 81
+                }
+                linkText: #APP_CODE#
+            }
+        )
+
+        column APP_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            heading {
+                heading: Application
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column CRITICALITY (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Criticality
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column DATA_SENSITIVITY (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Data
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column ATTACHED_AT (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Attached at
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column APPLICATION_ID (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 5
+            }
+        )
+
+    )
+
     region mssql-database-files (
         name: Files & Capacity
         title: Files & Capacity

@@ -196,4 +196,17 @@ if [[ "${TRIAGE_RC}" -ne 0 ]]; then
     exit 1
 fi
 
+# ── Registre applicatif ──────────────────────────────────────────────────────
+# Après l'ETL, parce que le rattachement vise dim_host, dim_instance et
+# dim_database : ces identifiants n'existent qu'une fois l'inventaire construit.
+# Le script est un no-op si le registre est déjà peuplé — il se saisit, il ne se
+# collecte pas, et un rechargement des fixtures n'a pas à écraser une saisie.
+log "Registre applicatif de démonstration..."
+APPS_RC=0
+sqlcl_run "${DB_CONN}" "${SCRIPT_DIR}/out/demo_applications.sql" || APPS_RC=$?
+if [[ "${APPS_RC}" -ne 0 ]]; then
+    echo "ERREUR: le chargement du registre applicatif a echoue (code ${APPS_RC})." >&2
+    exit 1
+fi
+
 log "Terminé. Assertions : sql -S -name ${DB_CONN} @database/dbinventory/T_004_fixture_expectations.sql"

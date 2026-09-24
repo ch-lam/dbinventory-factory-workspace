@@ -32,6 +32,7 @@ declare
 
    l_app      number;
    l_group    number;
+   l_contact  number;
    l_link     number;
    l_doc      number;
    l_src      number;
@@ -391,6 +392,189 @@ begin
       and last_review_date = trunc(sysdate)
       and review_due_date = add_months(trunc(sysdate), 12);
    if l_n = 1 then ok('review recorded and next due date moved'); else fail('record_review'); end if;
+
+   -- ---------------------------------------------------------------------
+   -- 11. Named contacts. Same refusal as the groups, for the same reason: an
+   --     entry nobody can reach is the failure mode of any directory, and it is
+   --     worse than an empty one because you believe you have something.
+   -- ---------------------------------------------------------------------
+   dbms_output.put_line('11. A contact with no means of contact');
+   declare
+      l_raised boolean := false;
+      l_err    varchar2(400);
+   begin
+      begin
+         l_contact := pkg_dbinv_application.add_contact(
+                         p_application_id => l_app,
+                         p_contact_role   => 'ADMIN',
+                         p_full_name      => 'Nobody Reachable' );
+      exception when others then
+         l_raised := true; l_err := sqlerrm;
+      end;
+      expect_rejected('contact with no address, no phone and no directory login', l_raised, l_err);
+   end;
+
+   l_contact := pkg_dbinv_application.add_contact(
+                   p_application_id => l_app,
+                   p_contact_role   => 'ADMIN',
+                   p_full_name      => 'On Call',
+                   p_job_title      => 'DBA',
+                   p_phone          => '+352 000 000',
+                   p_is_primary     => 1 );
+   l_checked := l_checked + 1;
+   if l_contact is null then fail('add_contact returned nothing'); else ok('contact with a phone number accepted'); end if;
+
+   l_checked := l_checked + 1;
+   select count(*) into l_n from ref_application_event
+    where application_id = l_app and event_type = 'CONTACT_ADDED'
+      and subject_ref = 'On Call' and new_value = '+352 000 000';
+   if l_n = 1 then
+      ok('the contact was journalled, carrying the way of reaching them');
+   else
+      fail('CONTACT_ADDED', 'expected 1 journal entry naming the contact, got ' || l_n);
+   end if;
+
+   -- The point of update_contact: it must be able to CLEAR a stale field.
+   -- nvl() semantics would keep the old phone number for ever, and a directory
+   -- that cannot forget is a directory that hands out wrong numbers.
+   pkg_dbinv_application.update_contact(
+      p_contact_id   => l_contact,
+      p_contact_role => 'ADMIN',
+      p_full_name    => 'On Call',
+      p_email        => 'oncall@example.invalid',
+      p_phone        => null,
+      p_note         => 'moved to the mailing list' );
+   l_checked := l_checked + 1;
+   select count(*) into l_n from ref_application_contact
+    where contact_id = l_contact and phone is null and email = 'oncall@example.invalid';
+   if l_n = 1 then
+      ok('an emptied field is actually emptied, not silently kept');
+   else
+      fail('update_contact', 'the phone number survived an update that cleared it');
+   end if;
+
+   -- and a contact left with nothing at all must still be refused
+   dbms_output.put_line('12. Emptying the last means of contact');
+   declare
+      l_raised boolean := false;
+      l_err    varchar2(400);
+   begin
+      begin
+         pkg_dbinv_application.update_contact(
+            p_contact_id   => l_contact,
+            p_contact_role => 'ADMIN',
+            p_full_name    => 'On Call' );
+      exception when others then
+         l_raised := true; l_err := sqlerrm;
+      end;
+      expect_rejected('update that leaves a contact unreachable', l_raised, l_err);
+   end;
+
+   pkg_dbinv_application.remove_contact(l_contact, 'left the team');
+   l_checked := l_checked + 1;
+   select count(*) into l_n from ref_application_event
+    where application_id = l_app and event_type = 'CONTACT_REMOVED'
+      and note like 'left the team%';
+   if l_n = 1 then
+      ok('the departed contact left their name and the reason behind');
+   else
+      fail('CONTACT_REMOVED', 'expected 1 journal entry carrying the reason, got ' || l_n);
+   end if;
+
+   -- ---------------------------------------------------------------------
+   -- 13. set_profile. The bug it was written for: a review date typed on the
+   --     creation screen was dropped, because only the update path stored it.
+   --     So the check is that the date survives, and that a cleared field clears.
+   -- ---------------------------------------------------------------------
+   dbms_output.put_line('13. The business profile');
+   pkg_dbinv_application.set_profile(
+      p_application_id   => l_app,
+      p_sourcing         => 'PACKAGE',
+      p_vendor_name      => 'Example Software',
+      p_product_version  => '7.2.1',
+      p_support_end_date => date '2028-12-31',
+      p_rto_minutes      => 240,
+      p_rpo_minutes      => 15,
+      p_service_window   => '24/7',
+      p_data_sensitivity => 'HEALTH',
+      p_review_due_date  => trunc(sysdate) + 30,
+      p_note             => 'profile filled in' );
+   l_checked := l_checked + 1;
+   select count(*) into l_n from ref_application
+    where application_id = l_app
+      and sourcing = 'PACKAGE' and data_sensitivity = 'HEALTH'
+      and rto_minutes = 240 and rpo_minutes = 15
+      and review_due_date = trunc(sysdate) + 30;
+   if l_n = 1 then
+      ok('the profile was stored, review date included');
+   else
+      fail('set_profile', 'the profile did not survive, or the review date was dropped');
+   end if;
+
+   pkg_dbinv_application.set_profile(
+      p_application_id => l_app,
+      p_sourcing       => 'PACKAGE',
+      p_vendor_name    => null,
+      p_note           => 'vendor unknown after all' );
+   l_checked := l_checked + 1;
+   select count(*) into l_n from ref_application
+    where application_id = l_app and vendor_name is null and data_sensitivity = 'UNKNOWN';
+   if l_n = 1 then
+      ok('what is not passed is cleared, which is what a full form means');
+   else
+      fail('set_profile', 'a field left empty on the form kept its previous value');
+   end if;
+
+   -- A negative recovery objective is nonsense and must not be storable.
+   dbms_output.put_line('14. An impossible recovery objective');
+   declare
+      l_raised boolean := false;
+      l_err    varchar2(400);
+   begin
+      begin
+         pkg_dbinv_application.set_profile(
+            p_application_id => l_app,
+            p_rto_minutes    => -1 );
+      exception when others then
+         l_raised := true; l_err := sqlerrm;
+      end;
+      expect_rejected('a negative RTO', l_raised, l_err);
+   end;
+
+   -- ---------------------------------------------------------------------
+   -- 15. The inventory reading the registry from its own end. The six database
+   --     and instance screens depend on this view, and on it agreeing with the
+   --     view the application screen uses -- a disagreement would show a
+   --     database as claimed on one page and unclaimed on the other.
+   -- ---------------------------------------------------------------------
+   dbms_output.put_line('15. The registry read from the inventory');
+   declare
+      l_from_app pls_integer;
+      l_from_inv pls_integer;
+   begin
+      select count(*) into l_from_app from v_application_database
+       where application_id = l_app;
+      select count(*) into l_from_inv from v_entity_application
+       where application_id = l_app and entity_type = 'DATABASE';
+
+      l_checked := l_checked + 1;
+      if l_from_app = l_from_inv then
+         ok('both ends of the relation resolve the same ' || l_from_app || ' database(s)');
+      else
+         fail('v_entity_application', 'application side sees ' || l_from_app
+              || ' database(s), inventory side sees ' || l_from_inv);
+      end if;
+
+      l_checked := l_checked + 1;
+      select count(*) into l_n from v_entity_application
+       where application_id = l_app and entity_type = 'INSTANCE'
+         and entity_id = l_instance;
+      if l_n = 1 then
+         ok('the attached instance names the application exactly once');
+      else
+         fail('v_entity_application', 'expected the instance to name the application once, got ' || l_n);
+      end if;
+   end;
 
    -- ---------------------------------------------------------------------
    dbms_output.put_line(rpad('-', 78, '-'));

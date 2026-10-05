@@ -11,7 +11,7 @@
 # export PATH="${PATH}:${ORACLE_HOME}"
 
 MONITORING_USER="monitoring"
-MONITORING_PASS="F5t9TAcbjLTzhBNE69YeYBTx1BLgOZ"
+MONITORING_PASS="Change:ME:001"
 MAIL_TO="lambert.christophe@chl.lu"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

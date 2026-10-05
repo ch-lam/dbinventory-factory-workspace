@@ -5,7 +5,7 @@
 # =============================================================================
 
 MONITORING_USER="monitoring"
-MONITORING_PASS="HY9Xine38wnkC2gLadd2YafJiz5gRw"
+MONITORING_PASS="Change:ME:001"
 MAIL_TO="lambert.christophe@chl.lu"   # à adapter : équipe en charge des serveurs Windows/MSSQL
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

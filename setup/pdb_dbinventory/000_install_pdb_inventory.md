@@ -34,7 +34,7 @@ SQL> @apxchpwd.sql
 Enter the administrator's username [ADMIN]
 User "ADMIN" does not yet exist and will be created.
 Enter ADMIN's email [ADMIN] IT-DBA@chl.lu
-Enter ADMIN's password [] FMR1M2FIRjK3xadEX:yggwiCHnN8xhs
+Enter ADMIN's password [] Change:ME:001
 Created instance administrator ADMIN.
 
 SQL> exit;

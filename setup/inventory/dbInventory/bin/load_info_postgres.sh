@@ -14,7 +14,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Connexion Oracle ──────────────────────────────────────────────────────────
 DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
+DBINVENTORY_PASS="Change:ME:001"
 DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
 # ── Cible SQLcl ───────────────────────────────────────────────────────────────
 # Par defaut, le triplet ci-dessus : le comportement de production ne change pas.

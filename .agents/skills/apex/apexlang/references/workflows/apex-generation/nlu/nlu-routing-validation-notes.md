@@ -3,7 +3,9 @@
 Objective
 - Validate that natural one‑liner inputs are routed deterministically to a structured “Message 2” and that minimal rule loading, templates selection, and “Missing Inputs” handling align with governance.
 - Validate that fragmentary or free-form prompts are accepted as first-class input, normalized once, and clarified only when critical blockers remain.
+- Validate that routing uses progressive disclosure: compact rule/contract first, grammar/compiler metadata for structural legality, and exact template paths only after a concrete family is selected.
 - No actual generation is executed here; this is a step‑by‑step checklist to simulate and verify behavior.
+- Inputs containing `{{...}}` are `illustrative_prompt` grammar examples. Substitute verified identifiers during a real run; never treat the variables as schema evidence or final output text.
 
 Prerequisites
 - Master workflow consolidated:
@@ -12,6 +14,13 @@ Prerequisites
 -  - assets/apex-generation/components.registry.json
 - Rule routing:
   - assets/rules-mapping.json (updated with synonyms for calendar, map, cards, form/report region)
+- Compact rule/contract routing:
+  - assets/rules.catalog.json
+  - assets/contracts/page-patterns.json
+  - assets/contracts/page-construction-packs.json
+- Syntax and semantic legality:
+  - assets/grammar/apexlang.ebnf
+  - tools/query-valid-props.mjs
 - Skeletons and examples:
 -  - references/workflows/apex-generation.md (includes One-liner guidance and “J) Page — IR + Form”)
 
@@ -26,7 +35,9 @@ Validation Process
   - Component lookup via registry
   - Target_type decision rules
   - Union rule loading + styling conditional
-  - Template selection from templates/*
+  - Structured pattern/contract selection before exact template loading
+  - Grammar/compiler metadata checks before template-derived DSL
+  - Source trace synthesis
   - Required inputs prompting (“Missing Inputs” policy)
   - Message 2 synthesis
 
@@ -45,11 +56,11 @@ Validation Process
 - Use the test cases in references/workflows/apex-generation/nlu/nlu-routing-test-matrix.md and validate:
 
 Free-form prompt checks
-- `emp ir dept filter`
+- `source ir lookup filter`
   - Expected behavior: route toward interactive report + LOV interpretation, ask only for the minimum missing target details if critical.
 - `page report form refresh`
   - Expected behavior: infer mixed page composition intent, normalize to page scope, and ask for only the missing identifiers that block drafting.
-- `crud emp modal`
+- `crud source modal`
   - Expected behavior: route toward form/modal CRUD generation and request PK/column metadata only if not already available from verified context.
 - `translate page 12 japanese`
   - Expected behavior: route to shared-components translation flow, preserve simple-English follow-up style, and avoid asking for bundle-shaped input unless explicitly needed.
@@ -57,48 +68,49 @@ Free-form prompt checks
   - Expected behavior: do not route directly to shared-components localization or navigation/menu generation; ask one simple-English clarification to separate runtime language switching from localization.
 - `create a button that switches the session language to spanish`
   - Expected behavior: route toward button + page-process behavior, not navigation/menu generation.
-- `dashboard dept headcount`
+- `dashboard category record count`
   - Expected behavior: infer dashboard intent from fragments and request only missing data-source blockers.
 
-A) “Page with an interactive report and a form on EMP; use Departments LOV for DEPTNO; refresh report after submit”
+A) “Page with an interactive report and a form on {{source.table}}; use Lookup LOV for {{lookup.valueColumn}}; refresh report after submit”
 - Expected components: [interactive-report, form, lov-shared, dynamic-action-refresh-report]
 - target_type: page
 - Rules: page + interactive-report + form + items/sql + logic (+ guard + global)
 - Templates: templates/page-examples/interactive-report-page/interactive-report-page._index.md, templates/page-examples/form-page/form-page._index.md, templates/shared-components/lovs/lovs.dynamic.query.md, templates/business-logic/dynamic-actions/dynamic-actions.refresh-region-after-dialog.md
 - Required inputs to ask/validate:
-  - EMP: table, pk, columns
-  - LOV: DEPTNO→DNAME
+  - {{source.table}}: table, pk, columns
+  - LOV: {{lookup.valueColumn}}->{{lookup.displayColumn}}
   - DA: IR region identifier, trigger = after submit
 - Expected Message 2: Structured object with target_type=page, intent summarizing both regions, data_contract populated where provided, styling=none unless specified, output_path default.
+- Expected source trace: intent -> rules.catalog/rules-mapping -> page construction pack or workflow -> grammar/compiler metadata -> exact templates only as selected references.
 
-B) “Interactive report on EMP with a DEPTNO select list filter using Departments LOV”
+B) “Interactive report on {{source.table}} with a {{lookup.valueColumn}} select list filter using Lookup LOV”
 - Components: [interactive-report, lov-shared]
 - target_type: interactive-report (or page, if desired)
 - Rules: page + interactive-report + items/sql (+ guard + global)
 - Templates: templates/page-examples/interactive-report-page/interactive-report-page._index.md, templates/shared-components/lovs/lovs.dynamic.query.md
-- Required inputs: EMP, LOV mapping
+- Required inputs: {{source.table}}, LOV mapping
 - Message 2: Matches registry requirements.
 
-C) “Modal CRUD form on EMP; use Departments LOV for DEPTNO”
+C) “Modal CRUD form on {{source.table}}; use Lookup LOV for {{lookup.valueColumn}}”
 - Components: [form, lov-shared]
 - target_type: form
 - Rules: page + form + items/sql (+ guard + global)
 - Templates: templates/page-examples/form-page/form-page._index.md + either templates/items/select-list/select-list._index.md (item-level) or templates/shared-components/lovs/lovs.dynamic.query.md (page-level)
 - Required inputs: table, pk, columns, LOV mapping.
 
-D) “Create a dashboard with cards summarizing headcount by department”
+D) “Create a dashboard with cards summarizing record count by category”
 - Components: [dashboard]
 - target_type: page (or dashboard)
 - Rules: page + dashboard (+ guard + global)
 - Templates: templates/page-examples/dashboard-page/dashboard-page._index.md (optionally templates/page-examples/classic-report-page/classic-report-page._index.md)
 - Required inputs: aggregation SQL/table.
 
-E) “Add a calendar of EMP hires”
+E) “Add a calendar of {{source.table}} events”
 - Components: [calendar]
 - target_type: page
 - Rules: page (+ guard + global)
 - Templates: templates/page-examples/calendar-page/calendar-page._index.md
-- Required inputs: date column (e.g., HIREDATE).
+- Required inputs: date column (e.g., {{source.dateColumn}}).
 
 F) “Create a map for office locations”
 - Components: [map]
@@ -139,7 +151,7 @@ H) “Add an AI assistant/chatbot to the home page”
   - `Use a theme template component`
 
 5) Templates Integrity Check
-- For each test, ensure every referenced template exists in:
+- For each test, first ensure the routed rule card, structured contract, or workflow exists. Then ensure every referenced exact template exists in:
   - templates/page-examples/*
   - templates/business-logic/*
   - templates/items/*
@@ -147,6 +159,9 @@ H) “Add an AI assistant/chatbot to the home page”
 - If a requested visual (e.g., “cards variant”) lacks a template:
   - Expect a fallback to a supported template.
   - Critique to record limitation; Revision to apply supported subset only.
+- If grammar or compiler metadata conflicts with a referenced template:
+  - Expect critique to mark the template defective.
+  - Revision must use the grammar/compiler-valid shape and keep the source trace.
 
 6) Output Expectations (when executed)
 - Working copy: transient temp workspace outside the repo
@@ -165,6 +180,8 @@ Sign‑off Criteria
 - All sample inputs map deterministically to components and rules.
 - Fragmentary prompts are accepted without requiring the user to restate them in structured form.
 - At most one clarification round is used for unresolved critical blockers.
+- Non-trivial cases produce a compact source trace.
+- Grammar/compiler metadata is consulted before templates for structural legality.
 - No invented attributes/UT classes; missing inputs are requested, not fabricated.
-- Only existing templates are referenced; unsupported visuals trigger documented fallbacks.
+- Only selected exact templates are referenced; unsupported visuals trigger documented fallbacks.
 - Styling rules are conditionally loaded only when styling is provided.

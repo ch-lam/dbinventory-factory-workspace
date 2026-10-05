@@ -1,6 +1,6 @@
 ---
 name: buttons
-description: Configure Oracle APEX buttons, confirmation dialogs, and apply/remove actions using canonical templates and guardrails. Use when Codex must add, update, or remove buttons within Apex Developer flows.
+description: Configure Oracle APEX buttons, confirmation dialogs, and apply/remove actions using canonical templates and guardrails. Use when Codex must add, update, or remove buttons within APEX Developer flows.
 ---
 
 # Reference Package — Buttons & Actions
@@ -46,6 +46,7 @@ description: Configure Oracle APEX buttons, confirmation dialogs, and apply/remo
 ## Guardrails
 - Validate action_type requirements (targets for redirects, databaseAction for submit DML, nested menus for children).
 - Require canonical emitted button templateOptions values such as `t-Button--iconLeft` and reject aliases/static_ids such as `left`.
+- For `@/text-with-icon` buttons with icons, default to `t-Button--iconLeft`; use `t-Button--iconRight` only when explicitly requested and omit both for `@/icon`.
 - For remove operations, perform hard-delete dependency checks before applying changes; block on dangling references (DA aliases, whenButtonPressed, request guards).
 - Confirmation messages must follow governance: no hard-coded PII, inline help < 60 chars.
 - Ensure layout slots exist for the target region template.
@@ -63,4 +64,4 @@ description: Configure Oracle APEX buttons, confirmation dialogs, and apply/remo
 - `references/domains/page-components/buttons/registry.md`
 - Reusable prompts: `assets/domains/page-components/buttons/button-actions.md`
 
-Use this package whenever button configuration or batch actions are required in Apex Developer flows.
+Use this package whenever button configuration or batch actions are required in APEX Developer flows.

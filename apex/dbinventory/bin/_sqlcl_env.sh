@@ -46,6 +46,25 @@ find_jdk() {
    done < <(ls -d "/c/Program Files/Java"/jdk-* "/usr/lib/jvm"/*jdk* 2>/dev/null | sort -V -r)
 }
 
+# sqlcl_compiler_jar -> prints the APEXLang compiler jar of the SQLcl on the
+# PATH -- the one `apex validate` runs -- or nothing.
+#
+# The offline audit must be pinned to it. Left alone, the audit picks the
+# compiler of the newest "Oracle SQL Developer" VS Code extension first, which
+# need not be the one SQLcl uses: on 2026-10-05 the extension shipped
+# 26.2.0+3479 while SQLcl carried 26.1.0+3102, the version of the APEX
+# instance and of the skill's metadata. The audit then reported the skill as
+# stale, which it was not, and the two gates were judging against two
+# different compilers.
+sqlcl_compiler_jar() {
+   local sql_bin home jar
+   sql_bin="$(command -v sql 2>/dev/null)" || return 0
+   home="$(dirname "$(dirname "$sql_bin")")"
+   for jar in "$home"/lib/ext/apexlang-compiler*.jar "$home"/lib/apexlang-compiler*.jar; do
+      [[ -f "$jar" ]] && { printf '%s' "$jar"; return; }
+   done
+}
+
 # resolve_app_dir <path> -> absolute path of an application directory, or an
 # error. An application directory is one that holds an application.apx.
 resolve_app_dir() {

@@ -61,9 +61,19 @@ fi
 
 echo
 echo "=== compiler-truth audit (offline) ==="
+# Same compiler as apex validate above; see sqlcl_compiler_jar for why.
+COMPILER_JAR="$(sqlcl_compiler_jar)"
+compiler_opt=()
+if [[ -n "$COMPILER_JAR" ]]; then
+   echo "compiler: $COMPILER_JAR"
+   compiler_opt=( --compiler-oracle-home "$(to_win "$COMPILER_JAR")" )
+else
+   echo "WARNING: no APEXLang compiler found next to SQLcl; the audit picks its own," >&2
+   echo "         which may not be the one apex validate used." >&2
+fi
 cd "$SKILL_DIR"
 node tools/apexctl.mjs apexlang compiler-truth audit \
-   --app-path "$APP_DIR" --verify-component-attributes 2>&1 | tail -20
+   --app-path "$APP_DIR" --verify-component-attributes "${compiler_opt[@]}" 2>&1 | tail -20
 
 echo
 echo "Note: apex validate is the authoritative gate. The offline audit now skips"

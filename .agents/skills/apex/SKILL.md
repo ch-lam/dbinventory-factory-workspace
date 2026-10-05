@@ -16,8 +16,9 @@ This domain contains Oracle APEX skills for Oracle APEX application development.
 
 ```text
 apex/
-├── apexlang/      ← vendor package, versioned; do not write here, an upgrade wipes it
-└── field-notes/   ← ours: what the vendor docs do not say
+├── apexlang/          ← vendor package, versioned; an upgrade wipes it
+├── LOCAL-PATCHES.md   ← ours: the fixes we carry in apexlang/tools, and how to re-apply them
+└── field-notes/       ← ours: what the vendor docs do not say
 ```
 
 ## Category Routing

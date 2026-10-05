@@ -38,6 +38,18 @@ const SUPPORTED_COMPONENTS = new Set([
   "entry",
   "breadcrumb",
 ]);
+
+// LOCAL PATCH (dbinventory, fe46aa1) -- re-apply after every upstream update.
+// Properties the LIVE compiler accepts -- apex validate passes on them -- but which
+// the offline metadata snapshot does not carry. APEX writes them on export, and they
+// are load-bearing: savedReportMappingIdentifier is what keeps an interactive report's
+// saved reports attached to the component across re-imports. Deleting them to silence
+// this audit would lose that mapping, so they are accepted here instead.
+// Re-check when the snapshot is refreshed (see tools/query-valid-props.mjs).
+const COMPILER_METADATA_SNAPSHOT_GAPS = new Set([
+  "region.advanced.savedReportMappingIdentifier"
+]);
+
 function defaultCommand() {
   return IS_PACKAGED_ROOT
     ? "node tools/compiler-truth-audit.mjs"
@@ -164,11 +176,35 @@ function normalizePropertySemanticValue(property, value) {
     const pluginName = String(normalized).slice("themeTemplateComponent/".length);
     return `TMPL_${pluginName}`;
   }
+  // LOCAL PATCH (dbinventory, 2026-10-05) -- re-apply after every upstream update.
+  // Exact match first. The loose match below strips punctuation, so the LOV
+  // names `item=value` and `item!=value` both become "itemvalue" and the first
+  // one listed wins: `serverSideCondition.value` was then judged inactive.
+  const exact = (property?.lov?.values || []).find(({ name, returnValue }) =>
+    name === String(normalized) || returnValue === String(normalized));
+  if (exact) {
+    return exact.returnValue;
+  }
   const token = String(normalized).replace(/[^A-Za-z0-9]/g, "").toLowerCase();
   const match = (property?.lov?.values || []).find(({ name, returnValue }) =>
     [name, returnValue].some((candidate) =>
       String(candidate ?? "").replace(/[^A-Za-z0-9]/g, "").toLowerCase() === token));
   return match?.returnValue || normalized;
+}
+
+// LOCAL PATCH (dbinventory, 2026-10-05) -- re-apply after every upstream update.
+// A PLUGINS-typed LOV (region type, interactive report column type...) carries
+// no values in the compiler metadata, so the APEXLang token can only be
+// translated through the hand-written alias table of query-valid-props-semantics.
+// That table knows `classicReport` but not `list`, nor the `plainText` of an
+// interactive report column (NATIVE_PLAIN, while a classic report column's is
+// PLAIN). An untranslated token is not stored under the property id, so every
+// condition on it stays unknown instead of being judged false.
+function isUntranslatedPluginValue(property, value) {
+  if (property?.lov?.type !== "PLUGINS" || (property.lov.values || []).length) {
+    return false;
+  }
+  return !/^(NATIVE_|TMPL_|PLUGIN_)/.test(String(value));
 }
 
 function nearestComponent(stack) {
@@ -241,6 +277,13 @@ function addIssue(issues, filePath, lineNumber, code, message, details = {}) {
 
 function validateProperty({ issues, filePath, lineNumber, componentFrame, groupFrame, propertyName }) {
   if (!componentFrame?.record || !propertyName) {
+    return null;
+  }
+  // LOCAL PATCH (dbinventory, fe46aa1): see COMPILER_METADATA_SNAPSHOT_GAPS.
+  const scopedKey = groupFrame
+    ? `${componentFrame.name}.${groupFrame.name}.${propertyName}`
+    : `${componentFrame.name}.${propertyName}`;
+  if (COMPILER_METADATA_SNAPSHOT_GAPS.has(scopedKey)) {
     return null;
   }
   const { property: match, conditionState } = resolveAuditProperty({
@@ -322,10 +365,26 @@ export function auditApxText(filePath, text, map) {
   const observations = [];
   const stack = [];
   const lines = text.split(/\r?\n/);
+  let inFencedValue = false;
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
     const trimmed = line.trim();
+
+    // LOCAL PATCH (dbinventory, fe46aa1) -- re-apply after every upstream update.
+    // A ```sql / ```plsql fence carries a property VALUE, not APEXLang source.
+    // Parsing it as source invents properties -- "into :P91_HOSTNAME" matches the
+    // property regex and is reported as an unknown `into` -- and its unbalanced
+    // parentheses pop the component frame, so every later property of that
+    // component is blamed on its parent (process.advanced.x read as page.advanced.x).
+    if (trimmed.startsWith("```")) {
+      inFencedValue = !inFencedValue;
+      return;
+    }
+    if (inFencedValue) {
+      return;
+    }
+
     if (!trimmed || trimmed.startsWith("//") || trimmed.startsWith("#")) {
       return;
     }
@@ -348,7 +407,7 @@ export function auditApxText(filePath, text, map) {
       if (currentComponent.props[propMatch[1]] === undefined) {
         currentComponent.props[propMatch[1]] = semanticValue;
       }
-      if (compilerProperty?.propertyId) {
+      if (compilerProperty?.propertyId && !isUntranslatedPluginValue(compilerProperty, semanticValue)) {
         currentComponent.props[String(compilerProperty.propertyId)] = semanticValue;
       }
     }

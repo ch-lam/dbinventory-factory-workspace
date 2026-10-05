@@ -171,6 +171,16 @@ function resolveAuditConditionValue(condition, props) {
   if (condition.propertyId && props[condition.propertyId] !== undefined) {
     return { state: "known", value: props[condition.propertyId] };
   }
+  // LOCAL PATCH (dbinventory, 2026-10-05) -- re-apply after every upstream update.
+  // Names collide: a region has its own `type`, `source { type }`,
+  // `serverSideCondition { type }`, and a flattened chart `type`. A condition
+  // that names its property by id must not be answered by whichever `type` the
+  // component frame met first: it read `serverSideCondition.value` as inactive
+  // under `type: item=value`, and chart axes as invalid under a region of type
+  // `chart`. Unresolved by id means unknown, never false.
+  if (condition.propertyId) {
+    return { state: "unknown" };
+  }
   if (condition.propertyName && props[condition.propertyName] !== undefined) {
     return { state: "known", value: props[condition.propertyName] };
   }
@@ -324,11 +334,66 @@ export function selectQueryComponents(map, args) {
   return matches.sort((left, right) => left.componentTypeId.localeCompare(right.componentTypeId));
 }
 
+// LOCAL PATCH (dbinventory, 2026-10-05) -- re-apply after every upstream update.
+// Two gaps of the Sep 2026 audit, which made it fail ~700 times on an application
+// that `apex validate` accepts:
+//
+// 1. APEXLang flattens the compiler's intermediate `attributes` level: an
+//    interactive report column (7030), a chart series (7820) or axis (7830) is
+//    written directly under `region`, while the compiler records it under the
+//    region's `attributes` (7010, 7810). Children reached through an `attributes`
+//    record whose condition holds for the region are therefore candidates too.
+//    The region frame carries the flattened attribute properties, so its props
+//    stand in for the `attributes` level when evaluating the child's condition.
+// 2. A classic report column matches both 7320 (`type` EQUALS NATIVE_SQL_REPORT)
+//    and 7710 (any region type with the COLUMNS feature). The exact match is the
+//    one the compiler means, so a record whose parent condition rests only on
+//    FEATURES gives way when a more specific record also matches.
+function conditionUsesOnlyFeatures(condition) {
+  const conditions = condition?.conditions || [];
+  return conditions.length > 0 && conditions.every((entry) => entry.type === "FEATURES");
+}
+
+function preferSpecificRecords(records) {
+  if (records.length < 2) {
+    return records;
+  }
+  const specific = records.filter((record) => !conditionUsesOnlyFeatures(record.parentDependsOn));
+  return specific.length ? specific : records;
+}
+
+function auditChildCandidates(map, singular, parentFrame) {
+  const parentRecord = parentFrame.record;
+  const props = parentFrame.props || {};
+  const sameName = map.componentTypes.filter((record) => record.singular === singular);
+  const direct = filterRecordsByCondition(
+    sameName.filter((record) => record.parentComponentType === parentRecord.singular),
+    props,
+    "parentDependsOn",
+    "audit"
+  );
+  const attributeLevels = filterRecordsByCondition(
+    map.componentTypes.filter((record) =>
+      record.singular === "attributes"
+      && record.parentComponentTypeId === parentRecord.componentTypeId),
+    props,
+    "parentDependsOn",
+    "audit"
+  );
+  const attributeIds = new Set(attributeLevels.map((record) => record.componentTypeId));
+  const throughAttributes = filterRecordsByCondition(
+    sameName.filter((record) => attributeIds.has(record.parentComponentTypeId)),
+    props,
+    "parentDependsOn",
+    "audit"
+  );
+  return preferSpecificRecords([...direct, ...throughAttributes]);
+}
+
 export function resolveAuditComponentRecord(map, singular, parentFrame = null) {
   let records = map.componentTypes.filter((record) => record.singular === singular);
   if (parentFrame?.record) {
-    records = records.filter((record) => record.parentComponentType === parentFrame.record.singular);
-    records = filterRecordsByCondition(records, parentFrame.props || {}, "parentDependsOn", "audit");
+    records = auditChildCandidates(map, singular, parentFrame);
   } else if (records.length > 1) {
     records = records.filter((record) => !record.parentComponentType);
   }
@@ -369,10 +434,22 @@ export function resolveAuditProperty({ record, componentName, groupName = "", pr
   const candidates = groupName
     ? record.groups[groupName] || []
     : record.properties;
-  const property = candidates.find((candidate) => compilerPropertyNames.includes(candidate.propertyName)) || null;
+  // LOCAL PATCH (dbinventory, 2026-10-05) -- re-apply after every upstream update.
+  // One group can hold several properties of the same name, each active under a
+  // different condition: serverSideCondition has three `value` (request, item,
+  // ... conditions), a classic report column two `formatMask`. Taking the first
+  // one listed judged `value` inactive under `type: item=value`. Take the variant
+  // whose condition holds, then one that may hold, and only then the first.
+  const evaluated = candidates
+    .filter((candidate) => compilerPropertyNames.includes(candidate.propertyName))
+    .map((candidate) => ({ candidate, state: evaluateAuditCondition(candidate.dependsOn, props) }));
+  const chosen = evaluated.find((entry) => entry.state === "true")
+    || evaluated.find((entry) => entry.state !== "false")
+    || evaluated[0]
+    || null;
   return {
-    property,
-    conditionState: property ? evaluateAuditCondition(property.dependsOn, props) : null
+    property: chosen?.candidate || null,
+    conditionState: chosen ? chosen.state : null
   };
 }
 

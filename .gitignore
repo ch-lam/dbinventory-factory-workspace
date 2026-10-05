@@ -35,3 +35,8 @@ setup/inventory/dbInventory/collect/*.csv
 # n'est pas versionnee non plus.
 setup/inventory/dbInventory/bin/logs/
 setup/inventory/dbInventory/collect/[0-9]*/
+
+# Python bytecode. One was committed by mistake inside the vendored APEXlang
+# package on 2026-07-17; it is noise, and an upgrade of the package dropped it.
+__pycache__/
+*.pyc

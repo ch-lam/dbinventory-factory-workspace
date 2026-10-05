@@ -20,7 +20,7 @@ ResourceUnit_old
 .claude/skills/
 
 # The vendored APEXlang package under .agents/skills/apex/ is deliberately NOT
-# ignored, and the asymmetry is intentional: APEXLang/validate.sh executes
+# ignored, and the asymmetry is intentional: apex/dbinventory/bin/validate.sh executes
 # tools/apexctl.mjs from it. A dependency you run gets pinned and committed; one
 # you only read gets installed.
 

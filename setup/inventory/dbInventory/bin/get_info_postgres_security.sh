@@ -13,7 +13,7 @@
 #   * pg_hba_file_rules n'est lisible integralement par un role non superuser
 #     qu'a partir de PG15 ; avant, les colonnes sensibles sont masquees et la
 #     regle PG_HBA_NO_TRUST peut donc conclure a tort a l'absence de trust.
-#     Cf. database/targets/postgres/POSTGRES_create_monitoring_user.sql.
+#     Cf. setup/targets/postgres/POSTGRES_create_monitoring_user.sql.
 # =============================================================================
 set -euo pipefail
 

@@ -1,11 +1,11 @@
-# Tests
+# Tests of the DB-INV application
 
 Two tests, covering two different failure modes. They are complementary: neither
 replaces the other, and neither replaces APEXlang validation.
 
 | | What it proves | Needs |
 | --- | --- | --- |
-| `../database/dbinventory/T_001_apex_page_smoke.sql` | The database side of the application is coherent | SQLcl + a connection |
+| `T_001_apex_page_smoke.sql` | The database side of the application is coherent | SQLcl + a connection |
 | `apex_page_test.mjs` | The pages actually render for a user | A Chromium browser + the deployed app reachable |
 
 ## Why they exist
@@ -19,16 +19,20 @@ So a green validation is necessary, not sufficient.
 ## Setup
 
 ```bash
+# at the repository root
 cp .env.example .env      # then fill in the passwords
 ```
 
-`.env` is gitignored. Never commit it.
+`.env` is gitignored. Never commit it. The browser test reads the nearest `.env`
+above it, so the one at the repository root is found from here.
 
 ## Running them
 
+From the application directory, `apex/dbinventory/applications/db-inv`.
+
 ```bash
 # database side -- after every schema change or import
-sql -S -name DEV_DBINVENTORY_dbinventory @database/dbinventory/T_001_apex_page_smoke.sql
+sql -S -name DEV_DBINVENTORY_dbinventory @tests/T_001_apex_page_smoke.sql
 
 # rendering -- after every import, or on the pages whose components changed
 node tests/apex_page_test.mjs
@@ -115,7 +119,7 @@ affected, both `fileUpload`:
 **Do not maintain that table by hand — ask the database:**
 
 ```bash
-sql -S -name "$APEX_DB_CONN" @database/dbinventory/T_001_apex_page_smoke.sql
+sql -S -name "$APEX_DB_CONN" @tests/T_001_apex_page_smoke.sql
 ```
 
 Check 2 lists exactly the items that need the step, on the environment in front

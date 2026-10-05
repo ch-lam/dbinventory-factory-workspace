@@ -65,10 +65,10 @@ Sur un poste Windows, SQLcl lancé sans TTY répond
 rend 0 — le garde-fou d'identité lisait donc ce message comme un nom de service. Il faut
 lui donner stdin depuis un vrai fichier et `-Dorg.jline.terminal.provider=dumb`, et lui
 passer des chemins Windows : `/g/...` est lu comme `C:\g\...`. Ce sont exactement les
-prérequis de `APEXLang/validate.sh`, d'où le helper commun plutôt qu'une troisième copie.
+prérequis de `apex/dbinventory/bin/_sqlcl_env.sh`, d'où le helper commun plutôt qu'une troisième copie.
 Sur le serveur de production, ces réglages sont sans effet.
 
-Le générateur n'a **aucune dépendance npm**, comme `tests/apex_page_test.mjs`.
+Le générateur n'a **aucune dépendance npm**, comme le test navigateur de l'application (`apex/dbinventory/applications/db-inv/tests/apex_page_test.mjs`).
 
 ---
 

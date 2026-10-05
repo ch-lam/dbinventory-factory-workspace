@@ -148,10 +148,11 @@ SQL> cd setup/pdb_dbinventory
 
 SQL> @001_create_db_artefacts.sql
 
-SQL> @002_create_apex_artefacts.sql
-
 SQL> exit;
 ```
+
+The workspace, the schema objects and the application are then installed in
+that order, as described in `apex/dbinventory/README.md`.
 
 Configure access to Openrouter for AI models
 

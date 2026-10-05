@@ -1,4 +1,7 @@
 {
+  "workspace" : {
+    "name" : "DBINVENTORY"
+  },
   "app" : {
     "id" : 100,
     "runtime" : {

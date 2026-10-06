@@ -16,14 +16,17 @@ from pathlib import Path
 from typing import Any
 
 def _has_source_repo_markers(target: Path) -> bool:
+    """Return true when a directory looks like the source repository root."""
     return (target / "package.json").exists() and (target / "skills" / "apexlang" / "assets" / "public-package.manifest.json").exists()
 
 
 def _has_packaged_skill_markers(target: Path) -> bool:
+    """Return true when a directory looks like an installed public skill package."""
     return (target / "SKILL.md").exists() and (target / "manifest.json").exists() and (target / "tools").exists()
 
 
 def _resolve_root(start: Path) -> Path:
+    """Resolve the active source or packaged root from a starting directory."""
     override = os.environ.get("APEXLANG_PACKAGE_ROOT", "").strip()
     if override:
         return Path(override).resolve()
@@ -39,6 +42,7 @@ def _resolve_root(start: Path) -> Path:
 
 
 def _resolve_output_root(root: Path, packaged_skill: bool) -> Path:
+    """Resolve where validator reports and logs should be written."""
     if packaged_skill:
         override = os.environ.get("APEXLANG_OUTPUT_ROOT", "").strip()
         if not override:
@@ -53,6 +57,8 @@ OUTPUT_ROOT = _resolve_output_root(ROOT, PACKAGED_SKILL)
 LOG_ROOT = OUTPUT_ROOT / "logs"
 COMPONENT_ATTRIBUTES_PATH = ROOT / "assets/component-attributes.json" if PACKAGED_SKILL else ROOT / "assets/component-attributes.json"
 COMPONENT_POLICIES_PATH = ROOT / "assets/component-policies.json" if PACKAGED_SKILL else ROOT / "assets/component-policies.json"
+APEXLANG_GRAMMAR_PATH = ROOT / "assets/grammar/apexlang.ebnf" if PACKAGED_SKILL else ROOT / "assets/grammar/apexlang.ebnf"
+FONT_APEX_ICON_INDEX_PATH = ROOT / "assets/indexes/font-apex-icon-index.json" if PACKAGED_SKILL else ROOT / "assets/indexes/font-apex-icon-index.json"
 VALIDATIONS_TEMPLATE_ROOT = ROOT / "templates/business-logic/validations" if PACKAGED_SKILL else ROOT / "templates/business-logic/validations"
 QUERY_VALID_PROPS_TOOL = ROOT / "tools/query-valid-props.mjs" if PACKAGED_SKILL else ROOT / "references/policies/apexlang/compiler-prop-map/query-valid-props.mjs"
 ISSUE_PATTERN = re.compile(r"^(?P<file>.+?):(?P<line>\d+): (?P<rule>[A-Z0-9_]+) (?P<message>.+)$")

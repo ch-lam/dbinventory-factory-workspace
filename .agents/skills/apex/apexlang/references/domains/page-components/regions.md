@@ -20,6 +20,7 @@ This skill orchestrates the Tier 1 region workflows under `skills/` (interactive
 - `references/domains/page-components/regions/interactive-report/workflow-interactive-report.md`
 - `references/domains/page-components/regions/dashboard/workflow-dashboard.md`
 - `references/domains/page-components/regions/chart/workflow-charts.md`
+- `references/domains/page-components/regions/region-display-selector/workflow-region-display-selector.md`
 - `references/domains/business-logic/dynamic-actions/workflow-dynamic-actions.md`
 - `references/domains/business-logic/dynamic-actions/workflow-dynamic-actions-batch.md`
 - `references/domains/page-components/buttons/workflow-button-batch.md`
@@ -153,7 +154,9 @@ Use the component registry (`assets/apex-generation/components.registry.json`) t
 ---
 
 ## Examples
-- “Create an interactive report on EMP with modal form for edits and dynamic action to refresh after submit.”
+These are `illustrative_prompt` examples. Replace any `{{...}}` variables with verified identifiers before use.
+
+- “Create an interactive report on {{source.table}} with modal form for edits and dynamic action to refresh after submit.”
 - “Add dashboard cards for Sales KPIs using existing page 10.”
 - “Apply dynamic action batch to refresh regions on pages 12, 14, 20 when timer fires.”
 

@@ -27,7 +27,7 @@ Routing behavior
 - Never re‑route to another router or to the constitutional master unless you are the master router.
 
 Prompt-normalization contract
-- Treat sparse input as valid by default. Examples: noun lists, shorthand like `emp ir dept filter`, broken grammar, partial identifiers, or mixed imperative fragments.
+- Treat sparse input as valid by default. Examples: noun lists, shorthand like `source report lookup filter`, broken grammar, partial identifiers, or mixed imperative fragments.
 - Normalize whatever is explicit in the prompt before asking anything else.
 - Ask follow-up questions only for critical blockers that materially change the workflow, target, or safety gates.
 - Follow-ups must be short, plain-English prompts. Prefer concrete options or one missing identifier request over broad re-interviewing.
@@ -42,7 +42,7 @@ Defaults (safe)
   - prereq_source: unresolved
   - db_mode: unresolved
   - db_connection_name: ""          # needed with APEX workspace name if running live DB steps
-  - apex_workspace_name: ""         # corresponding APEX workspace for live DB steps
+  - apex_workspace_name: ""         # required for new-app materialization or unresolved runtime ambiguity
 - environment: dev
 - dry_run: true
 - Merge rule: user overrides in the same one‑liner message replace Default values; do not invent missing fields.
@@ -54,7 +54,7 @@ Safeguards and gates
 - For DB-backed domains, prefer the schema-first prerequisite gate: inspect `assets/workspace-intelligence.json`, use an eligible offline schema dictionary when available, then traverse saved SQLcl connections before the final clarification prompt.
 - If DB work is requested and live DB context is still required after the prerequisite gate, allow the TargetWorkflow’s Pre‑Agent 0 to halt with Missing Inputs rather than fabricating a connection.
 - For interactive DB-backed runs, inspect offline schema metadata and scan saved SQLcl connections before asking the user anything about DB mode.
-- Use deterministic saved SQLcl connection discovery to suggest aliases before asking; require the user to specify `db_connection_name` and the corresponding APEX workspace name before live DB work. Use `Provide db_connection_name and the corresponding APEX workspace name for this workflow.` as the last clarification fallback after discovery leaves live DB context unresolved.
+- Use deterministic saved SQLcl connection discovery before asking: auto-bind one alias, ask the user to choose among multiple aliases, and use `Provide db_connection_name for this workflow.` only when discovery leaves live DB context unresolved. Require workspace identity for new-app materialization or resolve it after runtime-reported ambiguity.
 - No changes to templates/ content in plan-only runs; write artifacts to the temp-runtime logs directory under `APEXLANG_OUTPUT_ROOT/logs/`**.
 
 File naming and structure
@@ -72,8 +72,9 @@ Keyword design (Match)
   - PL/SQL Maintenance: [plsql maintenance, package consolidation, consolidate plsql, check plsql, …]
 
 Examples (single message)
+- Snippet class: `illustrative_prompt`. Replace any `{{...}}` variables before use; do not treat them as schema evidence.
 - APEX generation (constitutional master):
-  build a page with an interactive report on EMP and a form to edit; refresh report after submit
+  build a page with an interactive report on {{source.table}} and a form to edit; refresh report after submit
 - PL/SQL maintenance (standalone):
   check entire app for all plsql code and see what can be packaged and consolidated
 - PL/SQL maintenance with overrides:

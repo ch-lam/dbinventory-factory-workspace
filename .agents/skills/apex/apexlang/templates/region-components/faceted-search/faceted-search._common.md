@@ -144,7 +144,7 @@ region {{regionStaticId}} (
 
 # Conditional Rendering Rules
 
-- Keep current-facets selector configuration in `settings`.
+- Do not emit faceted-search `settings` properties unless the grammar exposes them; the current region grammar does not allow the prior `compactNosThreshold`, `showCurrentFacets`, or `showTotalRowCount` properties.
 - Do not merge facet child definitions into the region shell description.
 - The standard page-level composition for this region family is breadcrumb in `breadcrumbBar`, results in `body`, and faceted search in `leftColumn`.
 - When the request calls for Product, Store, Status, or other discrete value filters, start from `selectList`, `checkboxGroup`, or `radioGroup` plus `lov { type: distinctValues }` instead of internal `NATIVE_*` token guessing.

@@ -3,8 +3,12 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { buildOracleNormalizedMap, ORACLE_NORMALIZER_VERSION, readOracleRuntimeMetadata } from "./query-valid-props-normalize.mjs";
-import { resolveOracleRuntime } from "./query-valid-props-runtime.mjs";
+import { loadOracleCompilerContext } from "./query-valid-props-context.mjs";
+import {
+  normalizeSemanticValue,
+  resolveAuditComponentRecord as resolveRecordFor,
+  resolveAuditProperty
+} from "./query-valid-props-semantics.mjs";
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const IS_PACKAGED_ROOT = path.basename(path.dirname(SCRIPT_PATH)) === "tools";
@@ -17,17 +21,25 @@ const SUPPORTED_COMPONENTS = new Set([
   "app",
   "page",
   "region",
+  "column",
+  "axis",
+  "series",
+  "layer",
+  "filter",
+  "facet",
   "pageItem",
   "button",
   "dynamicAction",
   "process",
   "computation",
-  "validation"
-]);
-const COMPILER_METADATA_PROPERTY_ALIASES = new Map([
-  ["app.authentication.scheme", "authenticationScheme"]
+  "validation",
+  "lov",
+  "list",
+  "entry",
+  "breadcrumb",
 ]);
 
+// LOCAL PATCH (dbinventory, fe46aa1) -- re-apply after every upstream update.
 // Properties the LIVE compiler accepts -- apex validate passes on them -- but which
 // the offline metadata snapshot does not carry. APEX writes them on export, and they
 // are load-bearing: savedReportMappingIdentifier is what keeps an interactive report's
@@ -44,7 +56,10 @@ function defaultCommand() {
     : `node ${["ai-context", "apexlang", "compiler-prop-map", "compiler-truth-audit.mjs"].join("/")}`;
 }
 
-function nextValue(argv, index, flag) {
+/**
+ * Return the value after a flag, or fail with a clear command-line error.
+ */
+function readRequiredOptionValue(argv, index, flag) {
   const value = argv[index + 1];
   if (!value || value.startsWith("--")) {
     throw new Error(`Missing value for ${flag}`);
@@ -52,6 +67,9 @@ function nextValue(argv, index, flag) {
   return value;
 }
 
+/**
+ * Parse compiler-truth audit flags while preserving legacy option aliases.
+ */
 function parseArgs(argv) {
   const args = {
     appPath: "",
@@ -66,20 +84,20 @@ function parseArgs(argv) {
     const arg = argv[index];
     switch (arg) {
       case "--app-path":
-        args.appPath = nextValue(argv, index, arg);
+        args.appPath = readRequiredOptionValue(argv, index, arg);
         index += 1;
         break;
       case "--report-path":
-        args.reportPath = nextValue(argv, index, arg);
+        args.reportPath = readRequiredOptionValue(argv, index, arg);
         index += 1;
         break;
       case "--component-attributes":
-        args.componentAttributes = nextValue(argv, index, arg);
+        args.componentAttributes = readRequiredOptionValue(argv, index, arg);
         index += 1;
         break;
       case "--compiler-oracle-home":
       case "--oracle-home":
-        args.compilerOracleHome = nextValue(argv, index, arg);
+        args.compilerOracleHome = readRequiredOptionValue(argv, index, arg);
         index += 1;
         break;
       case "--verify-component-attributes":
@@ -148,38 +166,45 @@ async function collectApxFiles(targetPath) {
   return files.sort();
 }
 
-function buildCompilerContext(oracleHome) {
-  const oracleRuntime = resolveOracleRuntime(oracleHome || undefined);
-  const { metadata, buildId, metadataHash } = readOracleRuntimeMetadata(oracleRuntime.compilerJarPath);
-  const map = buildOracleNormalizedMap({
-    metadata,
-    compilerJarPath: oracleRuntime.compilerJarPath,
-    oracleHome: oracleRuntime.oracleHome,
-    source: oracleRuntime.source
-  });
-  const provenance = {
-    buildID: buildId,
-    metadataHash,
-    normalizerVersion: ORACLE_NORMALIZER_VERSION,
-    source: oracleRuntime.source,
-    oracleHome: oracleRuntime.oracleHome,
-    compilerJar: oracleRuntime.compilerJarPath
-  };
-  return { map, provenance };
+function normalizePropertySemanticValue(property, value) {
+  const normalized = normalizeSemanticValue(value);
+  if (
+    property?.propertyId === "94" &&
+    property?.lov?.type === "PLUGINS" &&
+    String(normalized).startsWith("themeTemplateComponent/")
+  ) {
+    const pluginName = String(normalized).slice("themeTemplateComponent/".length);
+    return `TMPL_${pluginName}`;
+  }
+  // LOCAL PATCH (dbinventory, 2026-10-05) -- re-apply after every upstream update.
+  // Exact match first. The loose match below strips punctuation, so the LOV
+  // names `item=value` and `item!=value` both become "itemvalue" and the first
+  // one listed wins: `serverSideCondition.value` was then judged inactive.
+  const exact = (property?.lov?.values || []).find(({ name, returnValue }) =>
+    name === String(normalized) || returnValue === String(normalized));
+  if (exact) {
+    return exact.returnValue;
+  }
+  const token = String(normalized).replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+  const match = (property?.lov?.values || []).find(({ name, returnValue }) =>
+    [name, returnValue].some((candidate) =>
+      String(candidate ?? "").replace(/[^A-Za-z0-9]/g, "").toLowerCase() === token));
+  return match?.returnValue || normalized;
 }
 
-function firstRecordFor(map, singular, parentSingular = "") {
-  const records = map.componentTypes.filter((record) => record.singular === singular);
-  if (!records.length) {
-    return null;
+// LOCAL PATCH (dbinventory, 2026-10-05) -- re-apply after every upstream update.
+// A PLUGINS-typed LOV (region type, interactive report column type...) carries
+// no values in the compiler metadata, so the APEXLang token can only be
+// translated through the hand-written alias table of query-valid-props-semantics.
+// That table knows `classicReport` but not `list`, nor the `plainText` of an
+// interactive report column (NATIVE_PLAIN, while a classic report column's is
+// PLAIN). An untranslated token is not stored under the property id, so every
+// condition on it stays unknown instead of being judged false.
+function isUntranslatedPluginValue(property, value) {
+  if (property?.lov?.type !== "PLUGINS" || (property.lov.values || []).length) {
+    return false;
   }
-  if (parentSingular) {
-    const parentMatch = records.find((record) => record.parentComponentType === parentSingular);
-    if (parentMatch) {
-      return parentMatch;
-    }
-  }
-  return records.length === 1 ? records[0] : records[0];
+  return !/^(NATIVE_|TMPL_|PLUGIN_)/.test(String(value));
 }
 
 function nearestComponent(stack) {
@@ -250,32 +275,25 @@ function addIssue(issues, filePath, lineNumber, code, message, details = {}) {
   });
 }
 
-function compilerMetadataPropertyNames(componentName, groupName, propertyName) {
-  const names = [propertyName];
-  const scopedKey = groupName
-    ? `${componentName}.${groupName}.${propertyName}`
-    : `${componentName}.${propertyName}`;
-  const alias = COMPILER_METADATA_PROPERTY_ALIASES.get(scopedKey);
-  if (alias && !names.includes(alias)) {
-    names.push(alias);
-  }
-  return names;
-}
-
 function validateProperty({ issues, filePath, lineNumber, componentFrame, groupFrame, propertyName }) {
   if (!componentFrame?.record || !propertyName) {
-    return;
+    return null;
   }
+  // LOCAL PATCH (dbinventory, fe46aa1): see COMPILER_METADATA_SNAPSHOT_GAPS.
   const scopedKey = groupFrame
     ? `${componentFrame.name}.${groupFrame.name}.${propertyName}`
     : `${componentFrame.name}.${propertyName}`;
   if (COMPILER_METADATA_SNAPSHOT_GAPS.has(scopedKey)) {
-    return;
+    return null;
   }
-  const compilerPropertyNames = compilerMetadataPropertyNames(componentFrame.name, groupFrame?.name || "", propertyName);
+  const { property: match, conditionState } = resolveAuditProperty({
+    record: componentFrame.record,
+    componentName: componentFrame.name,
+    groupName: groupFrame?.name || "",
+    propertyName,
+    props: componentFrame.props || {}
+  });
   if (groupFrame) {
-    const props = componentFrame.record.groups[groupFrame.name] || [];
-    const match = props.find((prop) => compilerPropertyNames.includes(prop.propertyName));
     if (!match) {
       addIssue(
         issues,
@@ -290,12 +308,27 @@ function validateProperty({ issues, filePath, lineNumber, componentFrame, groupF
           property: propertyName
         }
       );
+      return null;
     }
-    return;
+    if (conditionState === "false") {
+      addIssue(
+        issues,
+        filePath,
+        lineNumber,
+        "COMPILER_TRUTH_PROP_INACTIVE",
+        `${componentFrame.name}.${groupFrame.name}.${propertyName} exists in compiler metadata but is inactive under current component assumptions`,
+        {
+          component: componentFrame.name,
+          componentTypeId: componentFrame.record.componentTypeId,
+          group: groupFrame.name,
+          property: propertyName
+        }
+      );
+    }
+    return match;
   }
 
-  const anyMatch = componentFrame.record.properties.some((prop) => compilerPropertyNames.includes(prop.propertyName));
-  if (!anyMatch) {
+  if (!match) {
     addIssue(
       issues,
       filePath,
@@ -308,7 +341,23 @@ function validateProperty({ issues, filePath, lineNumber, componentFrame, groupF
         property: propertyName
       }
     );
+    return null;
   }
+  if (conditionState === "false") {
+    addIssue(
+      issues,
+      filePath,
+      lineNumber,
+      "COMPILER_TRUTH_PROP_INACTIVE",
+      `${componentFrame.name}.${propertyName} exists in compiler metadata but is inactive under current component assumptions`,
+      {
+        component: componentFrame.name,
+        componentTypeId: componentFrame.record.componentTypeId,
+        property: propertyName
+      }
+    );
+  }
+  return match;
 }
 
 export function auditApxText(filePath, text, map) {
@@ -322,6 +371,7 @@ export function auditApxText(filePath, text, map) {
     const lineNumber = index + 1;
     const trimmed = line.trim();
 
+    // LOCAL PATCH (dbinventory, fe46aa1) -- re-apply after every upstream update.
     // A ```sql / ```plsql fence carries a property VALUE, not APEXLang source.
     // Parsing it as source invents properties -- "into :P91_HOSTNAME" matches the
     // property regex and is reported as an unknown `into` -- and its unbalanced
@@ -342,9 +392,9 @@ export function auditApxText(filePath, text, map) {
     const currentComponent = nearestComponent(stack);
     const currentGroup = nearestGroup(stack);
     const opaqueScope = insideOpaque(stack);
-    const propMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9]*)\s*:/);
+    const propMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9]*)\s*:\s*(.*)$/);
     if (propMatch && currentComponent && !opaqueScope) {
-      validateProperty({
+      const compilerProperty = validateProperty({
         issues,
         filePath,
         lineNumber,
@@ -352,9 +402,17 @@ export function auditApxText(filePath, text, map) {
         groupFrame: currentGroup,
         propertyName: propMatch[1]
       });
+      currentComponent.props ||= {};
+      const semanticValue = normalizePropertySemanticValue(compilerProperty, propMatch[2]);
+      if (currentComponent.props[propMatch[1]] === undefined) {
+        currentComponent.props[propMatch[1]] = semanticValue;
+      }
+      if (compilerProperty?.propertyId && !isUntranslatedPluginValue(compilerProperty, semanticValue)) {
+        currentComponent.props[String(compilerProperty.propertyId)] = semanticValue;
+      }
     }
 
-    const blockMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9]*)\b(?:\s+[^({]+?)?\s*([({])/);
+    const blockMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9]*(?:-[A-Za-z][A-Za-z0-9]*)*)\b(?:\s+[^({]+?)?\s*([({])/);
     if (blockMatch) {
       const [, token, delimiter] = blockMatch;
       const parentComponent = nearestComponent(stack);
@@ -362,8 +420,25 @@ export function auditApxText(filePath, text, map) {
       const { opens, closes } = lineOpenCloseBalance(line);
       const shouldPush = opens > closes;
       if (delimiter === "(" && SUPPORTED_COMPONENTS.has(token)) {
-        const record = firstRecordFor(map, token, parentName);
-        if (record) {
+        const { record, failure, candidates } = resolveRecordFor(map, token, parentComponent);
+        if (!record) {
+          addIssue(
+            issues,
+            filePath,
+            lineNumber,
+            failure === "ambiguous" ? "COMPILER_TRUTH_COMPONENT_AMBIGUOUS" : "COMPILER_TRUTH_COMPONENT_UNKNOWN",
+            failure === "ambiguous"
+              ? `${token} resolves to multiple compiler component records; add parent/type context (${(candidates || []).map((record) => record.componentTypeId).join(", ")})`
+              : `${token} is not valid under parent ${parentName || "none"} for current compiler metadata assumptions`,
+            {
+              component: token,
+              parent: parentName || ""
+            }
+          );
+          if (shouldPush) {
+            stack.push({ kind: "component", name: token, record: null, props: {} });
+          }
+        } else {
           observations.push({
             file: path.relative(process.cwd(), filePath) || path.basename(filePath),
             line: lineNumber,
@@ -372,7 +447,7 @@ export function auditApxText(filePath, text, map) {
             parent: record.parentComponentType || ""
           });
           if (shouldPush) {
-            stack.push({ kind: "component", name: token, record });
+            stack.push({ kind: "component", name: token, record, props: {} });
           }
         }
       } else if (delimiter === "{" && !opaqueScope && parentComponent?.record?.groups?.[token]) {
@@ -459,7 +534,7 @@ async function writeReport(reportPath, payload) {
 }
 
 export async function runCompilerTruthAudit(options = {}) {
-  const { map, provenance } = buildCompilerContext(options.compilerOracleHome || options.oracleHome || "");
+  const { map, provenance } = loadOracleCompilerContext(options.compilerOracleHome || options.oracleHome || undefined);
   const issues = [];
   const observations = [];
   const targets = [];

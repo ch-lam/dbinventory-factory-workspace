@@ -29,7 +29,7 @@ OUT_DIR="${1:-${SCRIPT_DIR}/../collect}"
 
 # ── Connexion Oracle ──────────────────────────────────────────────────────────
 DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
+DBINVENTORY_PASS="Change:ME:001"
 DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
 
 # Même branche que les load_info_*.sh. Sans elle ce script ne sait viser que

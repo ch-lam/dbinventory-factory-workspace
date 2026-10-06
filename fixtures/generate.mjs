@@ -8,7 +8,7 @@
 // n'est pas un confort : le fichier de résultats attendus compare des comptes
 // exacts, et un jeu qui bouge d'une exécution à l'autre le rendrait ininterprétable.
 //
-// Aucune dépendance npm, comme tests/apex_page_test.mjs -- le dépôt n'a pas de
+// Aucune dépendance npm, comme le test navigateur de l'appli (apex/.../tests/apex_page_test.mjs) -- le dépôt n'a pas de
 // package.json et ce fichier doit rester copiable tel quel.
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, existsSync } from 'node:fs';

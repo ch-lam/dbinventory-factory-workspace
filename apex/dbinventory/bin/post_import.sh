@@ -22,39 +22,31 @@
 # step remains manual, but forgetting it now stops the deployment instead of
 # shipping a form that quietly loses files.
 #
-# Usage: ./post_import.sh [db_connection_name]
+# Usage: ./post_import.sh <app_dir> [db_connection_name]
+#   e.g. ./post_import.sh ../applications/db-inv
 #
-# Same three SQLcl prerequisites as validate.sh, for the same reasons -- JDK
-# 17+, a dumb JLine terminal, and a stdin that is a real file. Do not drop them.
+# The smoke test belongs to the application: <app_dir>/tests/T_001_apex_page_smoke.sql.
+# The items that need the manual step are listed in <app_dir>/DEPLOY.md.
+#
+# Same SQLcl prerequisites as validate.sh, for the same reasons -- JDK 17+, a
+# dumb JLine terminal, and a stdin that is a real file. See _sqlcl_env.sh.
 # ---------------------------------------------------------------------------
 set -uo pipefail
 
-DB_CONN="${1:-DEV_DBINVENTORY_dbinventory}"
-APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SQL_DIR="$(cd "$APP_DIR/.." && pwd)"
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_sqlcl_env.sh
+source "$BIN_DIR/_sqlcl_env.sh"
 
-SMOKE="$SQL_DIR/T_001_apex_page_smoke.sql"
+APP_DIR="$(resolve_app_dir "${1:-}")" || exit 1
+DB_CONN="${2:-DEV_DBINVENTORY_dbinventory}"
+
+SMOKE="$APP_DIR/tests/T_001_apex_page_smoke.sql"
 if [[ ! -f "$SMOKE" ]]; then
    echo "ERROR: $SMOKE not found." >&2
    exit 1
 fi
 
-# SQLcl is a Windows process: it reads /g/... as C:\g\....
-to_win() {
-   if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi
-}
-
-usable_jdk() { [[ -x "$1/bin/java.exe" || -x "$1/bin/java" ]]; }
-
-JDK=""
-for candidate in "${APEXLANG_JDK:-}" "${JAVA_HOME:-}"; do
-   [[ -n "$candidate" ]] && usable_jdk "$candidate" && { JDK="$candidate"; break; }
-done
-if [[ -z "$JDK" ]]; then
-   while IFS= read -r candidate; do
-      usable_jdk "$candidate" && { JDK="$candidate"; break; }
-   done < <(ls -d "/c/Program Files/Java"/jdk-* "/usr/lib/jvm"/*jdk* 2>/dev/null | sort -V -r)
-fi
+JDK="$(find_jdk)"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -62,7 +54,7 @@ trap 'rm -rf "$work"' EXIT
 
 echo "=== APEX page smoke test (live via $DB_CONN) ==="
 JAVA_HOME="${JDK:-${JAVA_HOME:-}}" \
-JAVA_TOOL_OPTIONS="-Duser.language=en -Dorg.jline.terminal.provider=dumb" \
+JAVA_TOOL_OPTIONS="$APEX_SQLCL_TOOL_OPTIONS" \
    sql -S -name "$DB_CONN" @"$(to_win "$SMOKE")" < "$work/stdin" 2>&1 \
    | grep -v 'Picked up JAVA_TOOL_OPTIONS' | tee "$work/smoke.out"
 rc="${PIPESTATUS[0]}"
@@ -73,15 +65,13 @@ if [[ "$rc" -ne 0 ]] || grep -qi 'FAIL' "$work/smoke.out"; then
 ERROR: the imported application did not pass its smoke test.
 
 If the failure names a fileUpload item, it is the known manual step. In the
-APEX builder, for EACH item listed above:
-
-    Page 71 -> P71_UPLOAD        Settings > Storage Type
-    Page 85 -> P85_UPLOAD        Settings > Storage Type
-
-  set it to "Table APEX_APPLICATION_TEMP_FILES", save, then run this script
-  again. It is not expressible in the .apx and every import resets it; see
-  APEXLang/DEPLOY.md.
+APEX builder, for EACH item listed above, Settings > Storage Type must be set
+to "Table APEX_APPLICATION_TEMP_FILES"; save, then run this script again. It is
+not expressible in the .apx and every import resets it. Known items:
 MSG
+   # The list lives with the application, in the table of its DEPLOY.md, so a
+   # new upload item is declared once, where the application is described.
+   grep -E '^\| [0-9]+ ' "$APP_DIR/DEPLOY.md" >&2 || echo "  (none listed in $APP_DIR/DEPLOY.md)" >&2
    exit 1
 fi
 

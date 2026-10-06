@@ -7,7 +7,7 @@
 create profile C##MONITORING limit PASSWORD_LIFE_TIME UNLIMITED;
 
 -- Create user and privs.
-create user C##MONITORING identified by "F5t9TAcbjLTzhBNE69YeYBTx1BLgOZ" -- use secret server to retreive correct value.
+create user C##MONITORING identified by "Change:ME:001" -- use secret server to retreive correct value.
        profile C##MONITORING;
 ALTER USER c##monitoring SET CONTAINER_DATA = ALL CONTAINER = CURRENT;
 grant create session to C##MONITORING;

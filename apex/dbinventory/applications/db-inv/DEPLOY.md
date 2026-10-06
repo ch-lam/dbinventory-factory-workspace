@@ -1,25 +1,28 @@
-# Déployer l'application APEX
+# Déployer l'application DB-INV (id 100)
+
+Ce qui est propre à cette application. L'ordre général — instance, workspace,
+schéma, puis applications — est dans [`../../README.md`](../../README.md).
 
 Trois étapes, dans cet ordre, et la troisième n'est pas optionnelle.
 
 ```bash
-cd database/dbinventory/APEXLang
+cd apex/dbinventory/bin
 
 # 1. Le .apx compile-t-il ?
-./validate.sh DEV_DBINVENTORY_dbinventory
+./validate.sh ../applications/db-inv DEV_DBINVENTORY_dbinventory
 
 # 2. Import — dans la MÊME session SQLcl authentifiée que la validation.
 #    (voir .agents/skills/apex/apexlang/references/ops/runtime-gates/)
 
 # 3. Ce que la compilation ne prouve pas.
-./post_import.sh DEV_DBINVENTORY_dbinventory
+./post_import.sh ../applications/db-inv DEV_DBINVENTORY_dbinventory
 ```
 
 ## Ce que l'étape 3 rattrape
 
 `apex validate` prouve qu'un fichier compile. Il n'ouvre jamais une page — la
 page 71 a passé cinq validations vertes avant de mourir au premier rendu.
-`post_import.sh` lance `T_001_apex_page_smoke.sql`, qui inspecte ce qu'APEX
+`post_import.sh` lance `tests/T_001_apex_page_smoke.sql`, qui inspecte ce qu'APEX
 détient réellement après l'import : le SQL de chaque région est analysé contre le
 schéma vivant, les listes de valeurs partagées sont vérifiées, et les attributs
 de greffon des items sont relus.
@@ -56,16 +59,14 @@ mais l'oublier arrête désormais le déploiement au lieu de livrer un formulair
 qui perd les fichiers sans le dire.
 
 **Si un troisième item de téléversement apparaît**, l'ajouter au tableau
-ci-dessus. `T_001` le détectera tout seul — il balaie tous les items dont le type
-d'affichage contient « file » — mais le message d'aide de `post_import.sh` cite
-les deux connus, et un troisième non cité enverrait son lecteur chercher.
+ci-dessus, sur le même format (`| <page> — … |`). `T_001` le détectera tout
+seul — il balaie tous les items dont le type d'affichage contient « file » —
+mais le message d'aide de `post_import.sh` est **construit à partir de ce
+tableau** : un item qui n'y figure pas n'y sera pas cité, et enverrait son
+lecteur chercher.
 
 ## Ordre vis-à-vis de la base
 
-Le modèle d'abord, l'application ensuite : `T_001` analyse le SQL des régions
+Le schéma d'abord, l'application ensuite : `T_001` analyse le SQL des régions
 contre le schéma vivant, et échouerait sur une colonne qui n'existe pas encore.
-
-```bash
-sql -S -name <conn> @database/dbinventory/X_000_reinstall_all.sql   # ou X_001 pour repartir de zéro
-./fixtures/load_fixtures.sh <conn_demo>                             # jeu de démonstration
-```
+Voir [`../../README.md`](../../README.md).

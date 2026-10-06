@@ -6,7 +6,7 @@
 create tablespace dbinventory_tbs;
 
 -- standard user creation
-create user dbinventory identified by "uEjAYCnXhgbw3IputZCJbeMFKwGBvi"
+create user dbinventory identified by "Change:ME:001"
             profile C##SERVICE_PROFILE 
             default tablespace dbinventory_tbs
             account unlock;

@@ -26,12 +26,14 @@
 //   global WebSocket -- stable since Node 22.
 //
 // USAGE
+//   From the application directory (apex/dbinventory/applications/db-inv):
 //   node tests/apex_page_test.mjs                  every page in PAGES
 //   node tests/apex_page_test.mjs --pages 70,71    after a targeted change
 //   node tests/apex_page_test.mjs --profile RSSI   as another user
 //   node tests/apex_page_test.mjs --head           watch it run
 //
-//   Configuration comes from .env at the repository root; see .env.example.
+//   Configuration comes from the nearest .env above this file -- today the
+//   repository root; see .env.example.
 //   Exits non-zero when a page fails, so it can gate a deployment script.
 // ============================================================================
 
@@ -41,15 +43,26 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const HERE = dirname(fileURLToPath(import.meta.url));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ---------------------------------------------------------------- configuration
 
+// The nearest .env walking up from this file. Today that is the repository
+// root; if this application is ever split into its own repository, a .env at
+// its root is found first, with nothing to change here.
+function findEnv () {
+  for (let dir = HERE; ; dir = dirname(dir)) {
+    const path = join(dir, '.env');
+    if (existsSync(path)) return path;
+    if (dirname(dir) === dir) return null;
+  }
+}
+
 function loadEnv () {
-  const path = join(ROOT, '.env');
-  if (!existsSync(path)) {
-    fail(`.env not found at ${path}. Copy .env.example and fill it in.`);
+  const path = findEnv();
+  if (!path) {
+    fail(`no .env found above ${HERE}. Copy .env.example and fill it in.`);
   }
   const env = {};
   for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {

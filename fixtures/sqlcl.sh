@@ -3,7 +3,7 @@
 #
 # À sourcer, pas à exécuter.
 #
-# Deux prérequis non évidents, les mêmes que dans APEXLang/validate.sh, et pour
+# Deux prérequis non évidents, les mêmes que dans apex/dbinventory/bin/_sqlcl_env.sh, et pour
 # les mêmes raisons. Ne pas les retirer :
 #
 #   * stdin doit venir d'un VRAI fichier. Sans TTY, /dev/null et un stdin

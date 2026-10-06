@@ -34,7 +34,7 @@ SQL> @apxchpwd.sql
 Enter the administrator's username [ADMIN]
 User "ADMIN" does not yet exist and will be created.
 Enter ADMIN's email [ADMIN] IT-DBA@chl.lu
-Enter ADMIN's password [] FMR1M2FIRjK3xadEX:yggwiCHnN8xhs
+Enter ADMIN's password [] Change:ME:001
 Created instance administrator ADMIN.
 
 SQL> exit;
@@ -148,10 +148,11 @@ SQL> cd setup/pdb_dbinventory
 
 SQL> @001_create_db_artefacts.sql
 
-SQL> @002_create_apex_artefacts.sql
-
 SQL> exit;
 ```
+
+The workspace, the schema objects and the application are then installed in
+that order, as described in `apex/dbinventory/README.md`.
 
 Configure access to Openrouter for AI models
 

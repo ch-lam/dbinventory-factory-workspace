@@ -8,7 +8,7 @@
 // Pourquoi pas crypto : on ne cherche pas de l'imprévisible, on cherche du
 // varié et du rejouable. mulberry32 tient en dix lignes et n'a aucune
 // dépendance, ce qui est la règle du dépôt pour tout ce qui est exécutable
-// (cf. tests/apex_page_test.mjs).
+// (cf. apex/dbinventory/applications/db-inv/tests/apex_page_test.mjs).
 
 export function makeRng (seed) {
    let a = seed >>> 0;

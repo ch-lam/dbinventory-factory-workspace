@@ -60,7 +60,10 @@ JAVA_TOOL_OPTIONS="$APEX_SQLCL_TOOL_OPTIONS" \
 rc="${PIPESTATUS[0]}"
 
 echo
-if [[ "$rc" -ne 0 ]] || grep -qi 'FAIL' "$work/smoke.out"; then
+# Match T_001's own failure marker, at the start of the line and in capitals.
+# A bare case-insensitive 'FAIL' also matched its summary line, "N checks run,
+# 0 failure(s)", so this gate could never pass.
+if [[ "$rc" -ne 0 ]] || grep -q '^  FAIL  ' "$work/smoke.out"; then
    cat >&2 <<'MSG'
 ERROR: the imported application did not pass its smoke test.
 

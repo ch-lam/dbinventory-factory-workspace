@@ -1,7 +1,7 @@
 -- =============================================================================
--- T_004  –  Assertions sur le jeu de données de démonstration
+-- T_003  –  Assertions sur le jeu de données de démonstration
 --
---   sql -S -name DEMO_DBINVENTORY_dbinventory @database/dbinventory/T_004_fixture_expectations.sql
+--   sql -S -name DEMO_DBINVENTORY_dbinventory @database/dbinventory/T_003_fixture_expectations.sql
 --
 -- Deux natures de vérification, volontairement séparées.
 --
@@ -38,7 +38,7 @@ set trimspool on
 set serveroutput on size unlimited
 
 -- Chemin du fichier d'empreinte. Surchargeable :
---   sql ... @T_004_fixture_expectations.sql /chemin/vers/actual.csv
+--   sql ... @T_003_fixture_expectations.sql /chemin/vers/actual.csv
 define P_OUT = "&1"
 
 -- =============================================================================
@@ -244,7 +244,7 @@ declare
       end if;
    end expect_zero;
 begin
-   dbms_output.put_line('T_004 - assertions structurelles');
+   dbms_output.put_line('T_003 - assertions structurelles');
 
    -- 1. Les poids de scoring somment à 100 par (plateforme, domaine).
    --    load_scoring divise par sum(weight) : une somme differente de 100 ne
@@ -619,10 +619,10 @@ begin
                           and a.entity_id = e.entity_id );
    expect_zero('chaque rattachement vise une entite qui existe', l_n, 'rattachement(s) orphelin(s)');
 
-   dbms_output.put_line('T_004 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s).');
+   dbms_output.put_line('T_003 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s).');
    if l_failed > 0 then
       raise_application_error(-20903,
-         'T_004 : ' || l_failed || ' assertion(s) en echec sur le jeu de donnees de demonstration.');
+         'T_003 : ' || l_failed || ' assertion(s) en echec sur le jeu de donnees de demonstration.');
    end if;
 end;
 /

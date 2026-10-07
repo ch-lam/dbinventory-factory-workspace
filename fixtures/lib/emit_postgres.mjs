@@ -21,7 +21,7 @@
 //     main dans la requête ;
 //   * get_info_postgres_security.sh IGNORE LES STANDBY. Les cinq CSV de sécurité
 //     n'ont donc aucune ligne pour eux, et c'est reproduit ici : c'est ce qui
-//     fait qu'une instance standby ne porte aucun constat SECURITY, et T_004
+//     fait qu'une instance standby ne porte aucun constat SECURITY, et T_003
 //     l'assert.
 
 import { writeCsv } from './csv.mjs';

@@ -1,13 +1,13 @@
 -- =============================================================================
--- T_005 — la promotion, depuis la discovery vers les trois périmètres
+-- T_004 — la promotion, depuis la discovery vers les trois périmètres
 -- =============================================================================
 -- Se joue sur la base de démonstration, APRÈS fixtures/load_fixtures.sh.
 --
---   sql -S -name DEMO_DBINVENTORY_dbinventory @T_005_discovery_promotion.sql
+--   sql -S -name DEMO_DBINVENTORY_dbinventory @T_004_discovery_promotion.sql
 --
 -- Ce script **annule sa transaction**. Il ne laisse donc rien derrière lui, et
 -- peut se jouer avant ou après check_baseline.sh sans en déplacer une mesure.
--- C'est ce qui lui permet d'exister à côté de T_004 plutôt que dedans : une
+-- C'est ce qui lui permet d'exister à côté de T_003 plutôt que dedans : une
 -- promotion réussie change le périmètre, donc l'empreinte, et un test qui
 -- déplace la référence qu'il vérifie ne vérifie rien.
 --
@@ -19,7 +19,7 @@ set serveroutput on size unlimited
 set feedback off
 whenever sqlerror exit failure rollback
 
-prompt T_005 - promotion depuis la discovery
+prompt T_004 - promotion depuis la discovery
 
 declare
    l_failed  pls_integer := 0;
@@ -96,13 +96,13 @@ begin
          p_disc_instance_id => l_id,
          p_environment      => 'DEV',
          p_license_type     => 'CPU',
-         p_collect_name     => 'T005ORA',
-         p_service_name     => 'T005SRV',
+         p_collect_name     => 'T004ORA',
+         p_service_name     => 'T004SRV',
          p_port             => 1521 );
       select max(easy_connect_tns) into l_tns
         from oracle_collect_list
-       where collect_name = 'T005ORA';
-      if l_tns is not null and regexp_like(l_tns, '^[^:/]+:[0-9]+/T005SRV$') then
+       where collect_name = 'T004ORA';
+      if l_tns is not null and regexp_like(l_tns, '^[^:/]+:[0-9]+/T004SRV$') then
          ok('la promotion ORACLE ecrit un easy_connect bien forme (' || l_tns || ')');
       else
          fail('la promotion ORACLE ecrit un easy_connect bien forme',
@@ -118,7 +118,7 @@ begin
             p_disc_instance_id => l_id,
             p_environment      => 'DEV',
             p_license_type     => 'CPU',
-            p_collect_name     => 'T005ORA2' );
+            p_collect_name     => 'T004ORA2' );
          fail('la promotion ORACLE sans service est refusee', 'elle a ete acceptee');
       exception
          when others then
@@ -138,9 +138,9 @@ begin
          p_disc_host_id => l_id,
          p_environment  => 'DEV',
          p_license_type => 'FREE',
-         p_collect_name => 'T005PG' );
+         p_collect_name => 'T004PG' );
       select count(*) into l_n from postgres_collect_list
-       where collect_name = 'T005PG' and active = 1;
+       where collect_name = 'T004PG' and active = 1;
       if l_n = 1 then ok('la promotion POSTGRES cree son entree de perimetre');
       else fail('la promotion POSTGRES cree son entree de perimetre', 'aucune entree');
       end if;
@@ -173,7 +173,7 @@ begin
             p_disc_host_id => l_id,
             p_environment  => 'DEV',
             p_license_type => 'FREE',
-            p_collect_name => 'T005MY' );
+            p_collect_name => 'T004MY' );
          fail('la promotion MYSQL est refusee', 'elle a ete acceptee');
       exception
          when others then
@@ -213,11 +213,11 @@ begin
    -- reference est comparee au constat pres.
    rollback;
 
-   dbms_output.put_line('T_005 : ' || l_checked || ' verification(s), '
+   dbms_output.put_line('T_004 : ' || l_checked || ' verification(s), '
                         || l_failed || ' echec(s).  (rollback)');
    if l_failed > 0 then
       raise_application_error(-20904,
-         'T_005 : ' || l_failed || ' assertion(s) en echec sur la promotion.');
+         'T_004 : ' || l_failed || ' assertion(s) en echec sur la promotion.');
    end if;
 end;
 /

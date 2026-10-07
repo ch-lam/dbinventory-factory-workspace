@@ -29,7 +29,7 @@ node fixtures/generate.mjs
 ./fixtures/check_baseline.sh DEMO_DBINVENTORY_dbinventory --capture
 
 # La promotion depuis la discovery — s'annule, ne déplace aucune mesure
-sql -S -name DEMO_DBINVENTORY_dbinventory @database/dbinventory/T_005_discovery_promotion.sql
+sql -S -name DEMO_DBINVENTORY_dbinventory @database/dbinventory/T_004_discovery_promotion.sql
 
 # La chaîne elle-même : les .lst régénérés DEPUIS LA BASE
 DBINVENTORY_CONN_NAME=DEMO_DBINVENTORY_dbinventory \
@@ -169,7 +169,7 @@ cohérence.
 charger  ->  ETL  ->  check_baseline.sh --capture  ->  expected/baseline.csv
 ```
 
-`T_004_fixture_expectations.sql` produit l'empreinte chiffrée (cardinalités, constats par
+`T_003_fixture_expectations.sql` produit l'empreinte chiffrée (cardinalités, constats par
 règle et par verdict, conformité, scoring, volumétrie du staging) et joue en plus des
 **assertions structurelles** qui, elles, échouent bruyamment : poids sommant à 100, tout
 `rule_code` émis présent au catalogue, aucun constat sans entité, scores dans leurs bornes,

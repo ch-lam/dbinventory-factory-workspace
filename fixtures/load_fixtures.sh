@@ -209,4 +209,4 @@ if [[ "${APPS_RC}" -ne 0 ]]; then
     exit 1
 fi
 
-log "Terminé. Assertions : sql -S -name ${DB_CONN} @database/dbinventory/T_004_fixture_expectations.sql"
+log "Terminé. Assertions : sql -S -name ${DB_CONN} @database/dbinventory/T_003_fixture_expectations.sql"

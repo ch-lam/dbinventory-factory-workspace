@@ -14,4 +14,4 @@
 -- Last, and not optional: a package body that fails to compile does not stop the
 -- run above -- SQLcl prints the errors and carries on to "Commit complete."
 -- This turns that into an exit code.
-@T_003_no_invalid_objects.sql
+@T_002_no_invalid_objects.sql

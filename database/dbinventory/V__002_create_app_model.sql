@@ -806,7 +806,7 @@ create table ref_control_rule (
    benchmark_ref  varchar2(20 char),
    -- Second reading axis, assigned as a whole in V__003 (see ref_nis2_domain).
    -- Nullable on purpose: a NOT NULL here would only say that something is
-   -- unclassified, where the T_004 assertion names WHICH rule is.
+   -- unclassified, where the T_003 assertion names WHICH rule is.
    nis2_domain_code varchar2(20 char),
    constraint ref_control_rule_pk primary key ( rule_code ),
    constraint ref_control_rule_ctl_fk foreign key ( control_code )

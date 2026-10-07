@@ -1,5 +1,5 @@
 -- ============================================================================
--- T_002_application_model.sql
+-- T_001_application_model.sql
 -- ----------------------------------------------------------------------------
 -- Tests the application registry: the model, its constraints, and the write API.
 --
@@ -17,7 +17,7 @@
 --   dim_database but never writes to them.
 --
 -- USAGE
---   sql -S -name <conn> @T_002_application_model.sql
+--   sql -S -name <conn> @T_001_application_model.sql
 --   Exits non-zero when a check fails, so it can gate a deployment script.
 -- ============================================================================
 
@@ -79,7 +79,7 @@ begin
    -- Fixture
    -- ---------------------------------------------------------------------
    l_app := pkg_dbinv_application.create_application(
-               p_app_code    => 'T002TEST',
+               p_app_code    => 'T001TEST',
                p_app_name    => 'Test fixture, rolled back',
                p_criticality => 'STANDARD' );
    l_checked := l_checked + 1;
@@ -188,7 +188,7 @@ begin
    select count(*) into l_expected from dim_database where instance_id = l_instance;
 
    l_link := pkg_dbinv_application.link_entity(l_app, 'INSTANCE', l_instance,
-                                               'attached for T_002');
+                                               'attached for T_001');
 
    select count(*) into l_actual from v_application_database where application_id = l_app;
    l_checked := l_checked + 1;

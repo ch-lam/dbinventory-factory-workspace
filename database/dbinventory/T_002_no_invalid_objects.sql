@@ -1,5 +1,5 @@
 -- ============================================================================
--- T_003_no_invalid_objects.sql
+-- T_002_no_invalid_objects.sql
 -- ----------------------------------------------------------------------------
 -- Fails when any object in the schema carries a compilation error.
 --
@@ -22,7 +22,7 @@
 --
 -- USAGE
 --   Run it at the end of every install. X_000 does.
---     sql -S -name <conn> @T_003_no_invalid_objects.sql
+--     sql -S -name <conn> @T_002_no_invalid_objects.sql
 --
 --   Exits non-zero when anything is invalid, so it gates a deployment script.
 -- ============================================================================

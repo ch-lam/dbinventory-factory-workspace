@@ -29,7 +29,7 @@
     "databases": 25,
     "cdbShare": 0.32,
     "pdbsPerCdb": [1, 3],
-    "_versionsComment": "18.14 est hors support depuis 2021 et 21.15 est une Innovation Release sans support etendu : sans elles, ORACLE_ENGINE_SUPPORTED ne rendrait qu'un seul verdict et T_004 le refuserait",
+    "_versionsComment": "18.14 est hors support depuis 2021 et 21.15 est une Innovation Release sans support etendu : sans elles, ORACLE_ENGINE_SUPPORTED ne rendrait qu'un seul verdict et T_003 le refuserait",
     "versions": ["18.14.0.0.0", "19.3.0.0.0", "19.9.0.0.0", "19.13.0.0.0", "19.20.0.0.0", "19.31.0.0.0", "21.15.0.0.0", "23.26.1.0.0"],
     "versionWeights": [2, 1, 3, 8, 5, 3, 3, 3],
     "licenses": ["CPU", "SAP"],
@@ -93,7 +93,7 @@
       "",
       "runDate vaut snapshotDate. days_since_last_seen et is_stale derivent de",
       "sysdate : ils vaudront autre chose demain, et aucune mesure de reference",
-      "n'en descend (voir T_004)."
+      "n'en descend (voir T_003)."
     ],
 
     "runDate": "2026-09-01",
@@ -281,7 +281,7 @@
       "Les cinq etats de v_application_document_review, un document par etat",
       "demande. Tous portent une URL et aucun ne porte de fichier : stocker un",
       "BLOB depuis le generateur exigerait DBMS_CRYPTO pour l'empreinte, et",
-      "T_002 couvre deja ce chemin."
+      "T_001 couvre deja ce chemin."
     ],
     "docKinds": {
       "current":   { "kind": "RUNBOOK",   "title": "Procedure d'exploitation" },

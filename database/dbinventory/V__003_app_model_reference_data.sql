@@ -668,7 +668,7 @@ insert into ref_nis2_domain ( nis2_domain_code, display_order, title, article_re
 -- One domain per rule. Written as six set-based updates for the same reason as
 -- the provenance block above: the classification is reviewed as a whole, and
 -- reading it as a list is what makes a wrong entry visible. A rule_code typed
--- wrong here updates nothing and leaves its rule unclassified, which the T_004
+-- wrong here updates nothing and leaves its rule unclassified, which the T_003
 -- assertion reports by name.
 --
 -- Two placements that are not obvious, and are deliberate:

@@ -102,7 +102,7 @@ end;
 -- the append-only trigger on ref_exception_event. Nothing is wrong with it; it
 -- simply has to be recompiled, and Oracle would do it lazily on first use.
 --
--- Doing it here rather than leaving it to chance, because T_003 runs at the end
+-- Doing it here rather than leaving it to chance, because T_002 runs at the end
 -- of X_000 and reports an INVALID object as a failed install. It is right to do
 -- so: an object left invalid by a migration is a migration that did not finish.
 -- ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ begin
          l_n := l_n + 1;
       exception when others then
          -- Report and continue: something that will not compile is a real defect,
-         -- and T_003 is about to name it with its error text.
+         -- and T_002 is about to name it with its error text.
          dbms_output.put_line('  WARN  ' || o.object_type || ' ' || o.object_name
                               || ' would not recompile - ' || substr(sqlerrm, 1, 100));
       end;

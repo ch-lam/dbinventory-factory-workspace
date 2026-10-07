@@ -8,7 +8,7 @@
 # Usage : check_baseline.sh [connexion_sqlcl] [--capture]
 #         Défaut : DEMO_DBINVENTORY_dbinventory
 #
-#   sans --capture : joue T_004 et compare son empreinte à
+#   sans --capture : joue T_003 et compare son empreinte à
 #                    expected/baseline.csv. Sortie non nulle si ça diffère.
 #   avec --capture : écrase expected/baseline.csv par les chiffres actuels.
 #
@@ -25,7 +25,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASELINE="${SCRIPT_DIR}/expected/baseline.csv"
-T004="$(cd "${SCRIPT_DIR}/../database/dbinventory" && pwd)/T_004_fixture_expectations.sql"
+T003="$(cd "${SCRIPT_DIR}/../database/dbinventory" && pwd)/T_003_fixture_expectations.sql"
 
 # Appels SQLcl : stdin depuis un vrai fichier, JLine en mode dumb, chemins
 # convertis. Sans ce helper, SQLcl repond « java.io.IOException: Fonction
@@ -49,20 +49,20 @@ ACTUAL="$(mktemp)"
 OUT_LOG="$(mktemp)"
 trap 'rm -f "${ACTUAL}" "${OUT_LOG}"' EXIT
 
-log "Exécution de T_004 sur ${DB_CONN}..."
-sqlcl_run "${DB_CONN}" "${T004}" "${ACTUAL}" | tee "${OUT_LOG}"
+log "Exécution de T_003 sur ${DB_CONN}..."
+sqlcl_run "${DB_CONN}" "${T003}" "${ACTUAL}" | tee "${OUT_LOG}"
 SQL_RC="${PIPESTATUS[0]}"
 
 # Deux vérifications plutôt qu'une : SQLcl rend parfois 0 malgré une erreur
 # signalée dans sa sortie -- c'est le même constat qui a conduit validate.sh à
 # se fier au texte du compilateur plutôt qu'au code retour.
 if grep -q 'ECHEC:' "${OUT_LOG}" || [[ "${SQL_RC}" -ne 0 ]]; then
-    echo "ERREUR: les assertions structurelles de T_004 ont échoué (code ${SQL_RC})." >&2
+    echo "ERREUR: les assertions structurelles de T_003 ont échoué (code ${SQL_RC})." >&2
     exit 1
 fi
 
 if [[ ! -s "${ACTUAL}" ]]; then
-    echo "ERREUR: T_004 n'a produit aucune empreinte. La base est-elle chargée ?" >&2
+    echo "ERREUR: T_003 n'a produit aucune empreinte. La base est-elle chargée ?" >&2
     exit 1
 fi
 

@@ -34,6 +34,12 @@ while IFS=';' read -r db_env lic db; do
     log "  rôle=${db_role} cdb=${IS_CONTAINER} ver=${db_ver}"
 
     # -- Hosts + Databases (tous rôles) ---------------------------------------
+    # v$sga et v$pgastat filtrés sur con_id = 0, la valeur de l'instance. En
+    # 23ai, avec CONTAINER_DATA=ALL (C##MONITORING), ces vues renvoient une ligne
+    # par conteneur : la sous-requête PGA tombait en ORA-01427, toute la ligne de
+    # la base avec elle, et les trois 23ai manquaient à oracle_databases. La PGA
+    # ne s'agrège pas entre PDB, et la somme SGA aurait compté chaque conteneur.
+    # con_id n'existe pas en 11g, que dbInventory ne gère plus.
     sql_run "${db}" <<SQL >> /dev/null
 SPOOL ${LIST_DIR}/hosts_temp.csv APPEND
 SELECT '"${db_env}","${lic}","'||
@@ -55,8 +61,9 @@ SELECT '"${db_env}","${lic}","'||
        (SELECT value FROM v\$nls_parameters WHERE parameter='NLS_CHARACTERSET')||'","'||
        'Enterprise Edition","'||
        (SELECT value FROM v\$parameter WHERE name='cluster_database')||'","'||
-       (SELECT ROUND(SUM(value)/1024/1024/1024) FROM v\$sga)||'","'||
-       (SELECT ROUND(value/1024/1024/1024) FROM v\$pgastat WHERE name='maximum PGA allocated')||'","'||
+       (SELECT ROUND(SUM(value)/1024/1024/1024) FROM v\$sga WHERE con_id = 0)||'","'||
+       (SELECT ROUND(value/1024/1024/1024) FROM v\$pgastat
+         WHERE name='maximum PGA allocated' AND con_id = 0)||'","'||
        (SELECT ROUND(usable_file_mb/1024)
           FROM v\$asm_diskgroup WHERE name LIKE '%DATA%' AND state='CONNECTED' AND ROWNUM=1)||'","'||
        (SELECT CASE type WHEN 'HIGH' THEN ROUND(total_mb/3/1024) ELSE ROUND(total_mb/2/1024) END

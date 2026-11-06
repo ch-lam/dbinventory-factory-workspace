@@ -1760,6 +1760,7 @@ comment on column product_support.current_patch_date is 'Date of the current pat
 -- postgres_hosts
 -- ============================================================
 create table postgres_hosts (
+   collect_id        varchar2(16),
    hostname          varchar2(100 char) not null,
    environment       varchar2(20 char) not null,
    license_type      varchar2(50 char) not null,
@@ -1775,6 +1776,7 @@ create table postgres_hosts (
 );
 
 comment on table postgres_hosts is 'Inventory of PostgreSQL instances/hosts and their configuration.';
+comment on column postgres_hosts.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_hosts.hostname is 'Host name of the database server or instance.';
 comment on column postgres_hosts.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column postgres_hosts.license_type is 'Licensing type applied to this host/instance.';
@@ -1792,6 +1794,7 @@ comment on column postgres_hosts.db_role is 'Role of the instance/database in th
 -- postgres_databases
 -- ============================================================
 create table postgres_databases (
+   collect_id   varchar2(16),
    hostname     varchar2(100 char) not null,
    environment  varchar2(20 char) not null,
    datname      varchar2(100 char) not null,
@@ -1807,6 +1810,7 @@ create table postgres_databases (
 );
 
 comment on table postgres_databases is 'Inventory of PostgreSQL databases and their properties.';
+comment on column postgres_databases.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_databases.hostname is 'Host name of the database server or instance.';
 comment on column postgres_databases.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
 comment on column postgres_databases.datname is 'Name of the PostgreSQL database.';
@@ -1825,6 +1829,7 @@ comment on column postgres_databases.date_value is 'Timestamp at which this row 
 -- Equivalent oracle_dataguard : etat de la replication streaming.
 -- ============================================================
 create table postgres_replication (
+   collect_id  varchar2(16),
    hostname    varchar2(100 char) not null,
    db_role     varchar2(20 char) not null,
    peer_addr   varchar2(100 char),
@@ -1834,6 +1839,7 @@ create table postgres_replication (
 );
 
 comment on table postgres_replication is 'PostgreSQL streaming replication status, the Postgres equivalent of oracle_dataguard.';
+comment on column postgres_replication.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_replication.hostname is 'Host name of the database server or instance.';
 comment on column postgres_replication.db_role is 'Role of the instance/database in the replication topology (e.g. primary, standby).';
 comment on column postgres_replication.peer_addr is 'Network address of the replication peer.';
@@ -1847,6 +1853,7 @@ comment on column postgres_replication.lag_seconds is 'Replication lag observed 
 -- sauvegarde applicative sans outil dedie (pgBackRest/Barman non utilise).
 -- ============================================================
 create table postgres_backup (
+   collect_id         varchar2(16),
    hostname           varchar2(100 char) not null,
    archive_mode       varchar2(20 char),
    archived_count     number(15),
@@ -1858,6 +1865,7 @@ create table postgres_backup (
 );
 
 comment on table postgres_backup is 'PostgreSQL WAL archiving status (pg_stat_archiver); no dedicated backup catalog tool (pgBackRest/Barman) is in use.';
+comment on column postgres_backup.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_backup.hostname is 'Host name of the database server or instance.';
 comment on column postgres_backup.archive_mode is 'WAL archive mode configured on the instance.';
 comment on column postgres_backup.archived_count is 'Number of WAL segments successfully archived since the last statistics reset.';
@@ -1871,6 +1879,7 @@ comment on column postgres_backup.last_failed_time is 'Timestamp of the last fai
 -- postgres_extensions
 -- ============================================================
 create table postgres_extensions (
+   collect_id varchar2(16),
    hostname   varchar2(100 char) not null,
    datname    varchar2(100 char) not null,
    extname    varchar2(100 char) not null,
@@ -1878,6 +1887,7 @@ create table postgres_extensions (
 );
 
 comment on table postgres_extensions is 'Inventory of PostgreSQL extensions installed per database.';
+comment on column postgres_extensions.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_extensions.hostname is 'Host name of the database server or instance.';
 comment on column postgres_extensions.datname is 'Name of the PostgreSQL database.';
 comment on column postgres_extensions.extname is 'Name of the installed extension.';
@@ -1887,6 +1897,7 @@ comment on column postgres_extensions.extversion is 'Version of the installed ex
 -- postgres_security_parameter
 -- ============================================================
 create table postgres_security_parameter (
+   collect_id       varchar2(16),
    hostname         varchar2(100 char) not null,
    parameter_name   varchar2(100 char) not null,
    parameter_value  varchar2(500 char),
@@ -1895,6 +1906,7 @@ create table postgres_security_parameter (
 );
 
 comment on table postgres_security_parameter is 'PostgreSQL configuration parameter compliance check results.';
+comment on column postgres_security_parameter.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_security_parameter.hostname is 'Host name of the database server or instance.';
 comment on column postgres_security_parameter.parameter_name is 'Name of the configuration parameter being evaluated.';
 comment on column postgres_security_parameter.parameter_value is 'Value of the configuration parameter.';
@@ -1905,6 +1917,7 @@ comment on column postgres_security_parameter.date_value is 'Timestamp at which 
 -- postgres_security_roles
 -- ============================================================
 create table postgres_security_roles (
+   collect_id       varchar2(16),
    hostname         varchar2(100 char) not null,
    rolname          varchar2(100 char) not null,
    rolsuper         varchar2(1 char) not null,
@@ -1920,6 +1933,7 @@ create table postgres_security_roles (
 );
 
 comment on table postgres_security_roles is 'PostgreSQL role attribute compliance check results.';
+comment on column postgres_security_roles.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_security_roles.hostname is 'Host name of the database server or instance.';
 comment on column postgres_security_roles.rolname is 'Name of the PostgreSQL role.';
 comment on column postgres_security_roles.rolsuper is 'Indicates whether the role has the SUPERUSER attribute.';
@@ -1939,6 +1953,7 @@ comment on column postgres_security_roles.date_value is 'Timestamp at which this
 -- pg_execute_server_program, pg_monitor, ...).
 -- ============================================================
 create table postgres_sec_role_members (
+   collect_id       varchar2(16),
    hostname         varchar2(100 char) not null,
    role_name        varchar2(100 char) not null,
    member_of        varchar2(100 char) not null,
@@ -1947,6 +1962,7 @@ create table postgres_sec_role_members (
 );
 
 comment on table postgres_sec_role_members is 'PostgreSQL role membership compliance check results, focused on sensitive predefined roles (pg_read_all_data, pg_execute_server_program, pg_monitor, ...).';
+comment on column postgres_sec_role_members.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_sec_role_members.hostname is 'Host name of the database server or instance.';
 comment on column postgres_sec_role_members.role_name is 'Name of the role whose membership is being evaluated.';
 comment on column postgres_sec_role_members.member_of is 'Name of the (typically sensitive predefined) role this role is a member of.';
@@ -1957,6 +1973,7 @@ comment on column postgres_sec_role_members.date_value is 'Timestamp at which th
 -- postgres_security_hba_rules
 -- ============================================================
 create table postgres_security_hba_rules (
+   collect_id       varchar2(16),
    hostname         varchar2(100 char) not null,
    line_number      number(10) not null,
    rule_type        varchar2(20 char),
@@ -1969,6 +1986,7 @@ create table postgres_security_hba_rules (
 );
 
 comment on table postgres_security_hba_rules is 'PostgreSQL pg_hba.conf authentication rule compliance check results.';
+comment on column postgres_security_hba_rules.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_security_hba_rules.hostname is 'Host name of the database server or instance.';
 comment on column postgres_security_hba_rules.line_number is 'Line number of the rule within pg_hba.conf.';
 comment on column postgres_security_hba_rules.rule_type is 'Connection type of the rule (e.g. host, hostssl, local).';
@@ -1984,6 +2002,7 @@ comment on column postgres_security_hba_rules.date_value is 'Timestamp at which 
 -- Droits accordes a PUBLIC sur les bases (CONNECT/CREATE).
 -- ============================================================
 create table postgres_sec_db_privs (
+   collect_id       varchar2(16),
    hostname         varchar2(100 char) not null,
    datname          varchar2(100 char) not null,
    grantee          varchar2(100 char) not null,
@@ -1993,6 +2012,7 @@ create table postgres_sec_db_privs (
 );
 
 comment on table postgres_sec_db_privs is 'PostgreSQL PUBLIC role database privilege (CONNECT/CREATE) compliance check results.';
+comment on column postgres_sec_db_privs.collect_id is 'Identifier for the collect run that produced this row';
 comment on column postgres_sec_db_privs.hostname is 'Host name of the database server or instance.';
 comment on column postgres_sec_db_privs.datname is 'Name of the PostgreSQL database.';
 comment on column postgres_sec_db_privs.grantee is 'Name of the role or user the privilege is granted to.';

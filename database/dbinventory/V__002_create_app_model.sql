@@ -1400,7 +1400,7 @@ comment on table v_nis2_posture is 'NIS2 article 21(2) posture of every instance
 -- truth for the freshness columns of fact_scoring: every consumer reads this
 -- view, so changing where the date comes from stays a one-place change.
 --
--- The date is read from collect_id, which both collect chains write as
+-- The date is read from collect_id, which all three collect chains write as
 -- COLL_ID_YYYYMMDD. It is a real collect date, unlike date_value, which is a
 -- `default systimestamp` stamped when the row lands in Oracle and therefore
 -- dates the load, not the collect.
@@ -1452,6 +1452,21 @@ create or replace view v_entity_collect_date as
           join dim_host dh on dh.platform = 'ORACLE' and dh.hostname = od.hostname
           join dim_instance di on di.host_id = dh.host_id and di.instance_name = od.instance_name
          where regexp_like(sp.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- PostgreSQL inventory: instance_name = hostname, see load_dim_instance
+        select di.instance_id,
+               to_date(substr(ph.collect_id, 9), 'YYYYMMDD')
+          from postgres_hosts ph
+          join dim_instance di on di.platform = 'POSTGRES' and di.instance_name = ph.hostname
+         where regexp_like(ph.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- PostgreSQL security. Collected on primaries only, so a standby is
+        -- dated by its inventory alone.
+        select di.instance_id,
+               to_date(substr(ps.collect_id, 9), 'YYYYMMDD')
+          from postgres_security_parameter ps
+          join dim_instance di on di.platform = 'POSTGRES' and di.instance_name = ps.hostname
+         where regexp_like(ps.collect_id, '^COLL_ID_[0-9]{8}$')
      )
     group by instance_id;
 

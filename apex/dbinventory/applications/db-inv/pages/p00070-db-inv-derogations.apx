@@ -264,6 +264,9 @@ page 70 (
                  where review_state <> 'Current'
                  group by review_state
                  order by case review_state
+                             -- First: approved, yet without any effect until the
+                             -- scoring runs. The Recompute Scoring button is here.
+                             when 'Approved, not yet scored' then 0
                              when 'Expired'                  then 1
                              when 'Review overdue'           then 2
                              when 'Expiring within 60 days'  then 3
@@ -352,6 +355,115 @@ page 70 (
                 clearCache: 71
             }
             warnOnUnsavedChanges: doNotCheck
+        }
+    )
+
+    button rescore (
+        buttonName: RESCORE
+        label: Recompute Scoring
+        layout {
+            sequence: 10
+            region: @review-summary
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+            warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: noRowsReturned
+            sqlQuery:
+                ```sql
+                select 1
+                  from v_environment_identity
+                 where name = 'Service name'
+                   and upper(value) like '%DEMO%'
+                ```
+        }
+        comments {
+            comments: Derogations attach to findings only when the scoring runs. Granted between two collects, they would otherwise wait for the next cron run with no effect at all. Rendered everywhere but on the demo, which has its own button with a warning.
+        }
+    )
+
+    button rescore-demo (
+        buttonName: RESCORE_DEMO
+        label: Recompute Scoring
+        layout {
+            sequence: 20
+            region: @review-summary
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+            requiresConfirmation: true
+            warnOnUnsavedChanges: doNotCheck
+        }
+        confirmation {
+            message: Demo database - recomputing creates a scoring snapshot dated today, next to the dataset's own. Your derogations will apply, but T_003 and the reference baseline will fail until the demo dataset is reloaded (fixtures/load_fixtures.sh). Continue?
+            style: warning
+        }
+        serverSideCondition {
+            type: rowsReturned
+            sqlQuery:
+                ```sql
+                select 1
+                  from v_environment_identity
+                 where name = 'Service name'
+                   and upper(value) like '%DEMO%'
+                ```
+        }
+        comments {
+            comments: Same as RESCORE, rendered only on the demo, same criterion as the second guard of fixtures/load_fixtures.sh. A snapshot dated today breaks T_003 assertion 11 and the baseline until the demo is reloaded, hence the warning.
+        }
+    )
+
+    process rescore (
+        name: Recompute Scoring
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                -- What the cron runs after a collect (compute_info_all.sh), at
+                -- today's date: the inventory ETL, then the scoring, whose
+                -- apply_exceptions attaches every derogation valid today. Both
+                -- read the staging already loaded; no collect is involved.
+                pkg_dbinv_inventory.load_all;
+                pkg_dbinv_scoring.load_all;
+                ```
+        }
+        execution {
+            sequence: 10
+        }
+        serverSideCondition {
+            type: requestIsContainedInValue
+            value: RESCORE,RESCORE_DEMO
+        }
+        successMessage {
+            successMessage: Scoring recomputed - derogations approved and valid today are now applied.
+        }
+    )
+
+    branch back-to-derogations (
+        name: Back to Derogations
+        execution {
+            sequence: 10
+            point: afterProcessing
+        }
+        behavior {
+            type: pageOrUrl
+            target: {
+                page: 70
+            }
         }
     )
 

@@ -1302,28 +1302,24 @@ create or replace package body pkg_dbinv_scoring as
        where snapshot_date = p_snapshot_date
          and exception_id is not null;
 
+      -- The scope match itself (rule, cascade, item, observed value) lives in
+      -- v_exception_finding_match, shared with v_exception_review: the review
+      -- page must never disagree with the scoring on what a derogation designates.
       merge into fact_control_finding f
       using (
          select rid, exception_id
          from (
-            select f2.rowid rid,
-                   e.exception_id,
+            select m.finding_rowid rid,
+                   m.exception_id,
                    row_number() over (
-                      partition by f2.rowid
-                      order by case e.entity_type
-                                  when 'STORAGE'  then 1
-                                  when 'DATABASE' then 2
-                                  when 'INSTANCE' then 3
-                                  else 4
-                               end,                 -- most specific level wins
-                               e.start_date desc,   -- then the most recent grant
-                               e.exception_id desc  -- deterministic tie-break
+                      partition by m.finding_rowid
+                      order by m.specificity,         -- most specific level wins
+                               e.start_date desc,     -- then the most recent grant
+                               e.exception_id desc    -- deterministic tie-break
                    ) rn
-            from fact_control_finding f2
-            join v_entity_ancestry a
-              on a.entity_type = f2.entity_type and a.entity_id = f2.entity_id
+            from v_exception_finding_match m
             join ref_exception e
-              on e.rule_code = f2.rule_code
+              on e.exception_id = m.exception_id
              -- The approval gate. Without it a derogation masked its deviation
              -- the moment it was typed, which would hand anyone with access to
              -- the screen a way to erase a finding from the score unreviewed.
@@ -1334,18 +1330,8 @@ create or replace package body pkg_dbinv_scoring as
              -- replaying an old snapshot does not apply today's derogations
              and p_snapshot_date >= e.start_date
              and p_snapshot_date <= nvl(e.end_date, p_snapshot_date)
-             and ( e.item_key = '*' or e.item_key = f2.item_key )
-             and ( e.observed_value = '*' or e.observed_value = f2.observed_value )
-             -- cascade: the exception entity must be the finding entity or one
-             -- of its ancestors
-             and e.entity_id = case e.entity_type
-                                  when 'HOST'     then a.host_id
-                                  when 'INSTANCE' then a.instance_id
-                                  when 'DATABASE' then a.database_id
-                                  when 'STORAGE'  then a.storage_unit_id
-                               end
-            where f2.snapshot_date = p_snapshot_date
-              and f2.is_compliant = 0
+            where m.snapshot_date = p_snapshot_date
+              and m.is_compliant = 0
          )
          where rn = 1
       ) s

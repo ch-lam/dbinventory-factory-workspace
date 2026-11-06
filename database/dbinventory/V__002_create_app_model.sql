@@ -1102,62 +1102,6 @@ end;
 
 
 -- ============================================================
--- v_exception_review
--- ------------------------------------------------------------
--- The periodic review worklist. review_state is ordered from the most blocking
--- to the most benign, and the row that matters most is the last one before
--- 'Current': an approved derogation that no longer covers any finding. It costs
--- nothing, breaks nothing, and therefore survives untouched for years -- while
--- still standing as an accepted deviation in front of an auditor.
--- ============================================================
-create or replace view v_exception_review as
-select e.exception_id,
-       e.status,
-       rc.platform,
-       e.rule_code,
-       r.title rule_title,
-       e.entity_type,
-       e.entity_id,
-       nvl( nvl( i.instance_name, d.db_name ), h.hostname ) scope_name,
-       e.item_key,
-       e.observed_value,
-       e.start_date,
-       e.end_date,
-       e.review_due_date,
-       e.last_review_date,
-       e.created_by,
-       e.approved_by,
-       ( select count(*)
-           from fact_control_finding f
-          where f.exception_id = e.exception_id
-            and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) covered_today,
-       case
-          when e.status = 'DRAFT'     then 'Draft, not submitted'
-          when e.status = 'SUBMITTED' then 'Awaiting approval'
-          when e.status = 'REJECTED'  then 'Rejected'
-          when e.status = 'REVOKED'   then 'Revoked'
-          when e.active = 0           then 'Disabled'
-          when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
-          when e.review_due_date is not null and e.review_due_date < trunc(sysdate) then 'Review overdue'
-          when e.end_date is not null and e.end_date <= trunc(sysdate) + 60 then 'Expiring within 60 days'
-          when ( select count(*)
-                   from fact_control_finding f
-                  where f.exception_id = e.exception_id
-                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
-             then 'Approved, covers nothing'
-          else 'Current'
-       end review_state
-  from ref_exception e
-  join ref_control_rule r on r.rule_code = e.rule_code
-  join ref_control rc on rc.control_code = r.control_code
-  left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
-  left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
-  left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id;
-
-comment on table v_exception_review is 'Every derogation with its review state; drives the periodic RSSI review and the derogations page. Platform-agnostic by construction.';
-
-
--- ============================================================
 -- ref_scoring_weight  (weight of each category/control in the aggregate)
 -- ============================================================
 create table ref_scoring_weight (
@@ -1250,6 +1194,123 @@ create or replace view v_entity_ancestry as
      join dim_instance i on i.instance_id = d.instance_id;
 
 comment on table v_entity_ancestry is 'Host/instance/database/storage chain of any polymorphic entity reference; used to cascade exceptions downwards and to roll findings up to their control grain.';
+
+
+-- ============================================================
+-- v_exception_finding_match
+-- ------------------------------------------------------------
+-- Which findings the scope of a derogation designates: same rule, the
+-- derogation entity being the finding entity or one of its ancestors, item and
+-- observed value equal or wildcarded. Deliberately WITHOUT the approval gate,
+-- the validity dates and the compliance of the finding: those belong to the
+-- caller.
+--   * pkg_dbinv_scoring.apply_exceptions adds them, the dates judged on the
+--     snapshot date;
+--   * v_exception_review uses the bare match to tell a derogation the scoring
+--     has not applied yet from one that genuinely covers nothing.
+-- Defined once so the two can never disagree on what "matches" means.
+-- ============================================================
+create or replace view v_exception_finding_match as
+   select e.exception_id,
+          f.rowid finding_rowid,
+          f.snapshot_date,
+          f.is_compliant,
+          case e.entity_type
+             when 'STORAGE'  then 1
+             when 'DATABASE' then 2
+             when 'INSTANCE' then 3
+             else 4
+          end specificity
+     from fact_control_finding f
+     join v_entity_ancestry a
+       on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+     join ref_exception e
+       on e.rule_code = f.rule_code
+      and ( e.item_key = '*' or e.item_key = f.item_key )
+      and ( e.observed_value = '*' or e.observed_value = f.observed_value )
+      -- cascade: the exception entity must be the finding entity or one of its
+      -- ancestors
+      and e.entity_id = case e.entity_type
+                           when 'HOST'     then a.host_id
+                           when 'INSTANCE' then a.instance_id
+                           when 'DATABASE' then a.database_id
+                           when 'STORAGE'  then a.storage_unit_id
+                        end;
+
+comment on table v_exception_finding_match is 'Findings designated by the scope of each derogation, regardless of its status, dates or the compliance of the finding; the single matching rule shared by apply_exceptions and v_exception_review.';
+
+
+-- ============================================================
+-- v_exception_review
+-- ------------------------------------------------------------
+-- The periodic review worklist. review_state is ordered from the most blocking
+-- to the most benign, and the row that matters most is the last one before
+-- 'Current': an approved derogation that no longer covers any finding. It costs
+-- nothing, breaks nothing, and therefore survives untouched for years -- while
+-- still standing as an accepted deviation in front of an auditor.
+-- ============================================================
+create or replace view v_exception_review as
+select e.exception_id,
+       e.status,
+       rc.platform,
+       e.rule_code,
+       r.title rule_title,
+       e.entity_type,
+       e.entity_id,
+       nvl( nvl( i.instance_name, d.db_name ), h.hostname ) scope_name,
+       e.item_key,
+       e.observed_value,
+       e.start_date,
+       e.end_date,
+       e.review_due_date,
+       e.last_review_date,
+       e.created_by,
+       e.approved_by,
+       ( select count(*)
+           from fact_control_finding f
+          where f.exception_id = e.exception_id
+            and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) covered_today,
+       case
+          when e.status = 'DRAFT'     then 'Draft, not submitted'
+          when e.status = 'SUBMITTED' then 'Awaiting approval'
+          when e.status = 'REJECTED'  then 'Rejected'
+          when e.status = 'REVOKED'   then 'Revoked'
+          when e.active = 0           then 'Disabled'
+          when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
+          -- Approved and valid today, it designates an open deviation of the
+          -- latest snapshot, yet covers none: the scoring has not run since it
+          -- was granted (or it starts after the latest snapshot date, which is
+          -- what apply_exceptions judges validity on). It has no effect at all,
+          -- which ranks it above any deadline -- and without this state it would
+          -- read exactly like a derogation that covers nothing.
+          when e.start_date <= trunc(sysdate)
+           and ( select count(*)
+                   from fact_control_finding f
+                  where f.exception_id = e.exception_id
+                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
+           and exists ( select 1
+                          from v_exception_finding_match m
+                         where m.exception_id = e.exception_id
+                           and m.is_compliant = 0
+                           and m.snapshot_date = ( select max(f3.snapshot_date) from fact_control_finding f3 ) )
+             then 'Approved, not yet scored'
+          when e.review_due_date is not null and e.review_due_date < trunc(sysdate) then 'Review overdue'
+          when e.end_date is not null and e.end_date <= trunc(sysdate) + 60 then 'Expiring within 60 days'
+          when ( select count(*)
+                   from fact_control_finding f
+                  where f.exception_id = e.exception_id
+                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
+             then 'Approved, covers nothing'
+          else 'Current'
+       end review_state
+  from ref_exception e
+  join ref_control_rule r on r.rule_code = e.rule_code
+  join ref_control rc on rc.control_code = r.control_code
+  left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
+  left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
+  left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id;
+
+comment on table v_exception_review is 'Every derogation with its review state; drives the periodic RSSI review and the derogations page. Platform-agnostic by construction.';
 
 
 -- ============================================================

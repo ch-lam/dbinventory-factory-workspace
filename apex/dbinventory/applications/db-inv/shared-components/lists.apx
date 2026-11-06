@@ -268,7 +268,7 @@ list navigation-menu (
             imageIconCssClasses: fa-window-application
         }
         layout {
-            sequence: 15
+            sequence: 100
         }
         link {
             target: {
@@ -455,10 +455,10 @@ list navigation-menu (
     entry derogations (
         label: Derogations
         icon {
-            imageIconCssClasses: fa-file-certificate
+            imageIconCssClasses: fa-badge-check
         }
         layout {
-            sequence: 95
+            sequence: 110
         }
         link {
             target: {

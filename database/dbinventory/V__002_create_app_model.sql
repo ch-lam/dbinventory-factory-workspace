@@ -952,8 +952,8 @@ create table ref_exception (
    updated_by       varchar2(100 char),
    updated_date     date,
    constraint ref_exception_pk primary key ( exception_id ),
-   -- start_date is part of the key so a derogation can be renewed over a new period
-   constraint ref_exception_uk unique ( rule_code, entity_type, entity_id, item_key, observed_value, start_date ),
+   -- Uniqueness of the scope (rule, entity, item, value, start date) is enforced
+   -- by the unique index ref_exception_uk below, restricted to open derogations.
    constraint ref_exception_rule_fk foreign key ( rule_code )
       references ref_control_rule ( rule_code ),
    constraint ref_exception_repl_fk foreign key ( replaces_exception_id )
@@ -1002,6 +1002,20 @@ comment on column ref_exception.created_by is 'User who created the row.';
 comment on column ref_exception.created_date is 'Date the row was created.';
 comment on column ref_exception.updated_by is 'User who last updated the row.';
 comment on column ref_exception.updated_date is 'Date the row was last updated.';
+
+-- One open derogation per scope and start date. Only DRAFT, SUBMITTED and
+-- APPROVED take part: for any other status every key expression is NULL and
+-- the row stays out of the index. A closed decision -- rejected, revoked,
+-- superseded -- must not block a new derogation on the same scope; it did, and
+-- renewing again on the day a renewal had been rejected failed with ORA-00001.
+-- start_date stays in the key so a derogation can be renewed over a new period.
+create unique index ref_exception_uk on ref_exception (
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then rule_code      end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then entity_type    end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then entity_id      end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then item_key       end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then observed_value end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then start_date     end );
 
 create index ref_exception_rule_ix
    on ref_exception ( rule_code, active );

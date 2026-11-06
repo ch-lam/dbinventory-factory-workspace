@@ -5,6 +5,11 @@
 #
 # Prérequis : SQLcl 22.x+  (commande : sql)
 #
+# A lancer APRES un chargement reussi du staging (load_info_all.sh) : les
+# loaders commencent par TRUNCATE, un staging dont le chargement a echoue est
+# vide ou partiel, et les scores calcules dessus seraient faux.
+# dbInventory_all.sh fait respecter cet ordre.
+#
 # =============================================================================
 set -euo pipefail
 
@@ -18,9 +23,7 @@ DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
 # ── Cible SQLcl ───────────────────────────────────────────────────────────────
 # Par defaut, le triplet ci-dessus : le comportement de production ne change pas.
 # Si DBINVENTORY_CONN_NAME est positionnee, on passe par une connexion SQLcl
-# nommee a la place. C'est ce qui permet de charger un jeu de donnees de
-# demonstration dans une autre base sans toucher au staging du dev, que cette
-# machine ne peut pas recollecter -- le chargement commence par TRUNCATE.
+# nommee a la place, comme dans les load_info_*.sh.
 if [[ -n "${DBINVENTORY_CONN_NAME:-}" ]]; then
     SQLCL_ARGS=( -S -name "${DBINVENTORY_CONN_NAME}" )
 else
@@ -28,55 +31,26 @@ else
 fi
 MAIL_TO="lambert.christophe@chl.lu"
 
-# sqlcl dbinventory/Change:ME:001@ORA-DEV:1521/DBINVENTORY_TST
-
 # ── Log ───────────────────────────────────────────────────────────────────────
 LOG_DIR="${SCRIPT_DIR}/logs"
 mkdir -p "${LOG_DIR}"
-LOG_FILE="${LOG_DIR}/load_oracle_$(date '+%Y%m%d_%H%M%S').log"
+LOG_FILE="${LOG_DIR}/compute_$(date '+%Y%m%d_%H%M%S').log"
 
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 
-# Parse le log SQLcl et reporte les erreurs par fichier CSV.
-# Utilise les lignes de synthèse SQLcl (WARNING / #INFO rows in error / ORA-).
-# Retourne 1 si au moins une erreur détectée.
-parse_load_log() {
-    local log="$1"
-    local current_csv="" rows_in_error="" ora_error="" files_in_error=0
+send_error_mail() {
+    local subject="$1" body="$2"
+    mailx -s "${subject}" "${MAIL_TO}" <<EOF
+${body}
 
-    while IFS= read -r line; do
-        case "${line}" in
-            "-- LOADING: "*)
-                current_csv="${line#-- LOADING: }"
-                rows_in_error=""
-                ora_error=""
-                ;;
-            "#INFO Number of rows in error: "*)
-                rows_in_error="${line#*: }"
-                ;;
-            "#ERROR ORA-"*)
-                [[ -z "${ora_error}" ]] && ora_error="${line#"#ERROR "}"
-                ;;
-            "WARNING: Processed with errors")
-                log "  [ERREUR] ${current_csv} — ${rows_in_error} ligne(s) en erreur"
-                [[ -n "${ora_error}" ]] && log "           ${ora_error}"
-                (( files_in_error++ )) || true
-                ;;
-        esac
-    done < "${log}"
-
-    if [[ "${files_in_error}" -gt 0 ]]; then
-        log "Total : ${files_in_error} fichier(s) en erreur — voir ${log}"
-        return 1
-    else
-        log "Chargement OK — aucune erreur détectée."
-    fi
+Log complet : ${LOG_FILE}
+EOF
 }
 
 # =============================================================================
-# Session SQLcl unique : Execute INVENTORY Load + Scoring
+# Session SQLcl unique : ETL inventaire puis scoring
 # =============================================================================
-log "Execution des procedures stockees ..."
+log "ETL inventaire puis scoring..."
 log "Log : ${LOG_FILE}"
 
 SQLCL_EXIT=0
@@ -97,32 +71,20 @@ COMMIT;
 EXIT;
 SQLCL_SESSION
 
-
 # =============================================================================
 # Analyse du log
 # =============================================================================
-log "Analyse du log de chargement..."
+# Deux verifications plutot qu'une : SQLcl peut rendre 0 malgre une erreur
+# signalee dans sa sortie. Un appel de procedure ne produit aucune des lignes de
+# synthese d'un LOAD (« rows in error », « Processed with errors ») : on cherche
+# donc les erreurs Oracle elles-memes, pas un bilan de chargement.
+log "Analyse du log..."
 
-send_error_mail() {
-    local subject="$1" body="$2"
-    mailx -s "${subject}" "${MAIL_TO}" <<EOF
-${body}
-
-Log complet : ${LOG_FILE}
-EOF
-}
-
-if [[ "${SQLCL_EXIT}" -ne 0 ]]; then
-    log "SQLcl a terminé avec une erreur (code ${SQLCL_EXIT}) — voir ${LOG_FILE}"
-    send_error_mail "dbInventory Oracle — erreur SQLcl (code ${SQLCL_EXIT})" \
-        "$(grep -E 'ORA-[0-9]+|Error report' "${LOG_FILE}" | head -20)"
+if [[ "${SQLCL_EXIT}" -ne 0 ]] || grep -qE '(ORA|PLS|SP2)-[0-9]+' "${LOG_FILE}"; then
+    log "ERREUR : ETL / scoring en echec (code SQLcl ${SQLCL_EXIT}) — voir ${LOG_FILE}"
+    send_error_mail "dbInventory calcul — ETL / scoring en echec (code ${SQLCL_EXIT})" \
+        "$(grep -E '(ORA|PLS|SP2)-[0-9]+|Error report' "${LOG_FILE}" | head -20)"
     exit 1
 fi
 
-parse_load_log "${LOG_FILE}" || {
-    send_error_mail "dbInventory Oracle — erreurs de procedures stockees de chargement ..." \
-        "$(grep -E '^-- LOADING:|WARNING:|#INFO Number of rows in error' "${LOG_FILE}" | grep -A1 'WARNING')"
-    exit 1
-}
-
-log "Chargement terminé."
+log "ETL et scoring termines."

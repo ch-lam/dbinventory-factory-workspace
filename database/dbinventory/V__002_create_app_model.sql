@@ -1300,6 +1300,10 @@ select e.exception_id,
           when e.status = 'SUPERSEDED' then 'Superseded'
           when e.active = 0           then 'Disabled'
           when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
+          -- Approved but starting later, typically a renewal: the derogation it
+          -- replaces covers until then. Without this state it read as "covers
+          -- nothing", which is true today and wrong tomorrow.
+          when e.start_date > trunc(sysdate) then 'Approved, not yet in force'
           -- Approved and valid today, it designates an open deviation of the
           -- latest snapshot, yet covers none: the scoring has not run since it
           -- was granted (or it starts after the latest snapshot date, which is

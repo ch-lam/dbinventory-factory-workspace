@@ -1324,7 +1324,19 @@ create or replace package body pkg_dbinv_scoring as
              -- the moment it was typed, which would hand anyone with access to
              -- the screen a way to erase a finding from the score unreviewed.
              -- A draft, a rejected or a revoked derogation covers nothing.
-             and e.status = 'APPROVED'
+             --
+             -- A SUPERSEDED one keeps covering until its renewal comes into
+             -- force. The renewal cannot reuse its start date (unique key), so it
+             -- starts later -- the next day when renewed on the day it started.
+             -- Handing over on the approval day instead left the finding open in
+             -- between: the old one no longer honoured, the new one not yet valid.
+             and ( e.status = 'APPROVED'
+                   or ( e.status = 'SUPERSEDED'
+                        and not exists ( select 1
+                                           from ref_exception s
+                                          where s.replaces_exception_id = e.exception_id
+                                            and s.status in ( 'APPROVED', 'SUPERSEDED' )
+                                            and s.start_date <= p_snapshot_date ) ) )
              and e.active = 1
              -- validity is judged on the snapshot date, never sysdate, so
              -- replaying an old snapshot does not apply today's derogations

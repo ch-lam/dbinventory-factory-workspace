@@ -84,6 +84,11 @@ fi
 
 if diff -u "${BASELINE}" "${ACTUAL}" > /dev/null; then
     log "Conforme : $(wc -l < "${BASELINE}") mesures identiques à la référence."
+    # Un avertissement ne bloque pas : le jeu a vieilli, il n'est pas cassé.
+    WARNED=$(grep -c 'ATTENTION:' "${OUT_LOG}" || true)
+    if [[ "${WARNED}" -gt 0 ]]; then
+        log "${WARNED} avertissement(s) : le jeu a vieilli. Recharger la démo pour les lever."
+    fi
     exit 0
 fi
 

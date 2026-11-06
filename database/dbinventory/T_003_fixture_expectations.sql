@@ -220,9 +220,19 @@ declare
    -- Toutes les variables AVANT les sous-programmes : PL/SQL n'accepte pas de
    -- declaration d'objet apres une declaration de procedure dans le meme bloc.
    l_failed  pls_integer := 0;
+   l_warned  pls_integer := 0;
    l_checked pls_integer := 0;
    l_n       pls_integer;
    l_txt     varchar2(4000);
+
+   -- Age du jeu, en jours depuis load_fixtures. Les fixtures posent certaines
+   -- dates relativement au jour du chargement (fixtures/lib/emit_applications.mjs)
+   -- et les vues les evaluent contre sysdate : le jeu vieillit. La plus courte
+   -- fenetre est celle du document « due soon », echeance a sysdate + 20.
+   -- En deca, un etat date absent est un defaut du generateur ; au-dela, c'est
+   -- le jeu qui a vieilli.
+   c_aging_days constant pls_integer := 20;
+   l_age     pls_integer;
 
    procedure ok ( p_what varchar2 ) is
    begin
@@ -243,8 +253,27 @@ declare
       else fail(p_what, p_count || ' ' || p_detail);
       end if;
    end expect_zero;
+
+   -- Couverture d'etats qui descendent de sysdate. Un jeu vieilli n'est pas
+   -- casse : il ne montre plus tous ses etats. Avertir, sans bloquer --
+   -- recharger la demo les repose.
+   procedure expect_dated_coverage ( p_what varchar2, p_got pls_integer, p_expected pls_integer ) is
+   begin
+      if p_got = p_expected then
+         ok(p_what);
+      elsif l_age > c_aging_days then
+         l_checked := l_checked + 1;
+         l_warned := l_warned + 1;
+         dbms_output.put_line('  ATTENTION: ' || p_what || ' -- seulement ' || p_got || ' sur '
+            || p_expected || ' : jeu charge il y a ' || l_age || ' jour(s), rejouer load_fixtures');
+      else
+         fail(p_what, 'seulement ' || p_got || ' sur ' || p_expected);
+      end if;
+   end expect_dated_coverage;
 begin
    dbms_output.put_line('T_003 - assertions structurelles');
+
+   select nvl(trunc(sysdate) - trunc(max(created_date)), 0) into l_age from ref_application;
 
    -- 1. Les poids de scoring somment à 100 par (plateforme, domaine).
    --    load_scoring divise par sum(weight) : une somme differente de 100 ne
@@ -575,23 +604,16 @@ begin
    -- 25. Les quatre etats de revue d'application sont representes.
    --     Meme raison que la couverture des regles : un etat jamais produit est
    --     un etat jamais teste. Ces etats descendent de sysdate, donc ils sont
-   --     vrais au chargement -- rejouer load_fixtures les repose.
+   --     vrais au chargement -- rejouer load_fixtures les repose. Passe
+   --     c_aging_days, un etat manquant n'est plus qu'un avertissement.
    select count(distinct review_rank) into l_n from v_application_overview;
-   if l_n = 4 then
-      ok('les quatre etats de revue d''application sont representes');
-   else
-      fail('les quatre etats de revue d''application sont representes',
-           'seulement ' || l_n || ' etat(s) sur 4');
-   end if;
+   expect_dated_coverage('les quatre etats de revue d''application sont representes', l_n, 4);
 
    -- 26. Les cinq rangs de revue documentaire sont representes.
+   --     Le rang 4, « Due within 30 days », est le premier a glisser : son
+   --     unique document passe en retard 20 jours apres le chargement.
    select count(distinct review_rank) into l_n from v_application_document_review;
-   if l_n = 5 then
-      ok('les cinq rangs de revue documentaire sont representes');
-   else
-      fail('les cinq rangs de revue documentaire sont representes',
-           'seulement ' || l_n || ' rang(s) sur 5');
-   end if;
+   expect_dated_coverage('les cinq rangs de revue documentaire sont representes', l_n, 5);
 
    -- 27. Les trois niveaux de rattachement sont exerces.
    --     HOST, INSTANCE et DATABASE ne suivent pas le meme chemin dans
@@ -619,7 +641,8 @@ begin
                           and a.entity_id = e.entity_id );
    expect_zero('chaque rattachement vise une entite qui existe', l_n, 'rattachement(s) orphelin(s)');
 
-   dbms_output.put_line('T_003 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s).');
+   dbms_output.put_line('T_003 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s), '
+      || l_warned || ' avertissement(s).');
    if l_failed > 0 then
       raise_application_error(-20903,
          'T_003 : ' || l_failed || ' assertion(s) en echec sur le jeu de donnees de demonstration.');

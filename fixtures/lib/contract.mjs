@@ -639,6 +639,7 @@ export const CONTRACT = {
   postgres_hosts: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "environment", type: "varchar2", len: 80 },
       { name: "license_type", type: "varchar2", len: 200 },
@@ -657,6 +658,7 @@ export const CONTRACT = {
   postgres_databases: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "environment", type: "varchar2", len: 80 },
       { name: "datname", type: "varchar2", len: 400 },
@@ -674,6 +676,7 @@ export const CONTRACT = {
   postgres_replication: {
     engine: "postgres", source: "déduit des scripts",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "db_role", type: "varchar2", len: 80 },
       { name: "peer_addr", type: "varchar2", len: 400 },
@@ -686,6 +689,7 @@ export const CONTRACT = {
   postgres_backup: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "archive_mode", type: "varchar2", len: 80 },
       { name: "archived_count", type: "number", prec: 15, scale: 0 },
@@ -700,6 +704,7 @@ export const CONTRACT = {
   postgres_extensions: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "datname", type: "varchar2", len: 400 },
       { name: "extname", type: "varchar2", len: 400 },
@@ -710,6 +715,7 @@ export const CONTRACT = {
   postgres_security_parameter: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "parameter_name", type: "varchar2", len: 400 },
       { name: "parameter_value", type: "varchar2", len: 2000 },
@@ -719,6 +725,7 @@ export const CONTRACT = {
   postgres_security_roles: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "rolname", type: "varchar2", len: 400 },
       { name: "rolsuper", type: "varchar2", len: 4 },
@@ -735,6 +742,7 @@ export const CONTRACT = {
   postgres_sec_role_members: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "role_name", type: "varchar2", len: 400 },
       { name: "member_of", type: "varchar2", len: 400 },
@@ -744,6 +752,7 @@ export const CONTRACT = {
   postgres_security_hba_rules: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "line_number", type: "number", prec: 10, scale: 0 },
       { name: "rule_type", type: "varchar2", len: 80 },
@@ -757,6 +766,7 @@ export const CONTRACT = {
   postgres_sec_db_privs: {
     engine: "postgres", source: "collecte réelle",
     fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
       { name: "hostname", type: "varchar2", len: 400 },
       { name: "datname", type: "varchar2", len: 400 },
       { name: "grantee", type: "varchar2", len: 400 },

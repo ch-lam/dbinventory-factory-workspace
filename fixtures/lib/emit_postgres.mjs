@@ -14,8 +14,9 @@
 //
 // Trois pièges de forme, tous vérifiés contre les scripts de collecte :
 //
-//   * pas de collect_id -- les tables postgres_* n'en ont pas ; environnement et
-//     licence sont injectés comme littéraux dans le SELECT du collecteur ;
+//   * collect_id est préfixé par finalize_lst, pas sélectionné : write() le pose en
+//     tête de chaque ligne. Environnement et licence, eux, sont injectés comme
+//     littéraux dans le SELECT du collecteur ;
 //   * la collecte passe par COPY ... WITH (FORMAT csv, FORCE_QUOTE *), donc du
 //     CSV RFC4180 réel, là où Oracle et MSSQL fabriquent leurs guillemets à la
 //     main dans la requête ;
@@ -36,9 +37,12 @@ const NA = 'NA';
 const XID_CEILING = 2147483648;
 
 export function emitPostgres (ctx) {
-   const { outDir, world, rng, estate } = ctx;
+   const { outDir, world, rng, estate, cid } = ctx;
    const hosts = estate.postgres.hosts;
    const D = world.defects;
+
+   // collect_id en tête de chaque ligne, comme le fait finalize_lst du collecteur.
+   const write = (table, rows) => writeCsv(outDir, table, rows.map(r => ({ collect_id: cid, ...r })));
 
    // La sécurité n'est collectée que sur les primaires : c'est la population de
    // toutes les règles SECURITY, et le dénominateur de tous les markShare.
@@ -54,7 +58,7 @@ export function emitPostgres (ctx) {
    const archiveOff = flag(hosts, 'PG_ARCHIVE_MODE_ON');
    const staleWal = flag(hosts, 'PG_BACKUP_FRESHNESS_SLA');
 
-   writeCsv(outDir, 'postgres_hosts', hosts.map(h => ({
+   write('postgres_hosts', hosts.map(h => ({
       hostname: h.hostname, environment: h.environment, license_type: h.license,
       pg_version: h.version, port: h.port,
       data_directory: '/var/lib/postgresql/data',
@@ -73,7 +77,7 @@ export function emitPostgres (ctx) {
    const allDbs = hosts.flatMap(h => h.databases.map(d => ({ host: h, name: d })));
    const xidHot = flag(allDbs, 'PG_XID_WRAPAROUND');
 
-   writeCsv(outDir, 'postgres_databases', allDbs.map(entry => ({
+   write('postgres_databases', allDbs.map(entry => ({
       hostname: entry.host.hostname, environment: entry.host.environment, datname: entry.name,
       owner: `${entry.name}_owner`, encoding: 'UTF8', collation: 'en_US.utf8',
       size_mb: rng.int(20, 40000), datconnlimit: -1,
@@ -104,13 +108,13 @@ export function emitPostgres (ctx) {
          lag_seconds: rng.int(0, 12)
       });
    });
-   writeCsv(outDir, 'postgres_replication', replication);
+   write('postgres_replication', replication);
 
    // ------------------------------------------------------------- backup
    // archive_mode off => pg_stat_archiver n'a jamais rien archivé : les champs
    // texte valent 'NA' et le compteur 0, ce que le collecteur écrit via COALESCE.
    // Une instance en écart de fraîcheur archive, mais son dernier segment date.
-   writeCsv(outDir, 'postgres_backup', hosts.map(h => {
+   write('postgres_backup', hosts.map(h => {
       const on = !archiveOff.get(h);
       return {
          hostname: h.hostname, archive_mode: on ? 'on' : 'off',
@@ -124,7 +128,7 @@ export function emitPostgres (ctx) {
    }));
 
    // ------------------------------------------------------------- extensions
-   writeCsv(outDir, 'postgres_extensions', hosts.flatMap(h =>
+   write('postgres_extensions', hosts.flatMap(h =>
       h.databases.flatMap(d => ['plpgsql', 'pg_stat_statements'].map(x => ({
          hostname: h.hostname, datname: d, extname: x,
          extversion: x === 'plpgsql' ? '1.0' : '1.10'
@@ -144,7 +148,7 @@ export function emitPostgres (ctx) {
    const oldTls = flag(primaries, 'PG_PRM_SSL_MIN_PROTOCOL');
    const noAudit = flag(primaries, 'PG_PRM_PGAUDIT_LOADED');
 
-   writeCsv(outDir, 'postgres_security_parameter', primaries.flatMap(h => [
+   write('postgres_security_parameter', primaries.flatMap(h => [
       { parameter_name: 'ssl', parameter_value: noSsl.get(h) ? 'off' : 'on' },
       { parameter_name: 'password_encryption', parameter_value: md5Pwd.get(h) ? 'md5' : 'scram-sha-256' },
       { parameter_name: 'log_connections', parameter_value: noLogConn.get(h) ? 'off' : 'on' },
@@ -169,7 +173,7 @@ export function emitPostgres (ctx) {
       rolreplication: 'N', rolbypassrls: 'N', rolconnlimit: -1, rolvaliduntil: 'NEVER', ...o
    });
 
-   writeCsv(outDir, 'postgres_security_roles', primaries.flatMap(h => {
+   write('postgres_security_roles', primaries.flatMap(h => {
       const rows = [
          role({ rolname: 'postgres', rolsuper: 'Y', rolcreaterole: 'Y', rolcreatedb: 'Y', rolreplication: 'Y', rolbypassrls: 'Y' }),
          role({ rolname: 'monitoring', rolconnlimit: 5 }),
@@ -190,7 +194,7 @@ export function emitPostgres (ctx) {
    const memFiles = flag(primaries, 'PG_MEMBER_NO_SERVER_FILES');
    const memWrite = flag(primaries, 'PG_MEMBER_NO_WRITE_ALL_DATA');
 
-   writeCsv(outDir, 'postgres_sec_role_members', primaries.flatMap(h => {
+   write('postgres_sec_role_members', primaries.flatMap(h => {
       const rows = [{ role_name: 'monitoring', member_of: 'pg_monitor' }];
       if (memProgram.get(h)) rows.push({ role_name: 'dba_legacy', member_of: 'pg_execute_server_program' });
       if (memFiles.get(h)) rows.push({ role_name: 'etl_loader', member_of: 'pg_read_server_files' });
@@ -203,7 +207,7 @@ export function emitPostgres (ctx) {
    const hbaTrust = flag(primaries, 'PG_HBA_NO_TRUST');
    const hbaWeak = flag(primaries, 'PG_HBA_NO_WEAK_METHOD');
 
-   writeCsv(outDir, 'postgres_security_hba_rules', primaries.flatMap(h => {
+   write('postgres_security_hba_rules', primaries.flatMap(h => {
       const rows = [
          { line_number: 85, rule_type: 'local', database: 'all', user_name: 'all', address: NA, auth_method: 'peer' },
          { line_number: 100, rule_type: 'host', database: 'all', user_name: 'monitoring', address: '10.20.30.0/24', auth_method: 'scram-sha-256' },
@@ -222,7 +226,7 @@ export function emitPostgres (ctx) {
    const pgDbs = primaries.flatMap(h => h.databases.map(d => ({ host: h, name: d })));
    const publicCreate = flag(pgDbs, 'PG_PUBLIC_NO_CREATE');
 
-   writeCsv(outDir, 'postgres_sec_db_privs', pgDbs.flatMap((entry) => {
+   write('postgres_sec_db_privs', pgDbs.flatMap((entry) => {
       const privs = ['CONNECT', 'TEMPORARY'];
       if (publicCreate.get(entry)) privs.push('CREATE');
       return privs.map(p => ({

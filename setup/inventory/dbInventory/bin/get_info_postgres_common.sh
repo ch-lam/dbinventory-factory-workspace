@@ -16,6 +16,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIST_DIR="${SCRIPT_DIR}/../collect"
 LIST_FILE="${SCRIPT_DIR}/../collect/postgres_database_lists.lst"
 
+# Identifiant de la collecte, au même format que côté Oracle et MSSQL
+# (get_info_oracle_common.sh, get_info_mssql_common.sh). Il porte la date de
+# collecte : c'est lui qui permet de dater la donnée derrière un score
+# (v_entity_collect_date). finalize_lst le préfixe à chaque ligne produite.
+collect_id="COLL_ID_$(date +%Y%m%d)"
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 log()     { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 log_err() { log "ERROR: $*" >&2; printf '%s\n' "$*" >> "${LIST_DIR}/error_db.lst"; }
@@ -51,13 +57,21 @@ status_check() {
         # 2>/dev/null
 }
 
-# Trie, deduplique, filtre les lignes vides.
+# Trie, deduplique, filtre les lignes vides, puis prefixe l'identifiant de
+# collecte.
+#
+# Le prefixe, et non le suffixe, pour la meme raison que cote Oracle : le
+# chargement SQLcl est positionnel sans en-tete, et collect_id est la premiere
+# colonne des tables postgres_*. Les lignes vides sont ecartees avant, donc aucun
+# prefixe orphelin.
+#
 # Usage : finalize_lst src_temp.csv dst.lst
 finalize_lst() {
     local src="$1" dst="$2"
     [[ -f "${src}" ]] || return 0
     sort -u "${src}" \
         | grep -v '^\s*$' \
+        | sed "s/^/\"${collect_id}\",/" \
         > "${dst}" || true
     rm -f "${src}"
 }

@@ -360,6 +360,25 @@ create or replace package body pkg_dbinv_scoring as
               from oracle_sec_default_profile
              where oracle_managed = 'Y'
          ),
+         -- Roles Oracle ships that hold high privileges by construction, as
+         -- grantees: the CHL norm judges the accounts, not these roles. Same
+         -- standing as ora_managed: scope of the norm, never a derogation.
+         ora_role as (
+            select '^(DBA|OGG.*CAPTURE|AVTUNE_PKG_ROLE|.*IMP_FULL_DATABASE|EXP_FULL_DATABASE'
+                || '|AUDIT_ADMIN|AUDIT_SYSTEM|SCHEDULER_ADMIN|EM_EXPRESS_ALL|EM_EXPRESS_BASIC'
+                || '|SYSUMF_ROLE|OEM_MONITOR|GSMUSER_ROLE|GSMADMIN_ROLE)$' pattern
+              from dual
+         ),
+         -- Databases in pure Unified Auditing (v$option = TRUE): the traditional
+         -- audit parameters (audit_trail, audit_sys_operations -- the latter
+         -- deprecated from 21c) are ignored by the engine, so judging them
+         -- would report a setting that has no effect.
+         unified_pure as (
+            select db_name
+              from oracle_security_parameter
+             where lower(parameter_name) = 'unified auditing'
+               and upper(trim(parameter_value)) = 'TRUE'
+         ),
          -- Per-item deviations of the rules whose collect only reports what is
          -- wrong. Listed once, used twice: as the non-compliant rows, and as the
          -- anti-join that decides which entities get their compliant row.
@@ -371,7 +390,10 @@ create or replace package body pkg_dbinv_scoring as
              where not exists ( select 1 from ora_managed m
                                  where m.db_name = sp.db_name and m.pdb_name = sp.pdb_name
                                    and m.username = sp.username )
+               and not exists ( select 1 from ora_role r where regexp_like(sp.username, r.pattern) )
             union all
+            -- SELECT_CATALOG_ROLE is still collected but out of the CHL norm:
+            -- read access to the dictionary, not a privilege escalation.
             select 'ORACLE_HIGH_ROLE_PRIVS_GRANT', rp.db_name, rp.pdb_name,
                    rp.username || '/' || rp.privilege,
                    rp.username || ' holds ' || rp.privilege
@@ -379,6 +401,8 @@ create or replace package body pkg_dbinv_scoring as
              where not exists ( select 1 from ora_managed m
                                  where m.db_name = rp.db_name and m.pdb_name = rp.pdb_name
                                    and m.username = rp.username )
+               and not exists ( select 1 from ora_role r where regexp_like(rp.username, r.pattern) )
+               and rp.privilege <> 'SELECT_CATALOG_ROLE'
             union all
             -- No account exemption here: the grantee is PUBLIC by construction.
             select 'ORACLE_HIGH_TAB_PRIVS_PUBLIC', tp.db_name, tp.pdb_name,
@@ -403,7 +427,7 @@ create or replace package body pkg_dbinv_scoring as
                    'no high-privilege system privilege' expected_value from dual
             union all
             select 'ORACLE_HIGH_ROLE_PRIVS_GRANT',
-                   'no DBA or catalog role granted', 'no DBA or catalog role' from dual
+                   'no DBA, catalog or GSM role granted', 'no DBA, catalog or GSM role' from dual
             union all
             select 'ORACLE_HIGH_TAB_PRIVS_PUBLIC',
                    'no sensitive package granted to PUBLIC', 'no EXECUTE to PUBLIC on sensitive packages' from dual
@@ -481,6 +505,8 @@ create or replace package body pkg_dbinv_scoring as
                       else 'FALSE'
                    end expected_value
             from oracle_security_parameter p
+            where not ( lower(p.parameter_name) in ( 'audit_trail', 'audit_sys_operations' )
+                        and p.db_name in ( select db_name from unified_pure ) )
             union all
             -- ---------- profile resource limits (per database) ----------
             -- A limit collected as DEFAULT is inherited from the DEFAULT profile,
@@ -511,13 +537,20 @@ create or replace package body pkg_dbinv_scoring as
                                                                               else 365
                                                                            end
                                    then 1 else 0 end
+                      -- CHL standard: service, system and monitoring profiles may
+                      -- keep a non-expiring password (CDB names, then non-CDB).
+                      when upper(pr.resource_name) = 'PASSWORD_LIFE_TIME'
+                       and upper(trim(pr.limit_value)) = 'UNLIMITED'
+                       and upper(pr.profile) in ( 'C##SERVICE_PROFILE', 'C##SYSTEM_PROFILE', 'C##MONITORING',
+                                                  'CHL_SERVICE_PROFILE', 'CHL_SYSTEM_PROFILE', 'MONITORING' )
+                         then 1
                       -- "at most" limits: UNLIMITED breaks them
                       else case when upper(trim(pr.limit_value)) = 'UNLIMITED' then 0
                                 when regexp_like(trim(pr.limit_value), '^[0-9]*\.?[0-9]+$')
                                  and to_number(trim(pr.limit_value)) <= case upper(pr.resource_name)
                                                                            when 'FAILED_LOGIN_ATTEMPTS' then 5
                                                                            when 'PASSWORD_LIFE_TIME'    then 90
-                                                                           when 'PASSWORD_GRACE_TIME'   then 5
+                                                                           when 'PASSWORD_GRACE_TIME'   then 7
                                                                            when 'SESSIONS_PER_USER'     then 10
                                                                            else 120
                                                                         end
@@ -526,9 +559,9 @@ create or replace package body pkg_dbinv_scoring as
                    pr.profile || '/' || pr.resource_name || '=' || nvl(trim(pr.limit_value), 'NULL'),
                    case upper(pr.resource_name)
                       when 'FAILED_LOGIN_ATTEMPTS'    then '<= 5'
-                      when 'PASSWORD_LIFE_TIME'       then '<= 90'
+                      when 'PASSWORD_LIFE_TIME'       then '<= 90 (UNLIMITED for service/system/monitoring profiles)'
                       when 'PASSWORD_LOCK_TIME'       then '>= 1 or UNLIMITED'
-                      when 'PASSWORD_GRACE_TIME'      then '<= 5'
+                      when 'PASSWORD_GRACE_TIME'      then '<= 7'
                       when 'PASSWORD_REUSE_MAX'       then '>= 20 or UNLIMITED'
                       when 'PASSWORD_REUSE_TIME'      then '>= 365 or UNLIMITED'
                       when 'PASSWORD_VERIFY_FUNCTION' then 'a verify function, not NULL'

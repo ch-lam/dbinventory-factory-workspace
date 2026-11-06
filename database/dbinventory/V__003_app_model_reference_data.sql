@@ -304,10 +304,10 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
             'OS_ROLES must be FALSE', 'Delegates role management to the operating system.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRM_AUDIT_TRAIL', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
-            'AUDIT_TRAIL must not be NONE', 'Any destination (DB, DB,EXTENDED, OS, XML) is accepted; NONE disables traditional auditing entirely.', 'MEDIUM' );
+            'AUDIT_TRAIL must not be NONE', 'Any destination (DB, DB,EXTENDED, OS, XML) is accepted; NONE disables traditional auditing entirely. Not judged on a database in pure Unified Auditing, where the engine ignores it.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRM_AUDIT_SYS_OPERATIONS', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
-            'AUDIT_SYS_OPERATIONS must be TRUE', 'Without it, actions performed as SYSDBA are not audited.', 'MEDIUM' );
+            'AUDIT_SYS_OPERATIONS must be TRUE', 'Without it, actions performed as SYSDBA are not audited. Deprecated from 21c; not judged on a database in pure Unified Auditing, where the engine ignores it.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRM_UNIFIED_AUDITING', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
             'Unified Auditing must be enabled', 'v$option ''Unified Auditing'' must be TRUE; it is the prerequisite for the ORA_CIS_RECOMMENDATIONS policy.', 'MEDIUM' );
@@ -347,13 +347,13 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
             'FAILED_LOGIN_ATTEMPTS must be at most 5', 'UNLIMITED is non-compliant: it disables account lockout after repeated failures.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRF_PASSWORD_LIFE_TIME', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
-            'PASSWORD_LIFE_TIME must be at most 90 days', 'UNLIMITED is non-compliant: the password never expires.', 'MEDIUM' );
+            'PASSWORD_LIFE_TIME must be at most 90 days', 'UNLIMITED is non-compliant: the password never expires. CHL standard: allowed for the service, system and monitoring profiles (C##SERVICE_PROFILE, C##SYSTEM_PROFILE, C##MONITORING, CHL_SERVICE_PROFILE, CHL_SYSTEM_PROFILE, MONITORING).', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRF_PASSWORD_LOCK_TIME', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
             'PASSWORD_LOCK_TIME must be at least 1 day', 'UNLIMITED is compliant: the account stays locked until an administrator releases it.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRF_PASSWORD_GRACE_TIME', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
-            'PASSWORD_GRACE_TIME must be at most 5 days', 'UNLIMITED is non-compliant: an expired password can be used indefinitely.', 'LOW' );
+            'PASSWORD_GRACE_TIME must be at most 7 days', 'UNLIMITED is non-compliant: an expired password can be used indefinitely.', 'LOW' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRF_PASSWORD_REUSE_MAX', 'ORACLE_SECURITY_PROFILE', 'DATABASE', 'profile / resource',
             'PASSWORD_REUSE_MAX must be at least 20', 'UNLIMITED is compliant: a password can never be reused.', 'LOW' );
@@ -375,10 +375,10 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 -- precise as a per-privilege rule would make it, without a 60-row catalog.
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_HIGH_SYS_PRIVS_GRANT', 'ORACLE_HIGH_SYS_PRIVS', 'DATABASE', 'grantee / privilege',
-            'No account may hold a high-privilege system privilege', 'Covers the CIS list collected by get_info_oracle_security.sh (SELECT ANY DICTIONARY, BECOME USER, GRANT ANY ROLE, CREATE EXTERNAL JOB and the rest). Scope: Oracle-maintained accounts are exempt.', 'HIGH' );
+            'No account may hold a high-privilege system privilege', 'Covers the CIS list collected by get_info_oracle_security.sh (SELECT ANY DICTIONARY, BECOME USER, GRANT ANY ROLE, CREATE EXTERNAL JOB and the rest). Scope: Oracle-maintained accounts are exempt, and so are the roles Oracle ships with these privileges (DBA, OGG*CAPTURE, AVTUNE_PKG_ROLE, *IMP_FULL_DATABASE, EXP_FULL_DATABASE, AUDIT_ADMIN, AUDIT_SYSTEM, SCHEDULER_ADMIN, EM_EXPRESS_ALL, EM_EXPRESS_BASIC, SYSUMF_ROLE, OEM_MONITOR, GSMUSER_ROLE, GSMADMIN_ROLE): the norm judges the accounts.', 'HIGH' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_HIGH_ROLE_PRIVS_GRANT', 'ORACLE_HIGH_ROLE_PRIVS', 'DATABASE', 'grantee / role',
-            'No account may hold DBA or a catalog role', 'Covers DBA, SELECT_CATALOG_ROLE, DELETE_CATALOG_ROLE and EXECUTE_CATALOG_ROLE. Scope: Oracle-maintained accounts are exempt.', 'HIGH' );
+            'No account may hold DBA, a catalog role or a GSM role', 'Covers DBA, DELETE_CATALOG_ROLE, EXECUTE_CATALOG_ROLE, GSMUSER_ROLE and GSMADMIN_ROLE. SELECT_CATALOG_ROLE is collected but outside the CHL norm. Scope: Oracle-maintained accounts and the roles Oracle ships (same list as ORACLE_HIGH_SYS_PRIVS_GRANT) are exempt.', 'HIGH' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_HIGH_TAB_PRIVS_PUBLIC', 'ORACLE_HIGH_TAB_PRIVS', 'DATABASE', 'grantee / package',
             'PUBLIC must not hold EXECUTE on sensitive packages', 'Covers the CIS package list (UTL_FILE, UTL_SMTP, UTL_HTTP, DBMS_SYS_SQL, DBMS_FILE_TRANSFER and the rest) plus INHERIT PRIVILEGES granted to PUBLIC. No account exemption applies: the grantee is PUBLIC by construction.', 'MEDIUM' );

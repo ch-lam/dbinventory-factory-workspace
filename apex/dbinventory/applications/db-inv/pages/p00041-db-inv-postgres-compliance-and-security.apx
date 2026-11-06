@@ -45,14 +45,16 @@ page 41 (
                        -- La cle du lien vers la carte d'instance, qui existe
                        -- desormais. v_entity_ancestry la porte pour un constat de
                        -- n'importe quel grain.
-                       a.instance_id
+                       a.instance_id,
+                       -- Le domaine de score, pour la facette Domain et pour
+                       -- les cartes du dashboard qui arrivent filtrees dessus.
+                       initcap(rc.score_domain) score_domain
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
                    and r.active = 1
                   join ref_control rc
                     on rc.control_code = r.control_code
-                   and rc.score_domain = 'SECURITY'
                    and rc.active = 1
                   join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
                   join dim_instance i on i.instance_id = a.instance_id
@@ -120,6 +122,17 @@ page 41 (
             }
             layout {
                 sequence: 20
+            }
+        )
+
+        column SCORE_DOMAIN (
+            reportColumnQueryId: 15
+            derivedColumn: N
+            heading {
+                heading: Domain
+            }
+            layout {
+                sequence: 15
             }
         )
 
@@ -593,7 +606,8 @@ page 41 (
                          and r.active = 1
                         join ref_control rc
                           on rc.control_code = r.control_code
-                         and rc.score_domain = 'SECURITY'
+                         and ( :P41_DOMAIN is null
+                               or instr( ':'||:P41_DOMAIN||':', ':'||initcap(rc.score_domain)||':' ) > 0 )
                          and rc.active = 1
                         join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
                         join dim_instance i on i.instance_id = a.instance_id
@@ -604,6 +618,7 @@ page 41 (
                          and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) )
                     Select COUNT(*) value, InitCAP(SEVERITY) label From COMP_ISSUES Group By InitCAP(SEVERITY)
                     ```
+                pageItemsToSubmit: P41_DOMAIN
             }
             columnMapping {
                 label: LABEL
@@ -752,6 +767,25 @@ page 41 (
             }
             source {
                 databaseColumn: DB_NAME
+            }
+        )
+
+        facet P41_DOMAIN (
+            type: checkboxGroup
+            label {
+                label: Domain
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 15
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: SCORE_DOMAIN
             }
         )
 
@@ -930,7 +964,8 @@ page 41 (
                        and r.active = 1
                       join ref_control rc
                         on rc.control_code = r.control_code
-                       and rc.score_domain = 'SECURITY'
+                       and ( :P41_DOMAIN is null
+                             or instr( ':'||:P41_DOMAIN||':', ':'||initcap(rc.score_domain)||':' ) > 0 )
                        and rc.active = 1
                       join v_entity_ancestry a
                         on a.entity_type = f.entity_type
@@ -945,6 +980,7 @@ page 41 (
                      group by rc.title
                      order by count(*) desc
                     ```
+                pageItemsToSubmit: P41_DOMAIN
             }
             columnMapping {
                 label: LABEL
@@ -961,6 +997,43 @@ page 41 (
             name: y
             showAxis: true
             title: Open findings
+        )
+
+    )
+
+    dynamicAction refresh-charts-on-facets-change (
+        name: Refresh Charts On Facets Change
+        execution {
+            sequence: 10
+        }
+        when {
+            event: region/facetedSearch/facetschange
+            selectionType: region
+            region: @noncompliance-criterias
+        }
+
+        action refresh-severity (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @pg-open-noncompliance
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-by-control (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @pg-noncompliance-by-control
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
         )
 
     )

@@ -51,14 +51,16 @@ page 31 (
                        a.host_id,
                        -- La page 35 est passee au grain instance. v_entity_ancestry
                        -- porte instance_id pour un constat de n'importe quel grain.
-                       a.instance_id
+                       a.instance_id,
+                       -- Le domaine de score, pour la facette Domain et pour
+                       -- les cartes du dashboard qui arrivent filtrees dessus.
+                       initcap(rc.score_domain) score_domain
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
                    and r.active = 1
                   join ref_control rc
                     on rc.control_code = r.control_code
-                   and rc.score_domain = 'SECURITY'
                    and rc.active = 1
                   join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
                   join dim_instance i on i.instance_id = a.instance_id
@@ -127,6 +129,17 @@ page 31 (
             }
             layout {
                 sequence: 20
+            }
+        )
+
+        column SCORE_DOMAIN (
+            reportColumnQueryId: 17
+            derivedColumn: N
+            heading {
+                heading: Domain
+            }
+            layout {
+                sequence: 15
             }
         )
 
@@ -619,7 +632,8 @@ page 31 (
                          and r.active = 1
                         join ref_control rc
                           on rc.control_code = r.control_code
-                         and rc.score_domain = 'SECURITY'
+                         and ( :P31_DOMAIN is null
+                               or instr( ':'||:P31_DOMAIN||':', ':'||initcap(rc.score_domain)||':' ) > 0 )
                          and rc.active = 1
                         join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
                         join dim_instance i on i.instance_id = a.instance_id
@@ -630,6 +644,7 @@ page 31 (
                          and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) )
                     Select COUNT(*) value, InitCAP(SEVERITY) label From COMP_ISSUES Group By InitCAP(SEVERITY)
                     ```
+                pageItemsToSubmit: P31_DOMAIN
             }
             columnMapping {
                 label: LABEL
@@ -705,7 +720,8 @@ page 31 (
                        and r.active = 1
                       join ref_control rc
                         on rc.control_code = r.control_code
-                       and rc.score_domain = 'SECURITY'
+                       and ( :P31_DOMAIN is null
+                             or instr( ':'||:P31_DOMAIN||':', ':'||initcap(rc.score_domain)||':' ) > 0 )
                        and rc.active = 1
                       join v_entity_ancestry a
                         on a.entity_type = f.entity_type
@@ -720,6 +736,7 @@ page 31 (
                      group by rc.title
                      order by count(*) desc
                     ```
+                pageItemsToSubmit: P31_DOMAIN
             }
             columnMapping {
                 label: LABEL
@@ -799,6 +816,25 @@ page 31 (
             }
             source {
                 databaseColumn: DB_NAME
+            }
+        )
+
+        facet P31_DOMAIN (
+            type: checkboxGroup
+            label {
+                label: Domain
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 15
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: SCORE_DOMAIN
             }
         )
 
@@ -984,6 +1020,43 @@ page 31 (
             columnMapping {
                 label: LABEL
                 value: VALUE
+            }
+        )
+
+    )
+
+    dynamicAction refresh-charts-on-facets-change (
+        name: Refresh Charts On Facets Change
+        execution {
+            sequence: 10
+        }
+        when {
+            event: region/facetedSearch/facetschange
+            selectionType: region
+            region: @noncompliance-criterias
+        }
+
+        action refresh-severity (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @mssql-open-noncompliance
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-by-control (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @mssql-noncompliance-by-control
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
             }
         )
 

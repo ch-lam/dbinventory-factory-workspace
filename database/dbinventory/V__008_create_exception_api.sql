@@ -75,8 +75,9 @@ create or replace package pkg_dbinv_exception as
    );
 
    -- Renews an approved derogation: captures a new draft with the same scope,
-   -- chained to it through replaces_exception_id, and returns its id. The old
-   -- one keeps covering; approving the renewal supersedes it.
+   -- chained to it through replaces_exception_id, carrying a copy of its
+   -- attachments, and returns its id. The old one keeps covering; approving the
+   -- renewal supersedes it.
    function renew ( p_exception_id number, p_note varchar2 default null ) return number;
 
    procedure submit ( p_exception_id number, p_note varchar2 default null );
@@ -327,6 +328,19 @@ create or replace package body pkg_dbinv_exception as
       update ref_exception
          set replaces_exception_id = p_exception_id
        where exception_id = l_id;
+
+      -- The evidence follows the renewal: same scope, same reasons, same proof.
+      -- Copied rather than shared, so each derogation keeps its own file set and
+      -- a withdrawal on one never strips the other. Provenance is preserved
+      -- (who uploaded it, and when); the trigger recomputes the fingerprint,
+      -- which matches the original's -- the proof it is the very same file -- and
+      -- journals a DOCUMENT_ADDED on the renewal.
+      insert into ref_exception_document (
+         exception_id, doc_kind, file_name, mime_type, content, uploaded_by, uploaded_date )
+      select l_id, d.doc_kind, d.file_name, d.mime_type, d.content, d.uploaded_by, d.uploaded_date
+        from ref_exception_document d
+       where d.exception_id = p_exception_id
+       order by d.document_id;
 
       journal(l_id, 'CREATED', 'Renewal of derogation ' || p_exception_id
                                || case when p_note is not null then '. ' || p_note end);

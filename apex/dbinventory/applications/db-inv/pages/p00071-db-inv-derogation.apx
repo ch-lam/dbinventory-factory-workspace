@@ -887,6 +887,9 @@ page 71 (
     process close-derogation-dialog (
         name: Close Derogation Dialog
         type: closeDialog
+        comments {
+            comments: Closes after every action that changes the derogation, not only Save, so the caller (pages 21/31/41, page 70) refreshes and shows the new status. Attach Document stays: it adds a file to the derogation being edited. A failing action raises an error and stops processing before this point, so the dialog stays open on it.
+        }
         execution {
             sequence: 90
         }
@@ -894,7 +897,8 @@ page 71 (
             executionMappingIdentifier: 4581429391192499
         }
         serverSideCondition {
-            whenButtonPressed: @save
+            type: requestIsContainedInValue
+            value: SAVE,SUBMIT_FOR_APPROVAL,APPROVE,REJECT,REVOKE,RECORD_REVIEW
         }
     )
 

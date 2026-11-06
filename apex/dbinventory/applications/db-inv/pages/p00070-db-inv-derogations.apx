@@ -467,5 +467,42 @@ page 70 (
         }
     )
 
+    dynamicAction refresh-after-derogation-dialog (
+        name: Refresh After Derogation Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @derogations
+        }
+
+        action refresh-derogations (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @derogations
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-review-summary (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @review-summary
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
+        )
+
+    )
+
 )
 

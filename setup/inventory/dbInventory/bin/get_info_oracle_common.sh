@@ -31,6 +31,14 @@ log_err() { err "$*"; printf '%s\n' "$*" >> "${LIST_DIR}/error_db.lst"; }
 
 
 # Exécute le SQL fourni sur stdin contre une base cible.
+#
+# WHENEVER SQLERROR CONTINUE garde les autres requêtes de la session quand
+# l'une d'elles échoue. Mais l'erreur, elle, se perdait : les appelants jettent
+# la sortie, et finalize_lst retire du spool les lignes ORA-. Une requête cassée
+# faisait ainsi disparaître des bases sans un mot -- les trois 23ai sont restées
+# hors de oracle_databases de cette façon. Chaque erreur distincte va donc dans
+# error_db.lst, que report_errors envoie par mail. La sortie est rendue telle
+# quelle : les appelants qui la lisent ne voient aucune différence.
 sql_run() {
     local dsn=$1
     local service="${dsn##*/}"
@@ -38,14 +46,19 @@ sql_run() {
     if [[ "$service" == *23* || "$service" == *19* ]]; then
         user="C##${MONITORING_USER}"
     fi
-    {
+    local out sql_err
+    out=$( {
         printf 'WHENEVER SQLERROR CONTINUE\n'
         printf 'SET ECHO OFF\nSET FEEDBACK OFF\nSET HEADING OFF\nSET PAGESIZE 0\n'
         printf 'SET LINESIZE 32767\nSET TRIMSPOOL ON\n'
         printf "ALTER SESSION SET NLS_DATE_FORMAT='YYYY-MM-DD HH24:MI:SS';\n"
         cat
         printf '\nEXIT;\n'
-    } | sqlplus -s "${user}/${MONITORING_PASS}@${dsn}"
+    } | sqlplus -s "${user}/${MONITORING_PASS}@${dsn}" )
+    printf '%s\n' "${out}"
+    while IFS= read -r sql_err; do
+        log_err "${service} : ${sql_err}"
+    done < <(printf '%s\n' "${out}" | grep -E '^(ORA|SP2)-[0-9]+' | sort -u || true)
 }
 
 # Vérifie la disponibilité et retourne le statut de la base.
@@ -107,7 +120,7 @@ report_errors() {
     local subject="${1:-Oracle inventory: erreurs de connexion}"
     if [[ -f "${LIST_DIR}/error_db.lst" ]]; then
         mailx -s "${subject}" "${MAIL_TO}" \
-            < <(printf 'Collecte impossible pour :\n'; cat "${LIST_DIR}/error_db.lst")
+            < <(printf 'Erreurs de collecte :\n'; cat "${LIST_DIR}/error_db.lst")
         exit 1
     fi
 }

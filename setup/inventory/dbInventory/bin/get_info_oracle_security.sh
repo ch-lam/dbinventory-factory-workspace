@@ -127,7 +127,8 @@ SPOOL ${LIST_DIR}/sec_high_role_privs_temp.csv APPEND
 SELECT '"'||dbs.NAME||'","'||pdbs.pdb_name||'","'||r.grantee||'","'||r.granted_role||'"'
 FROM   v\$database dbs, cdb_role_privs r, dba_pdbs pdbs
 WHERE  r.con_id = pdbs.pdb_id AND r.con_id <> 2
-  AND  r.GRANTED_ROLE IN ('DELETE_CATALOG_ROLE','SELECT_CATALOG_ROLE','EXECUTE_CATALOG_ROLE','DBA');
+  AND  r.GRANTED_ROLE IN ('DELETE_CATALOG_ROLE','SELECT_CATALOG_ROLE','EXECUTE_CATALOG_ROLE','DBA',
+       'GSMUSER_ROLE','GSMADMIN_ROLE');
 SPOOL OFF
 SPOOL ${LIST_DIR}/sec_high_sys_privs_temp.csv APPEND
 SELECT '"'||dbs.NAME||'","'||pdbs.pdb_name||'","'||p.grantee||'","'||p.privilege||'"'
@@ -164,7 +165,8 @@ SQL
 SPOOL ${LIST_DIR}/sec_high_role_privs_temp.csv APPEND
 SELECT '"'||dbs.NAME||'","NON CONTAINER","'||r.grantee||'","'||r.GRANTED_ROLE||'"'
 FROM   v\$database dbs, dba_role_privs r
-WHERE  r.GRANTED_ROLE IN ('DELETE_CATALOG_ROLE','SELECT_CATALOG_ROLE','EXECUTE_CATALOG_ROLE','DBA');
+WHERE  r.GRANTED_ROLE IN ('DELETE_CATALOG_ROLE','SELECT_CATALOG_ROLE','EXECUTE_CATALOG_ROLE','DBA',
+       'GSMUSER_ROLE','GSMADMIN_ROLE');
 SPOOL OFF
 SPOOL ${LIST_DIR}/sec_high_sys_privs_temp.csv APPEND
 SELECT '"'||dbs.NAME||'","NON CONTAINER","'||p.grantee||'","'||p.privilege||'"'

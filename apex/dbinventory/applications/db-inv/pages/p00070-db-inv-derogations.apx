@@ -230,6 +230,9 @@ page 70 (
             heading {
                 heading: From
             }
+            appearance {
+                formatMask: DD/MM/YYYY HH24:MI:SS
+            }
             layout {
                 sequence: 90
             }

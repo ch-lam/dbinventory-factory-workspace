@@ -222,7 +222,9 @@ create or replace package body pkg_dbinv_exception as
       values (
          p_rule_code, p_entity_type, p_entity_id,
          nvl(p_item_key, '*'), nvl(p_observed_value, '*'),
-         trunc(nvl(p_start_date, sysdate)), p_end_date,
+         -- The day by default; an explicit start keeps its time, which renew
+         -- relies on to chain to the second.
+         nvl(p_start_date, trunc(sysdate)), p_end_date,
          trunc(nvl(p_deviation_date, sysdate)), p_justification, p_document_ref,
          nvl( p_review_due, add_months(trunc(nvl(p_start_date, sysdate)), c_review_months) ),
          'DRAFT' )
@@ -266,13 +268,16 @@ create or replace package body pkg_dbinv_exception as
       select * into l_row from ref_exception where exception_id = p_exception_id for update;
 
       l_scope_old := l_row.item_key || ' / ' || l_row.observed_value
-                     || ' / ' || to_char(l_row.start_date, 'YYYY-MM-DD')
+                     || ' / ' || to_char(l_row.start_date, 'YYYY-MM-DD HH24:MI:SS')
                      || ' / ' || nvl(to_char(l_row.end_date, 'YYYY-MM-DD'), 'open');
 
       update ref_exception
          set item_key       = nvl(p_item_key, item_key),
              observed_value = nvl(p_observed_value, observed_value),
-             start_date     = trunc(nvl(p_start_date, start_date)),
+             -- Same day as before: keep the time, a renewal starts to the second and
+             -- the dialog only sends back the day. Another day: that day, at midnight.
+             start_date     = case when p_start_date is null or trunc(p_start_date) = trunc(start_date)
+                                    then start_date else trunc(p_start_date) end,
              end_date       = nvl(p_end_date, end_date),
              justification  = nvl(p_justification, justification),
              document_ref   = nvl(p_document_ref, document_ref),
@@ -280,7 +285,7 @@ create or replace package body pkg_dbinv_exception as
              updated_date   = sysdate
        where exception_id = p_exception_id
       returning item_key || ' / ' || observed_value
-                || ' / ' || to_char(start_date, 'YYYY-MM-DD')
+                || ' / ' || to_char(start_date, 'YYYY-MM-DD HH24:MI:SS')
                 || ' / ' || nvl(to_char(end_date, 'YYYY-MM-DD'), 'open')
         into l_scope_new;
 
@@ -311,8 +316,11 @@ create or replace package body pkg_dbinv_exception as
 
       select * into l_row from ref_exception where exception_id = p_exception_id;
 
-      -- Same scope, same reasons, a new period. start_date is part of the unique
-      -- key, hence never the old one; end_date is left for the requester to set.
+      -- Same scope, same reasons, a new period. start_date is kept to the second:
+      -- it is part of the unique key, and two instants never collide, where the
+      -- day used to push a same-day renewal to the next day. approve moves it to
+      -- the approval instant, so the handover happens exactly then. end_date is
+      -- left for the requester to set.
       l_id := create_draft(
                  p_rule_code      => l_row.rule_code,
                  p_entity_type    => l_row.entity_type,
@@ -320,7 +328,7 @@ create or replace package body pkg_dbinv_exception as
                  p_justification  => l_row.justification,
                  p_item_key       => l_row.item_key,
                  p_observed_value => l_row.observed_value,
-                 p_start_date     => greatest(trunc(sysdate), l_row.start_date + 1),
+                 p_start_date     => sysdate,
                  p_end_date       => null,
                  p_deviation_date => l_row.deviation_date,
                  p_document_ref   => l_row.document_ref );
@@ -369,6 +377,7 @@ create or replace package body pkg_dbinv_exception as
    ) is
       l_created_by ref_exception.created_by%type;
       l_replaces   ref_exception.replaces_exception_id%type;
+      l_in_force   ref_exception.start_date%type;
    begin
       require_status(p_exception_id, 'SUBMITTED');
       select created_by, replaces_exception_id into l_created_by, l_replaces
@@ -385,21 +394,31 @@ create or replace package body pkg_dbinv_exception as
       update ref_exception
          set status = 'APPROVED', approved_by = p_approver, approval_date = sysdate,
              review_due_date = nvl(review_due_date, add_months(trunc(sysdate), c_review_months)),
+             -- A renewal comes into force at the second it is approved, unless a
+             -- later start was chosen: the derogation it replaces covers up to
+             -- that very instant (see apply_exceptions), never a day more or less.
+             start_date = case when replaces_exception_id is not null
+                               then greatest(start_date, sysdate) else start_date end,
              updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
-       where exception_id = p_exception_id;
+       where exception_id = p_exception_id
+      returning start_date into l_in_force;
 
-      journal(p_exception_id, 'APPROVED', p_note, null, 'approved by ' || p_approver);
+      journal(p_exception_id, 'APPROVED', p_note, null,
+              'approved by ' || p_approver
+              || case when l_replaces is not null
+                      then ', in force from ' || to_char(l_in_force, 'YYYY-MM-DD HH24:MI:SS') end);
 
-      -- An approved renewal takes over from the derogation it replaces. Until
-      -- this point the old one kept covering, so the finding never reopens in
-      -- between; from the next scoring on, only the renewal is APPROVED.
+      -- An approved renewal takes over from the derogation it replaces, at the
+      -- instant the renewal comes into force. Until then the old one keeps
+      -- covering, so the finding never reopens in between.
       if l_replaces is not null and current_status(l_replaces) = 'APPROVED' then
          update ref_exception
             set status = 'SUPERSEDED',
                 updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
           where exception_id = l_replaces;
          journal(l_replaces, 'SUPERSEDED', 'Superseded by derogation ' || p_exception_id
-                                           || ', approved by ' || p_approver);
+                                           || ', approved by ' || p_approver
+                                           || ', covering until ' || to_char(l_in_force, 'YYYY-MM-DD HH24:MI:SS'));
       end if;
    end approve;
 

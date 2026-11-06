@@ -1303,14 +1303,14 @@ select e.exception_id,
           -- Approved but starting later, typically a renewal: the derogation it
           -- replaces covers until then. Without this state it read as "covers
           -- nothing", which is true today and wrong tomorrow.
-          when e.start_date > trunc(sysdate) then 'Approved, not yet in force'
+          when e.start_date > sysdate then 'Approved, not yet in force'
           -- Approved and valid today, it designates an open deviation of the
           -- latest snapshot, yet covers none: the scoring has not run since it
           -- was granted (or it starts after the latest snapshot date, which is
           -- what apply_exceptions judges validity on). It has no effect at all,
           -- which ranks it above any deadline -- and without this state it would
           -- read exactly like a derogation that covers nothing.
-          when e.start_date <= trunc(sysdate)
+          when e.start_date <= sysdate
            and ( select count(*)
                    from fact_control_finding f
                   where f.exception_id = e.exception_id

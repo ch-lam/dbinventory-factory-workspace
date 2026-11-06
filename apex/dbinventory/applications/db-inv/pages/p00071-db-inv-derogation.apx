@@ -653,9 +653,34 @@ page 71 (
             template: @/optional-floating
             templateOptions: #DEFAULT#
         }
-        readOnly {
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'DRAFT'
+        }
+    )
+
+    pageItem P71_IN_FORCE_FROM (
+        type: displayOnly
+        label {
+            label: Applies from
+            alignment: right
+        }
+        layout {
+            sequence: 31
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        serverSideCondition {
             type: expression
             plsqlExpression: :P71_STATUS <> 'DRAFT'
+        }
+        comments {
+            comments: The exact instant the derogation applies from, to the second. A renewal comes into force at the second of its approval and the derogation it replaces covers up to that instant; the date picker, which edits a draft by the day, cannot show it.
         }
     )
 
@@ -1004,6 +1029,10 @@ page 71 (
                      from ref_exception e
                      join v_exception_review v on v.exception_id = e.exception_id
                     where e.exception_id = :P71_EXCEPTION_ID;
+                   -- Read from the table, not from P71_START_DATE: the item holds the
+                   -- day as a string, the time is already gone.
+                   select to_char( start_date, 'DD/MM/YYYY HH24:MI:SS' ) into :P71_IN_FORCE_FROM
+                     from ref_exception where exception_id = :P71_EXCEPTION_ID;
                 else
                    -- New derogation, opened from a finding: the scope is read from
                    -- the finding itself, so the technical keys are never typed by

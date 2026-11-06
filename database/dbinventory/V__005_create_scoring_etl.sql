@@ -1294,6 +1294,11 @@ create or replace package body pkg_dbinv_scoring as
    -- the periodic review can tell a derogation that still covers something from
    -- one that can be revoked.
    procedure apply_exceptions ( p_snapshot_date in date default trunc(sysdate) ) is
+      -- The instant validity is judged at: the time of the run for today's
+      -- snapshot, the last second of the day for a past one -- so replaying an
+      -- old snapshot still never applies a derogation granted later. A renewal
+      -- starts to the second of its approval, and is honoured from that second.
+      l_ref date := least( sysdate, p_snapshot_date + 1 - 1/86400 );
    begin
       -- Start from a clean slate: an exception that expired, was deactivated or
       -- no longer matches must release the finding it used to cover.
@@ -1326,21 +1331,19 @@ create or replace package body pkg_dbinv_scoring as
              -- A draft, a rejected or a revoked derogation covers nothing.
              --
              -- A SUPERSEDED one keeps covering until its renewal comes into
-             -- force. The renewal cannot reuse its start date (unique key), so it
-             -- starts later -- the next day when renewed on the day it started.
-             -- Handing over on the approval day instead left the finding open in
-             -- between: the old one no longer honoured, the new one not yet valid.
+             -- force, to the second: the handover happens at the instant the
+             -- renewal starts, so the finding never reopens in between.
              and ( e.status = 'APPROVED'
                    or ( e.status = 'SUPERSEDED'
                         and not exists ( select 1
                                            from ref_exception s
                                           where s.replaces_exception_id = e.exception_id
                                             and s.status in ( 'APPROVED', 'SUPERSEDED' )
-                                            and s.start_date <= p_snapshot_date ) ) )
+                                            and s.start_date <= l_ref ) ) )
              and e.active = 1
-             -- validity is judged on the snapshot date, never sysdate, so
-             -- replaying an old snapshot does not apply today's derogations
-             and p_snapshot_date >= e.start_date
+             -- start judged at l_ref (to the second), end at the day of the
+             -- snapshot: end_date is a last day of validity
+             and e.start_date <= l_ref
              and p_snapshot_date <= nvl(e.end_date, p_snapshot_date)
             where m.snapshot_date = p_snapshot_date
               and m.is_compliant = 0

@@ -447,6 +447,18 @@ page 71 (
         }
     )
 
+    pageItem P71_FINDING_ROWID (
+        type: hidden
+        layout {
+            sequence: 15
+            region: @scope
+            slot: regionBody
+        }
+        comments {
+            comments: The finding a new derogation is opened from. The scope is read from it server-side rather than passed in the URL, where APEX splits values on commas and truncated observed values such as "Oracle 18c (18.14.0.0.0), out of support since 2021-06-30".
+        }
+    )
+
     pageItem P71_ITEM_KEY (
         type: textField
         label {
@@ -905,8 +917,19 @@ page 71 (
                      join v_exception_review v on v.exception_id = e.exception_id
                     where e.exception_id = :P71_EXCEPTION_ID;
                 else
-                   -- New derogation, opened from a finding: the scope arrives in the
-                   -- URL, so the technical keys are never typed by hand.
+                   -- New derogation, opened from a finding: the scope is read from
+                   -- the finding itself, so the technical keys are never typed by
+                   -- hand. Only its ROWID travels in the URL: APEX splits URL
+                   -- values on commas, which truncated observed values, and an
+                   -- escaped value breaks on the backslash of a Windows login. A
+                   -- truncated value never equals the finding's, so the
+                   -- derogation silently covered nothing.
+                   if :P71_FINDING_ROWID is not null then
+                      select f.rule_code, f.entity_type, f.entity_id, f.item_key, f.observed_value
+                        into :P71_RULE_CODE, :P71_ENTITY_TYPE, :P71_ENTITY_ID, :P71_ITEM_KEY, :P71_OBSERVED_VALUE
+                        from fact_control_finding f
+                       where f.rowid = chartorowid( translate( :P71_FINDING_ROWID, '-_', '+/' ) );
+                   end if;
                    :P71_STATUS := 'DRAFT';
                    :P71_ITEM_KEY := nvl(:P71_ITEM_KEY, '*');
                    :P71_OBSERVED_VALUE := nvl(:P71_OBSERVED_VALUE, '*');

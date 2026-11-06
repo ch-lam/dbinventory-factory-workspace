@@ -48,7 +48,18 @@ page 41 (
                        a.instance_id,
                        -- Le domaine de score, pour la facette Domain et pour
                        -- les cartes du dashboard qui arrivent filtrees dessus.
-                       initcap(rc.score_domain) score_domain
+                       initcap(rc.score_domain) score_domain,
+                       -- La derogation qui couvre le constat, pour le lien depuis la
+                       -- justification ; le ROWID du constat, seule cle passee a la
+                       -- page 71 (une valeur observee dans l'URL y etait coupee a la
+                       -- virgule) ; et le libelle Grant, vide quand le constat est
+                       -- deja couvert ou accepte par la norme.
+                       f.exception_id,
+                       -- ROWID en alphabet sur pour une URL : + et / y changeraient
+                       -- de sens. La page 71 fait la traduction inverse.
+                       translate( rowidtochar(f.rowid), '+/', '-_' ) finding_rowid,
+                       case when f.exception_id is null and f.is_norm_exception = 0
+                            then 'Grant' end grant_label
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
@@ -133,6 +144,33 @@ page 41 (
             }
             layout {
                 sequence: 15
+            }
+        )
+
+        column EXCEPTION_ID (
+            reportColumnQueryId: 16
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 240
+            }
+        )
+
+        column FINDING_ROWID (
+            reportColumnQueryId: 17
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 250
+            }
+        )
+
+        column GRANT_LABEL (
+            reportColumnQueryId: 18
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 260
             }
         )
 
@@ -230,11 +268,22 @@ page 41 (
         column JUSTIFICATION (
             reportColumnQueryId: 11
             derivedColumn: N
+            type: link
             heading {
                 heading: Derogation Justification
             }
             layout {
                 sequence: 90
+            }
+            link {
+                target: {
+                    page: 71
+                    items: {
+                        P71_EXCEPTION_ID: #EXCEPTION_ID#
+                    }
+                    clearCache: 71
+                }
+                linkText: #JUSTIFICATION#
             }
         )
 
@@ -263,15 +312,11 @@ page 41 (
                 target: {
                     page: 71
                     items: {
-                        P71_RULE_CODE: #RULE_CODE#
-                        P71_ENTITY_TYPE: #SCOPE#
-                        P71_ENTITY_ID: #ENTITY_ID#
-                        P71_ITEM_KEY: #ITEM_KEY#
-                        P71_OBSERVED_VALUE: #OBSERVED_VALUE#
+                        P71_FINDING_ROWID: #FINDING_ROWID#
                     }
                     clearCache: 71
                 }
-                linkText: Grant
+                linkText: #GRANT_LABEL#
             }
             sorting {
                 sortable: false

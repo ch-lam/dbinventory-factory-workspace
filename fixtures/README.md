@@ -179,6 +179,15 @@ Cette dernière est celle qui a le plus de valeur. Une règle qui ne rend qu'un 
 passe tous les autres contrôles sans avoir jamais été mise à l'épreuve — c'était le cas de
 la saturation de stockage, verte sur 1034 constats parce qu'elle ne pouvait pas rougir.
 
+**Le jeu vieillit.** Les états de revue (applications et documents) sont posés
+relativement au jour du chargement, et les vues les évaluent contre `sysdate`. Le
+document « due soon » passe en retard 20 jours après le chargement, et l'état « Due within
+30 days » disparaît de la démo. Passé ce délai, un état daté manquant ne fait plus
+échouer T_003 : il sort en `ATTENTION:`, et `check_baseline.sh` reste vert en le
+signalant. **Pour lever l'avertissement, on recharge la démo.** Avant 20 jours, le même
+manque reste un échec, puisque c'est alors le générateur qui est en cause. Ces états ne
+figurent pas dans la référence chiffrée.
+
 ---
 
 ## La discovery, et pourquoi elle est ici

@@ -927,6 +927,10 @@ create table ref_exception (
    active           number(1) default 1 not null,
    justification    varchar2(1000 char) not null,
    document_ref     varchar2(200 char),
+   -- Renewal chain. A submitted derogation is frozen, so extending or widening
+   -- an approved one creates a new draft pointing back at it; approving the
+   -- renewal supersedes the old one, which covers until then -- no gap.
+   replaces_exception_id number,
    -- Signature. A derogation is a decision taken by named people: who asked, who
    -- accepted. status is what makes those signatures binding -- see the approval
    -- gate in pkg_dbinv_scoring.apply_exceptions, which ignores anything that is
@@ -952,10 +956,12 @@ create table ref_exception (
    constraint ref_exception_uk unique ( rule_code, entity_type, entity_id, item_key, observed_value, start_date ),
    constraint ref_exception_rule_fk foreign key ( rule_code )
       references ref_control_rule ( rule_code ),
+   constraint ref_exception_repl_fk foreign key ( replaces_exception_id )
+      references ref_exception ( exception_id ),
    constraint ref_exception_dates_ck check ( end_date is null or end_date >= start_date ),
    constraint ref_exception_active_ck check ( active in ( 0, 1 ) ),
    constraint ref_exception_entity_ck check ( entity_type in ( 'HOST', 'INSTANCE', 'DATABASE', 'STORAGE' ) ),
-   constraint ref_exception_status_ck check ( status in ( 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'REVOKED' ) ),
+   constraint ref_exception_status_ck check ( status in ( 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'REVOKED', 'SUPERSEDED' ) ),
    -- an approval that names nobody, or that is dated to nothing, is not one
    constraint ref_exception_appr_ck check ( status <> 'APPROVED'
                                             or ( approved_by is not null and approval_date is not null ) ),
@@ -979,7 +985,8 @@ comment on column ref_exception.end_date is 'Last day the exception applies; NUL
 comment on column ref_exception.active is 'Operational kill switch: 0 neutralises the exception whatever the dates.';
 comment on column ref_exception.justification is 'Why the deviation is accepted (functional or technical reason).';
 comment on column ref_exception.document_ref is 'External reference of the formalising document (ticket, mail, EDM number); distinct from the files actually attached in ref_exception_document.';
-comment on column ref_exception.status is 'Lifecycle: DRAFT, SUBMITTED, APPROVED, REJECTED, REVOKED. Only APPROVED is honoured by the scoring.';
+comment on column ref_exception.replaces_exception_id is 'Approved derogation this one renews; the renewal supersedes it once approved.';
+comment on column ref_exception.status is 'Lifecycle: DRAFT, SUBMITTED, APPROVED, REJECTED, REVOKED, SUPERSEDED (replaced by an approved renewal). Only APPROVED is honoured by the scoring.';
 comment on column ref_exception.deviation_date is 'Day the deviation itself was observed/accepted, which is not the day the row was captured (created_date).';
 comment on column ref_exception.submitted_by is 'Who submitted the derogation for approval.';
 comment on column ref_exception.submitted_date is 'Date the derogation was submitted for approval.';
@@ -1076,13 +1083,13 @@ create table ref_exception_event (
       references ref_exception ( exception_id ),
    constraint ref_exc_event_type_ck check ( event_type in (
       'CREATED', 'SUBMITTED', 'APPROVED', 'REJECTED', 'REVOKED', 'REVIEWED',
-      'AMENDED', 'DOCUMENT_ADDED', 'DOCUMENT_REMOVED' ) )
+      'AMENDED', 'DOCUMENT_ADDED', 'DOCUMENT_REMOVED', 'SUPERSEDED' ) )
 );
 
 comment on table ref_exception_event is 'Append-only journal of every transition of a derogation; the audit trail, protected against update and delete by a trigger.';
 comment on column ref_exception_event.event_id is 'Technical primary key of the event.';
 comment on column ref_exception_event.exception_id is 'Derogation the event belongs to (FK to ref_exception).';
-comment on column ref_exception_event.event_type is 'What happened (CREATED, SUBMITTED, APPROVED, REJECTED, REVOKED, REVIEWED, AMENDED, DOCUMENT_ADDED, DOCUMENT_REMOVED).';
+comment on column ref_exception_event.event_type is 'What happened (CREATED, SUBMITTED, APPROVED, REJECTED, REVOKED, REVIEWED, AMENDED, DOCUMENT_ADDED, DOCUMENT_REMOVED, SUPERSEDED).';
 comment on column ref_exception_event.event_date is 'When it happened.';
 comment on column ref_exception_event.event_by is 'Who did it.';
 comment on column ref_exception_event.note is 'Free-text explanation attached to the transition.';
@@ -1266,6 +1273,7 @@ select e.exception_id,
        e.last_review_date,
        e.created_by,
        e.approved_by,
+       e.replaces_exception_id,
        ( select count(*)
            from fact_control_finding f
           where f.exception_id = e.exception_id
@@ -1275,6 +1283,7 @@ select e.exception_id,
           when e.status = 'SUBMITTED' then 'Awaiting approval'
           when e.status = 'REJECTED'  then 'Rejected'
           when e.status = 'REVOKED'   then 'Revoked'
+          when e.status = 'SUPERSEDED' then 'Superseded'
           when e.active = 0           then 'Disabled'
           when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
           -- Approved and valid today, it designates an open deviation of the

@@ -20,7 +20,14 @@
 --   DRAFT --submit--> SUBMITTED --approve--> APPROVED --revoke--> REVOKED
 --                          |                     |
 --                          +---reject---> REJECTED
---                                                +--amend--> SUBMITTED (again)
+--                                                +--renew--> new DRAFT --...--approve-->
+--                                                            the old one becomes SUPERSEDED
+--
+-- Only a DRAFT can be amended. From submission on, a derogation is frozen: the
+-- approver signs exactly what was submitted, and the decision cannot be
+-- rewritten afterwards. Extending or widening an approved derogation is a
+-- renewal -- a new derogation, chained to the old one, which keeps covering
+-- until the renewal is approved.
 --
 -- Only APPROVED is honoured by pkg_dbinv_scoring.apply_exceptions.
 --
@@ -55,8 +62,7 @@ create or replace package pkg_dbinv_exception as
       p_review_due     date default null
    ) return number;
 
-   -- Amends a draft, or an approved derogation. Amending the scope or extending
-   -- the end date of an approved derogation sends it back for approval.
+   -- Amends a draft. Anything submitted is frozen: see renew.
    procedure amend (
       p_exception_id   number,
       p_justification  varchar2 default null,
@@ -68,9 +74,15 @@ create or replace package pkg_dbinv_exception as
       p_note           varchar2 default null
    );
 
+   -- Renews an approved derogation: captures a new draft with the same scope,
+   -- chained to it through replaces_exception_id, and returns its id. The old
+   -- one keeps covering; approving the renewal supersedes it.
+   function renew ( p_exception_id number, p_note varchar2 default null ) return number;
+
    procedure submit ( p_exception_id number, p_note varchar2 default null );
 
-   -- Approves. Refuses when the approver is the author.
+   -- Approves. Refuses when the approver is the author. Approving a renewal
+   -- supersedes the derogation it replaces.
    procedure approve (
       p_exception_id number,
       p_approver     varchar2 default nvl(sys_context('APEX$SESSION','APP_USER'), user),
@@ -237,36 +249,24 @@ create or replace package body pkg_dbinv_exception as
       l_row       ref_exception%rowtype;
       l_scope_old varchar2(1000 char);
       l_scope_new varchar2(1000 char);
-      -- A flag, not a BOOLEAN, and the distinction is not cosmetic: this variable
-      -- is read inside the UPDATE below. SQL had no boolean type before 23ai, so a
-      -- PL/SQL BOOLEAN there compiles on a 23ai development database and fails on
-      -- anything older with ORA-00920: invalid relational operator. It was found
-      -- at a site on an earlier release, on a package that had compiled cleanly
-      -- here for weeks. Keep it a character flag.
-      l_material  varchar2(1 char) := 'N';
    begin
-      select * into l_row from ref_exception where exception_id = p_exception_id for update;
-
-      if l_row.status in ( 'REVOKED', 'REJECTED' ) then
+      -- Frozen from submission on. An approved derogation used to accept a
+      -- reworded justification or a new document reference while keeping its
+      -- signature: the RSSI's decision could be rewritten after the fact. To
+      -- change a submitted derogation, reject it; to extend or widen an approved
+      -- one, renew it.
+      if current_status(p_exception_id) <> 'DRAFT' then
          raise_application_error(-20023,
-            'Derogation ' || p_exception_id || ' is ' || l_row.status || ' and cannot be amended. '
-            || 'Capture a new one instead, so the closed decision stays readable.');
+            'Derogation ' || p_exception_id || ' is ' || current_status(p_exception_id)
+            || ' and can no longer be amended: only a draft can. '
+            || 'Renew an approved derogation to extend or widen it, so the decision already taken stays as signed.');
       end if;
+
+      select * into l_row from ref_exception where exception_id = p_exception_id for update;
 
       l_scope_old := l_row.item_key || ' / ' || l_row.observed_value
                      || ' / ' || to_char(l_row.start_date, 'YYYY-MM-DD')
                      || ' / ' || nvl(to_char(l_row.end_date, 'YYYY-MM-DD'), 'open');
-
-      -- What counts as material: anything widening what the derogation covers.
-      -- Rewording the justification does not, pushing the end date back does.
-      if ( p_item_key is not null and p_item_key <> l_row.item_key )
-         or ( p_observed_value is not null and p_observed_value <> l_row.observed_value )
-         or ( p_start_date is not null and trunc(p_start_date) <> l_row.start_date )
-         or ( p_end_date is not null
-              and ( l_row.end_date is null or trunc(p_end_date) > l_row.end_date ) )
-      then
-         l_material := 'Y';
-      end if;
 
       update ref_exception
          set item_key       = nvl(p_item_key, item_key),
@@ -275,12 +275,6 @@ create or replace package body pkg_dbinv_exception as
              end_date       = nvl(p_end_date, end_date),
              justification  = nvl(p_justification, justification),
              document_ref   = nvl(p_document_ref, document_ref),
-             -- A material amendment on an approved derogation sends it back for
-             -- approval: otherwise a derogation accepted for one case could be
-             -- silently stretched to another while keeping its signature.
-             status         = case when l_material = 'Y' and status = 'APPROVED' then 'SUBMITTED' else status end,
-             approved_by    = case when l_material = 'Y' and status = 'APPROVED' then null else approved_by end,
-             approval_date  = case when l_material = 'Y' and status = 'APPROVED' then null else approval_date end,
              updated_by     = nvl(sys_context('APEX$SESSION','APP_USER'), user),
              updated_date   = sysdate
        where exception_id = p_exception_id
@@ -289,10 +283,55 @@ create or replace package body pkg_dbinv_exception as
                 || ' / ' || nvl(to_char(end_date, 'YYYY-MM-DD'), 'open')
         into l_scope_new;
 
-      journal(p_exception_id, 'AMENDED',
-              case when l_material = 'Y' then 'Material amendment: approval reset. ' else '' end || p_note,
-              l_scope_old, l_scope_new);
+      journal(p_exception_id, 'AMENDED', p_note, l_scope_old, l_scope_new);
    end amend;
+
+
+   -- ---------------------------------------------------------------------
+   -- renew
+   -- ---------------------------------------------------------------------
+   function renew ( p_exception_id number, p_note varchar2 default null ) return number is
+      l_row     ref_exception%rowtype;
+      l_pending ref_exception.exception_id%type;
+      l_id      ref_exception.exception_id%type;
+   begin
+      require_status(p_exception_id, 'APPROVED');
+
+      -- One renewal at a time: a second one would compete for the same scope.
+      select max(exception_id) into l_pending
+        from ref_exception
+       where replaces_exception_id = p_exception_id
+         and status in ( 'DRAFT', 'SUBMITTED' );
+      if l_pending is not null then
+         raise_application_error(-20027,
+            'Derogation ' || p_exception_id || ' already has a renewal in progress: derogation '
+            || l_pending || '. Complete or revoke that one first.');
+      end if;
+
+      select * into l_row from ref_exception where exception_id = p_exception_id;
+
+      -- Same scope, same reasons, a new period. start_date is part of the unique
+      -- key, hence never the old one; end_date is left for the requester to set.
+      l_id := create_draft(
+                 p_rule_code      => l_row.rule_code,
+                 p_entity_type    => l_row.entity_type,
+                 p_entity_id      => l_row.entity_id,
+                 p_justification  => l_row.justification,
+                 p_item_key       => l_row.item_key,
+                 p_observed_value => l_row.observed_value,
+                 p_start_date     => greatest(trunc(sysdate), l_row.start_date + 1),
+                 p_end_date       => null,
+                 p_deviation_date => l_row.deviation_date,
+                 p_document_ref   => l_row.document_ref );
+
+      update ref_exception
+         set replaces_exception_id = p_exception_id
+       where exception_id = l_id;
+
+      journal(l_id, 'CREATED', 'Renewal of derogation ' || p_exception_id
+                               || case when p_note is not null then '. ' || p_note end);
+      return l_id;
+   end renew;
 
 
    -- ---------------------------------------------------------------------
@@ -315,9 +354,11 @@ create or replace package body pkg_dbinv_exception as
       p_note         varchar2 default null
    ) is
       l_created_by ref_exception.created_by%type;
+      l_replaces   ref_exception.replaces_exception_id%type;
    begin
       require_status(p_exception_id, 'SUBMITTED');
-      select created_by into l_created_by from ref_exception where exception_id = p_exception_id;
+      select created_by, replaces_exception_id into l_created_by, l_replaces
+        from ref_exception where exception_id = p_exception_id;
 
       -- Checked here as well as by the table constraint: the error raised from
       -- the API names the reason, where the constraint would only name itself.
@@ -334,6 +375,18 @@ create or replace package body pkg_dbinv_exception as
        where exception_id = p_exception_id;
 
       journal(p_exception_id, 'APPROVED', p_note, null, 'approved by ' || p_approver);
+
+      -- An approved renewal takes over from the derogation it replaces. Until
+      -- this point the old one kept covering, so the finding never reopens in
+      -- between; from the next scoring on, only the renewal is APPROVED.
+      if l_replaces is not null and current_status(l_replaces) = 'APPROVED' then
+         update ref_exception
+            set status = 'SUPERSEDED',
+                updated_by = nvl(sys_context('APEX$SESSION','APP_USER'), user), updated_date = sysdate
+          where exception_id = l_replaces;
+         journal(l_replaces, 'SUPERSEDED', 'Superseded by derogation ' || p_exception_id
+                                           || ', approved by ' || p_approver);
+      end if;
    end approve;
 
 

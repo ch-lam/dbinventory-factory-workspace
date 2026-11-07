@@ -34,9 +34,15 @@ page 31 (
                        f.expected_value,
                        case when f.exception_id is not null then 'Granted derogation'
                             when f.is_norm_exception = 1 then 'Accepted by the norm'
+                            -- Une derogation saisie mais pas encore appliquee par le
+                            -- scoring : sans ce statut, la ligne restait identique apres
+                            -- le Grant, et l'on pouvait croire qu'il avait echoue.
+                            when p.pend_status = 'DRAFT'     then 'Derogation draft'
+                            when p.pend_status = 'SUBMITTED' then 'Derogation awaiting approval'
+                            when p.pend_status = 'APPROVED'  then 'Derogation approved, not yet scored'
                             else 'Open'
                        end exception_status,
-                       e.justification,
+                       nvl( e.justification, p.pend_justification ) justification,
                        -- Appended at the end on purpose: the columns above are
                        -- addressed by reportColumnQueryId, so inserting in the
                        -- middle would renumber every one of them.
@@ -51,20 +57,45 @@ page 31 (
                        a.host_id,
                        -- La page 35 est passee au grain instance. v_entity_ancestry
                        -- porte instance_id pour un constat de n'importe quel grain.
-                       a.instance_id
+                       a.instance_id,
+                       -- Le domaine de score, pour la facette Domain et pour
+                       -- les cartes du dashboard qui arrivent filtrees dessus.
+                       initcap(rc.score_domain) score_domain,
+                       -- La derogation qui couvre le constat, pour le lien depuis la
+                       -- justification ; le ROWID du constat, seule cle passee a la
+                       -- page 71 (une valeur observee dans l'URL y etait coupee a la
+                       -- virgule) ; et le libelle Grant, vide quand le constat est
+                       -- deja couvert ou accepte par la norme.
+                       nvl( f.exception_id, p.pend_id ) exception_id,
+                       -- ROWID en alphabet sur pour une URL : + et / y changeraient
+                       -- de sens. La page 71 fait la traduction inverse.
+                       translate( rowidtochar(f.rowid), '+/', '-_' ) finding_rowid,
+                       case when f.exception_id is null and f.is_norm_exception = 0 and p.pend_id is null
+                            then 'Grant' end grant_label
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
                    and r.active = 1
                   join ref_control rc
                     on rc.control_code = r.control_code
-                   and rc.score_domain = 'SECURITY'
                    and rc.active = 1
                   join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
                   join dim_instance i on i.instance_id = a.instance_id
                   join dim_host h on h.host_id = a.host_id
                   left join dim_database d on d.database_id = a.database_id
                   left join ref_exception e on e.exception_id = f.exception_id
+                  -- La derogation la plus recente qui designe ce constat sans y etre
+                  -- encore rattachee : brouillon, en attente, ou approuvee avant le
+                  -- prochain scoring. Meme correspondance que apply_exceptions.
+                  outer apply ( select e2.exception_id pend_id, e2.status pend_status, e2.justification pend_justification
+                                  from v_exception_finding_match m
+                                  join ref_exception e2 on e2.exception_id = m.exception_id
+                                 where m.finding_rowid = f.rowid
+                                   and e2.active = 1
+                                   and e2.status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' )
+                                   and ( e2.end_date is null or e2.end_date >= trunc(sysdate) )
+                                 order by e2.exception_id desc
+                                 fetch first 1 row only ) p
                  where i.platform = 'MSSQL'
                    and f.is_compliant = 0
                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
@@ -130,6 +161,44 @@ page 31 (
             }
         )
 
+        column SCORE_DOMAIN (
+            reportColumnQueryId: 17
+            derivedColumn: N
+            heading {
+                heading: Domain
+            }
+            layout {
+                sequence: 15
+            }
+        )
+
+        column EXCEPTION_ID (
+            reportColumnQueryId: 18
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 240
+            }
+        )
+
+        column FINDING_ROWID (
+            reportColumnQueryId: 19
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 250
+            }
+        )
+
+        column GRANT_LABEL (
+            reportColumnQueryId: 20
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 260
+            }
+        )
+
         column DB_NAME (
             reportColumnQueryId: 7
             derivedColumn: N
@@ -144,9 +213,7 @@ page 31 (
         column ENTITY_ID (
             reportColumnQueryId: 13
             derivedColumn: N
-            heading {
-                heading: Entity id
-            }
+            type: hidden
             layout {
                 sequence: 210
             }
@@ -155,9 +222,7 @@ page 31 (
         column HOSTNAME (
             reportColumnQueryId: 14
             derivedColumn: N
-            heading {
-                heading: Server
-            }
+            type: hidden
             layout {
                 sequence: 220
             }
@@ -166,9 +231,7 @@ page 31 (
         column HOST_ID (
             reportColumnQueryId: 15
             derivedColumn: N
-            heading {
-                heading: Host id
-            }
+            type: hidden
             layout {
                 sequence: 230
             }
@@ -243,11 +306,22 @@ page 31 (
         column JUSTIFICATION (
             reportColumnQueryId: 11
             derivedColumn: N
+            type: link
             heading {
                 heading: Derogation Justification
             }
             layout {
                 sequence: 90
+            }
+            link {
+                target: {
+                    page: 71
+                    items: {
+                        P71_EXCEPTION_ID: #EXCEPTION_ID#
+                    }
+                    clearCache: 71
+                }
+                linkText: #JUSTIFICATION#
             }
         )
 
@@ -276,15 +350,11 @@ page 31 (
                 target: {
                     page: 71
                     items: {
-                        P71_RULE_CODE: #RULE_CODE#
-                        P71_ENTITY_TYPE: #SCOPE#
-                        P71_ENTITY_ID: #ENTITY_ID#
-                        P71_ITEM_KEY: #ITEM_KEY#
-                        P71_OBSERVED_VALUE: #OBSERVED_VALUE#
+                        P71_FINDING_ROWID: #FINDING_ROWID#
                     }
                     clearCache: 71
                 }
-                linkText: Grant
+                linkText: #GRANT_LABEL#
             }
             sorting {
                 sortable: false
@@ -619,7 +689,8 @@ page 31 (
                          and r.active = 1
                         join ref_control rc
                           on rc.control_code = r.control_code
-                         and rc.score_domain = 'SECURITY'
+                         and ( :P31_DOMAIN is null
+                               or instr( ':'||:P31_DOMAIN||':', ':'||initcap(rc.score_domain)||':' ) > 0 )
                          and rc.active = 1
                         join v_entity_ancestry a on a.entity_type = f.entity_type and a.entity_id = f.entity_id
                         join dim_instance i on i.instance_id = a.instance_id
@@ -630,6 +701,7 @@ page 31 (
                          and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) )
                     Select COUNT(*) value, InitCAP(SEVERITY) label From COMP_ISSUES Group By InitCAP(SEVERITY)
                     ```
+                pageItemsToSubmit: P31_DOMAIN
             }
             columnMapping {
                 label: LABEL
@@ -705,7 +777,8 @@ page 31 (
                        and r.active = 1
                       join ref_control rc
                         on rc.control_code = r.control_code
-                       and rc.score_domain = 'SECURITY'
+                       and ( :P31_DOMAIN is null
+                             or instr( ':'||:P31_DOMAIN||':', ':'||initcap(rc.score_domain)||':' ) > 0 )
                        and rc.active = 1
                       join v_entity_ancestry a
                         on a.entity_type = f.entity_type
@@ -720,6 +793,7 @@ page 31 (
                      group by rc.title
                      order by count(*) desc
                     ```
+                pageItemsToSubmit: P31_DOMAIN
             }
             columnMapping {
                 label: LABEL
@@ -799,6 +873,25 @@ page 31 (
             }
             source {
                 databaseColumn: DB_NAME
+            }
+        )
+
+        facet P31_DOMAIN (
+            type: checkboxGroup
+            label {
+                label: Domain
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 15
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: SCORE_DOMAIN
             }
         )
 
@@ -984,6 +1077,68 @@ page 31 (
             columnMapping {
                 label: LABEL
                 value: VALUE
+            }
+        )
+
+    )
+
+    dynamicAction refresh-charts-on-facets-change (
+        name: Refresh Charts On Facets Change
+        execution {
+            sequence: 10
+        }
+        when {
+            event: region/facetedSearch/facetschange
+            selectionType: region
+            region: @noncompliance-criterias
+        }
+
+        action refresh-severity (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @mssql-open-noncompliance
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-by-control (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @mssql-noncompliance-by-control
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-after-derogation-dialog (
+        name: Refresh After Derogation Dialog
+        execution {
+            sequence: 20
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @mssql-noncompliance
+        }
+
+        action native-refresh (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @mssql-noncompliance
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
             }
         )
 

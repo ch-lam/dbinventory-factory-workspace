@@ -188,6 +188,12 @@ signalant. **Pour lever l'avertissement, on recharge la démo.** Avant 20 jours,
 manque reste un échec, puisque c'est alors le générateur qui est en cause. Ces états ne
 figurent pas dans la référence chiffrée.
 
+**Le bouton « Recompute Scoring » de la page 70 a le même effet, en plus net.** Il
+rejoue l'ETL et le scoring à la date du jour, donc il crée un snapshot daté d'aujourd'hui
+à côté de celui du jeu. Les dérogations saisies pendant une démo s'appliquent alors. En
+revanche, l'assertion 11 de T_003 (discovery datée du snapshot) et la référence échouent
+jusqu'au prochain rechargement. Sur DEMO, le bouton demande une confirmation qui le dit.
+
 ---
 
 ## La discovery, et pourquoi elle est ici

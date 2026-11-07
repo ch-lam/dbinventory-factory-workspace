@@ -336,6 +336,10 @@ page 71 (
         help {
             helpText: The day the deviation itself was observed and accepted, which is not the day this record was captured.
         }
+        readOnly {
+            type: expression
+            plsqlExpression: :P71_STATUS <> 'DRAFT'
+        }
     )
 
     pageItem P71_DOCUMENT_REF (
@@ -356,6 +360,10 @@ page 71 (
         }
         help {
             helpText: Ticket, mail or EDM reference of the formalising document. Distinct from the files attached below.
+        }
+        readOnly {
+            type: expression
+            plsqlExpression: :P71_STATUS <> 'DRAFT'
         }
     )
 
@@ -400,6 +408,10 @@ page 71 (
         }
         help {
             helpText: Leave empty for an open-ended derogation. Pushing this date back after approval sends the derogation back for approval.
+        }
+        readOnly {
+            type: expression
+            plsqlExpression: :P71_STATUS <> 'DRAFT'
         }
     )
 
@@ -447,6 +459,18 @@ page 71 (
         }
     )
 
+    pageItem P71_FINDING_ROWID (
+        type: hidden
+        layout {
+            sequence: 15
+            region: @scope
+            slot: regionBody
+        }
+        comments {
+            comments: The finding a new derogation is opened from. The scope is read from it server-side rather than passed in the URL, where APEX splits values on commas and truncated observed values such as "Oracle 18c (18.14.0.0.0), out of support since 2021-06-30".
+        }
+    )
+
     pageItem P71_ITEM_KEY (
         type: textField
         label {
@@ -465,6 +489,10 @@ page 71 (
         }
         help {
             helpText: The item inside the entity the derogation covers, or * for every item the rule evaluates.
+        }
+        readOnly {
+            type: expression
+            plsqlExpression: :P71_STATUS <> 'DRAFT'
         }
     )
 
@@ -486,6 +514,10 @@ page 71 (
         }
         help {
             helpText: Why the deviation is accepted. This is what an auditor reads first.
+        }
+        readOnly {
+            type: expression
+            plsqlExpression: :P71_STATUS <> 'DRAFT'
         }
     )
 
@@ -529,6 +561,10 @@ page 71 (
         help {
             helpText: Pins the derogation to the value that was accepted. Leave * to cover any value; a setting drifting to another value then keeps its cover.
         }
+        readOnly {
+            type: expression
+            plsqlExpression: :P71_STATUS <> 'DRAFT'
+        }
     )
 
     pageItem P71_REVIEW_DUE_DATE (
@@ -549,6 +585,10 @@ page 71 (
         }
         help {
             helpText: Defaults to one year after the derogation takes effect.
+        }
+        readOnly {
+            type: expression
+            plsqlExpression: :P71_STATUS <> 'DRAFT'
         }
     )
 
@@ -613,6 +653,35 @@ page 71 (
             template: @/optional-floating
             templateOptions: #DEFAULT#
         }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'DRAFT'
+        }
+    )
+
+    pageItem P71_IN_FORCE_FROM (
+        type: displayOnly
+        label {
+            label: Applies from
+            alignment: right
+        }
+        layout {
+            sequence: 31
+            region: @decision
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS <> 'DRAFT'
+        }
+        comments {
+            comments: The exact instant the derogation applies from, to the second. A renewal comes into force at the second of its approval and the derogation it replaces covers up to that instant; the date picker, which edits a draft by the day, cannot show it.
+        }
     )
 
     pageItem P71_STATUS (
@@ -669,6 +738,10 @@ page 71 (
         behavior {
             warnOnUnsavedChanges: doNotCheck
         }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'SUBMITTED'
+        }
     )
 
     button attach (
@@ -685,6 +758,10 @@ page 71 (
         }
         behavior {
             warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_EXCEPTION_ID is not null and :P71_STATUS in ( 'DRAFT', 'APPROVED' )
         }
     )
 
@@ -720,6 +797,34 @@ page 71 (
         behavior {
             warnOnUnsavedChanges: doNotCheck
         }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'APPROVED'
+        }
+    )
+
+    button renew (
+        buttonName: RENEW
+        label: Renew
+        layout {
+            sequence: 65
+            region: @decision
+            slot: next
+        }
+        appearance {
+            buttonTemplate: @/text
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'APPROVED'
+        }
+        comments {
+            comments: An approved derogation is frozen. Renew captures a new draft with the same scope, chained to this one, which keeps covering until the renewal is approved and then becomes SUPERSEDED. That is how an approved derogation is extended or widened without rewriting a signed decision.
+        }
     )
 
     button reject (
@@ -737,6 +842,10 @@ page 71 (
         behavior {
             warnOnUnsavedChanges: doNotCheck
         }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'SUBMITTED'
+        }
     )
 
     button revoke (
@@ -753,6 +862,10 @@ page 71 (
         }
         behavior {
             warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'APPROVED' or ( :P71_STATUS = 'DRAFT' and :P71_EXCEPTION_ID is not null )
         }
     )
 
@@ -772,6 +885,10 @@ page 71 (
         behavior {
             warnOnUnsavedChanges: doNotCheck
         }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'DRAFT'
+        }
     )
 
     button submit-for-approval (
@@ -788,6 +905,10 @@ page 71 (
         }
         behavior {
             warnOnUnsavedChanges: doNotCheck
+        }
+        serverSideCondition {
+            type: expression
+            plsqlExpression: :P71_STATUS = 'DRAFT' and :P71_EXCEPTION_ID is not null
         }
     )
 
@@ -875,6 +996,9 @@ page 71 (
     process close-derogation-dialog (
         name: Close Derogation Dialog
         type: closeDialog
+        comments {
+            comments: Closes after every action that changes the derogation, not only Save, so the caller (pages 21/31/41, page 70) refreshes and shows the new status. Attach Document stays: it adds a file to the derogation being edited. A failing action raises an error and stops processing before this point, so the dialog stays open on it.
+        }
         execution {
             sequence: 90
         }
@@ -882,7 +1006,8 @@ page 71 (
             executionMappingIdentifier: 4581429391192499
         }
         serverSideCondition {
-            whenButtonPressed: @save
+            type: requestIsContainedInValue
+            value: SAVE,SUBMIT_FOR_APPROVAL,APPROVE,REJECT,REVOKE,RECORD_REVIEW
         }
     )
 
@@ -904,9 +1029,24 @@ page 71 (
                      from ref_exception e
                      join v_exception_review v on v.exception_id = e.exception_id
                     where e.exception_id = :P71_EXCEPTION_ID;
+                   -- Read from the table, not from P71_START_DATE: the item holds the
+                   -- day as a string, the time is already gone.
+                   select to_char( start_date, 'DD/MM/YYYY HH24:MI:SS' ) into :P71_IN_FORCE_FROM
+                     from ref_exception where exception_id = :P71_EXCEPTION_ID;
                 else
-                   -- New derogation, opened from a finding: the scope arrives in the
-                   -- URL, so the technical keys are never typed by hand.
+                   -- New derogation, opened from a finding: the scope is read from
+                   -- the finding itself, so the technical keys are never typed by
+                   -- hand. Only its ROWID travels in the URL: APEX splits URL
+                   -- values on commas, which truncated observed values, and an
+                   -- escaped value breaks on the backslash of a Windows login. A
+                   -- truncated value never equals the finding's, so the
+                   -- derogation silently covered nothing.
+                   if :P71_FINDING_ROWID is not null then
+                      select f.rule_code, f.entity_type, f.entity_id, f.item_key, f.observed_value
+                        into :P71_RULE_CODE, :P71_ENTITY_TYPE, :P71_ENTITY_ID, :P71_ITEM_KEY, :P71_OBSERVED_VALUE
+                        from fact_control_finding f
+                       where f.rowid = chartorowid( translate( :P71_FINDING_ROWID, '-_', '+/' ) );
+                   end if;
                    :P71_STATUS := 'DRAFT';
                    :P71_ITEM_KEY := nvl(:P71_ITEM_KEY, '*');
                    :P71_OBSERVED_VALUE := nvl(:P71_OBSERVED_VALUE, '*');
@@ -1043,6 +1183,44 @@ page 71 (
         }
         serverSideCondition {
             whenButtonPressed: @submit-for-approval
+        }
+    )
+
+    process renew-derogation (
+        name: Renew Derogation
+        type: executeCode
+        source {
+            plsqlCode: :P71_EXCEPTION_ID := pkg_dbinv_exception.renew( :P71_EXCEPTION_ID, :P71_NOTE );
+        }
+        execution {
+            sequence: 80
+        }
+        serverSideCondition {
+            whenButtonPressed: @renew
+        }
+    )
+
+    branch open-renewal (
+        name: Open Renewal
+        comments {
+            comments: Reopens the dialog on the renewal just captured, so its new end date is set and saved before it is submitted. Renew is deliberately not in the close-dialog list.
+        }
+        execution {
+            sequence: 10
+            point: afterProcessing
+        }
+        behavior {
+            type: pageOrUrl
+            target: {
+                page: 71
+                items: {
+                    P71_EXCEPTION_ID: &P71_EXCEPTION_ID.
+                }
+                clearCache: 71
+            }
+        }
+        serverSideCondition {
+            whenButtonPressed: @renew
         }
     )
 

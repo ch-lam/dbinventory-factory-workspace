@@ -927,6 +927,10 @@ create table ref_exception (
    active           number(1) default 1 not null,
    justification    varchar2(1000 char) not null,
    document_ref     varchar2(200 char),
+   -- Renewal chain. A submitted derogation is frozen, so extending or widening
+   -- an approved one creates a new draft pointing back at it; approving the
+   -- renewal supersedes the old one, which covers until then -- no gap.
+   replaces_exception_id number,
    -- Signature. A derogation is a decision taken by named people: who asked, who
    -- accepted. status is what makes those signatures binding -- see the approval
    -- gate in pkg_dbinv_scoring.apply_exceptions, which ignores anything that is
@@ -948,14 +952,16 @@ create table ref_exception (
    updated_by       varchar2(100 char),
    updated_date     date,
    constraint ref_exception_pk primary key ( exception_id ),
-   -- start_date is part of the key so a derogation can be renewed over a new period
-   constraint ref_exception_uk unique ( rule_code, entity_type, entity_id, item_key, observed_value, start_date ),
+   -- Uniqueness of the scope (rule, entity, item, value, start date) is enforced
+   -- by the unique index ref_exception_uk below, restricted to open derogations.
    constraint ref_exception_rule_fk foreign key ( rule_code )
       references ref_control_rule ( rule_code ),
+   constraint ref_exception_repl_fk foreign key ( replaces_exception_id )
+      references ref_exception ( exception_id ),
    constraint ref_exception_dates_ck check ( end_date is null or end_date >= start_date ),
    constraint ref_exception_active_ck check ( active in ( 0, 1 ) ),
    constraint ref_exception_entity_ck check ( entity_type in ( 'HOST', 'INSTANCE', 'DATABASE', 'STORAGE' ) ),
-   constraint ref_exception_status_ck check ( status in ( 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'REVOKED' ) ),
+   constraint ref_exception_status_ck check ( status in ( 'DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED', 'REVOKED', 'SUPERSEDED' ) ),
    -- an approval that names nobody, or that is dated to nothing, is not one
    constraint ref_exception_appr_ck check ( status <> 'APPROVED'
                                             or ( approved_by is not null and approval_date is not null ) ),
@@ -979,7 +985,8 @@ comment on column ref_exception.end_date is 'Last day the exception applies; NUL
 comment on column ref_exception.active is 'Operational kill switch: 0 neutralises the exception whatever the dates.';
 comment on column ref_exception.justification is 'Why the deviation is accepted (functional or technical reason).';
 comment on column ref_exception.document_ref is 'External reference of the formalising document (ticket, mail, EDM number); distinct from the files actually attached in ref_exception_document.';
-comment on column ref_exception.status is 'Lifecycle: DRAFT, SUBMITTED, APPROVED, REJECTED, REVOKED. Only APPROVED is honoured by the scoring.';
+comment on column ref_exception.replaces_exception_id is 'Approved derogation this one renews; the renewal supersedes it once approved.';
+comment on column ref_exception.status is 'Lifecycle: DRAFT, SUBMITTED, APPROVED, REJECTED, REVOKED, SUPERSEDED (replaced by an approved renewal). Only APPROVED is honoured by the scoring.';
 comment on column ref_exception.deviation_date is 'Day the deviation itself was observed/accepted, which is not the day the row was captured (created_date).';
 comment on column ref_exception.submitted_by is 'Who submitted the derogation for approval.';
 comment on column ref_exception.submitted_date is 'Date the derogation was submitted for approval.';
@@ -995,6 +1002,20 @@ comment on column ref_exception.created_by is 'User who created the row.';
 comment on column ref_exception.created_date is 'Date the row was created.';
 comment on column ref_exception.updated_by is 'User who last updated the row.';
 comment on column ref_exception.updated_date is 'Date the row was last updated.';
+
+-- One open derogation per scope and start date. Only DRAFT, SUBMITTED and
+-- APPROVED take part: for any other status every key expression is NULL and
+-- the row stays out of the index. A closed decision -- rejected, revoked,
+-- superseded -- must not block a new derogation on the same scope; it did, and
+-- renewing again on the day a renewal had been rejected failed with ORA-00001.
+-- start_date stays in the key so a derogation can be renewed over a new period.
+create unique index ref_exception_uk on ref_exception (
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then rule_code      end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then entity_type    end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then entity_id      end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then item_key       end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then observed_value end,
+   case when status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' ) then start_date     end );
 
 create index ref_exception_rule_ix
    on ref_exception ( rule_code, active );
@@ -1076,13 +1097,13 @@ create table ref_exception_event (
       references ref_exception ( exception_id ),
    constraint ref_exc_event_type_ck check ( event_type in (
       'CREATED', 'SUBMITTED', 'APPROVED', 'REJECTED', 'REVOKED', 'REVIEWED',
-      'AMENDED', 'DOCUMENT_ADDED', 'DOCUMENT_REMOVED' ) )
+      'AMENDED', 'DOCUMENT_ADDED', 'DOCUMENT_REMOVED', 'SUPERSEDED' ) )
 );
 
 comment on table ref_exception_event is 'Append-only journal of every transition of a derogation; the audit trail, protected against update and delete by a trigger.';
 comment on column ref_exception_event.event_id is 'Technical primary key of the event.';
 comment on column ref_exception_event.exception_id is 'Derogation the event belongs to (FK to ref_exception).';
-comment on column ref_exception_event.event_type is 'What happened (CREATED, SUBMITTED, APPROVED, REJECTED, REVOKED, REVIEWED, AMENDED, DOCUMENT_ADDED, DOCUMENT_REMOVED).';
+comment on column ref_exception_event.event_type is 'What happened (CREATED, SUBMITTED, APPROVED, REJECTED, REVOKED, REVIEWED, AMENDED, DOCUMENT_ADDED, DOCUMENT_REMOVED, SUPERSEDED).';
 comment on column ref_exception_event.event_date is 'When it happened.';
 comment on column ref_exception_event.event_by is 'Who did it.';
 comment on column ref_exception_event.note is 'Free-text explanation attached to the transition.';
@@ -1099,62 +1120,6 @@ begin
       'ref_exception_event is the audit trail of derogations: append-only, no update or delete.');
 end;
 /
-
-
--- ============================================================
--- v_exception_review
--- ------------------------------------------------------------
--- The periodic review worklist. review_state is ordered from the most blocking
--- to the most benign, and the row that matters most is the last one before
--- 'Current': an approved derogation that no longer covers any finding. It costs
--- nothing, breaks nothing, and therefore survives untouched for years -- while
--- still standing as an accepted deviation in front of an auditor.
--- ============================================================
-create or replace view v_exception_review as
-select e.exception_id,
-       e.status,
-       rc.platform,
-       e.rule_code,
-       r.title rule_title,
-       e.entity_type,
-       e.entity_id,
-       nvl( nvl( i.instance_name, d.db_name ), h.hostname ) scope_name,
-       e.item_key,
-       e.observed_value,
-       e.start_date,
-       e.end_date,
-       e.review_due_date,
-       e.last_review_date,
-       e.created_by,
-       e.approved_by,
-       ( select count(*)
-           from fact_control_finding f
-          where f.exception_id = e.exception_id
-            and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) covered_today,
-       case
-          when e.status = 'DRAFT'     then 'Draft, not submitted'
-          when e.status = 'SUBMITTED' then 'Awaiting approval'
-          when e.status = 'REJECTED'  then 'Rejected'
-          when e.status = 'REVOKED'   then 'Revoked'
-          when e.active = 0           then 'Disabled'
-          when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
-          when e.review_due_date is not null and e.review_due_date < trunc(sysdate) then 'Review overdue'
-          when e.end_date is not null and e.end_date <= trunc(sysdate) + 60 then 'Expiring within 60 days'
-          when ( select count(*)
-                   from fact_control_finding f
-                  where f.exception_id = e.exception_id
-                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
-             then 'Approved, covers nothing'
-          else 'Current'
-       end review_state
-  from ref_exception e
-  join ref_control_rule r on r.rule_code = e.rule_code
-  join ref_control rc on rc.control_code = r.control_code
-  left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
-  left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
-  left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id;
-
-comment on table v_exception_review is 'Every derogation with its review state; drives the periodic RSSI review and the derogations page. Platform-agnostic by construction.';
 
 
 -- ============================================================
@@ -1250,6 +1215,129 @@ create or replace view v_entity_ancestry as
      join dim_instance i on i.instance_id = d.instance_id;
 
 comment on table v_entity_ancestry is 'Host/instance/database/storage chain of any polymorphic entity reference; used to cascade exceptions downwards and to roll findings up to their control grain.';
+
+
+-- ============================================================
+-- v_exception_finding_match
+-- ------------------------------------------------------------
+-- Which findings the scope of a derogation designates: same rule, the
+-- derogation entity being the finding entity or one of its ancestors, item and
+-- observed value equal or wildcarded. Deliberately WITHOUT the approval gate,
+-- the validity dates and the compliance of the finding: those belong to the
+-- caller.
+--   * pkg_dbinv_scoring.apply_exceptions adds them, the dates judged on the
+--     snapshot date;
+--   * v_exception_review uses the bare match to tell a derogation the scoring
+--     has not applied yet from one that genuinely covers nothing.
+-- Defined once so the two can never disagree on what "matches" means.
+-- ============================================================
+create or replace view v_exception_finding_match as
+   select e.exception_id,
+          f.rowid finding_rowid,
+          f.snapshot_date,
+          f.is_compliant,
+          case e.entity_type
+             when 'STORAGE'  then 1
+             when 'DATABASE' then 2
+             when 'INSTANCE' then 3
+             else 4
+          end specificity
+     from fact_control_finding f
+     join v_entity_ancestry a
+       on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+     join ref_exception e
+       on e.rule_code = f.rule_code
+      and ( e.item_key = '*' or e.item_key = f.item_key )
+      and ( e.observed_value = '*' or e.observed_value = f.observed_value )
+      -- cascade: the exception entity must be the finding entity or one of its
+      -- ancestors
+      and e.entity_id = case e.entity_type
+                           when 'HOST'     then a.host_id
+                           when 'INSTANCE' then a.instance_id
+                           when 'DATABASE' then a.database_id
+                           when 'STORAGE'  then a.storage_unit_id
+                        end;
+
+comment on table v_exception_finding_match is 'Findings designated by the scope of each derogation, regardless of its status, dates or the compliance of the finding; the single matching rule shared by apply_exceptions and v_exception_review.';
+
+
+-- ============================================================
+-- v_exception_review
+-- ------------------------------------------------------------
+-- The periodic review worklist. review_state is ordered from the most blocking
+-- to the most benign, and the row that matters most is the last one before
+-- 'Current': an approved derogation that no longer covers any finding. It costs
+-- nothing, breaks nothing, and therefore survives untouched for years -- while
+-- still standing as an accepted deviation in front of an auditor.
+-- ============================================================
+create or replace view v_exception_review as
+select e.exception_id,
+       e.status,
+       rc.platform,
+       e.rule_code,
+       r.title rule_title,
+       e.entity_type,
+       e.entity_id,
+       nvl( nvl( i.instance_name, d.db_name ), h.hostname ) scope_name,
+       e.item_key,
+       e.observed_value,
+       e.start_date,
+       e.end_date,
+       e.review_due_date,
+       e.last_review_date,
+       e.created_by,
+       e.approved_by,
+       e.replaces_exception_id,
+       ( select count(*)
+           from fact_control_finding f
+          where f.exception_id = e.exception_id
+            and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) covered_today,
+       case
+          when e.status = 'DRAFT'     then 'Draft, not submitted'
+          when e.status = 'SUBMITTED' then 'Awaiting approval'
+          when e.status = 'REJECTED'  then 'Rejected'
+          when e.status = 'REVOKED'   then 'Revoked'
+          when e.status = 'SUPERSEDED' then 'Superseded'
+          when e.active = 0           then 'Disabled'
+          when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
+          -- Approved but starting later, typically a renewal: the derogation it
+          -- replaces covers until then. Without this state it read as "covers
+          -- nothing", which is true today and wrong tomorrow.
+          when e.start_date > sysdate then 'Approved, not yet in force'
+          -- Approved and valid today, it designates an open deviation of the
+          -- latest snapshot, yet covers none: the scoring has not run since it
+          -- was granted (or it starts after the latest snapshot date, which is
+          -- what apply_exceptions judges validity on). It has no effect at all,
+          -- which ranks it above any deadline -- and without this state it would
+          -- read exactly like a derogation that covers nothing.
+          when e.start_date <= sysdate
+           and ( select count(*)
+                   from fact_control_finding f
+                  where f.exception_id = e.exception_id
+                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
+           and exists ( select 1
+                          from v_exception_finding_match m
+                         where m.exception_id = e.exception_id
+                           and m.is_compliant = 0
+                           and m.snapshot_date = ( select max(f3.snapshot_date) from fact_control_finding f3 ) )
+             then 'Approved, not yet scored'
+          when e.review_due_date is not null and e.review_due_date < trunc(sysdate) then 'Review overdue'
+          when e.end_date is not null and e.end_date <= trunc(sysdate) + 60 then 'Expiring within 60 days'
+          when ( select count(*)
+                   from fact_control_finding f
+                  where f.exception_id = e.exception_id
+                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
+             then 'Approved, covers nothing'
+          else 'Current'
+       end review_state
+  from ref_exception e
+  join ref_control_rule r on r.rule_code = e.rule_code
+  join ref_control rc on rc.control_code = r.control_code
+  left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
+  left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
+  left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id;
+
+comment on table v_exception_review is 'Every derogation with its review state; drives the periodic RSSI review and the derogations page. Platform-agnostic by construction.';
 
 
 -- ============================================================

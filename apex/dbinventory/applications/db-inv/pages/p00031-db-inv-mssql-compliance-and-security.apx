@@ -231,9 +231,7 @@ page 31 (
         column HOST_ID (
             reportColumnQueryId: 15
             derivedColumn: N
-            heading {
-                heading: Host id
-            }
+            type: hidden
             layout {
                 sequence: 230
             }

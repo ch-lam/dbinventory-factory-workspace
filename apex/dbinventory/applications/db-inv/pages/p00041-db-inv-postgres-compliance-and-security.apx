@@ -206,9 +206,7 @@ page 41 (
         column ENTITY_ID (
             reportColumnQueryId: 13
             derivedColumn: N
-            heading {
-                heading: Entity id
-            }
+            type: hidden
             layout {
                 sequence: 210
             }

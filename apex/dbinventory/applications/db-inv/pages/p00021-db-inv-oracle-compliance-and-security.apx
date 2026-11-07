@@ -212,9 +212,7 @@ page 21 (
         column ENTITY_ID (
             reportColumnQueryId: 13
             derivedColumn: N
-            heading {
-                heading: Entity id
-            }
+            type: hidden
             layout {
                 sequence: 210
             }
@@ -223,9 +221,7 @@ page 21 (
         column HOSTNAME (
             reportColumnQueryId: 14
             derivedColumn: N
-            heading {
-                heading: Server
-            }
+            type: hidden
             layout {
                 sequence: 220
             }
@@ -282,7 +278,7 @@ page 21 (
                 linkText: #INSTANCE_NAME#
             }
             comments {
-                comments: Points at 25, the Oracle instance card, and passes INSTANCE_ID. The finding may be evaluated at any grain - instance, database, storage unit - but v_entity_ancestry resolves every one of them up to its instance, so the link works from any row. The Server column beside it is display only: there is no host card in the drill-down, the host is shown on the instance card.
+                comments: Points at 25, the Oracle instance card, and passes INSTANCE_ID. The finding may be evaluated at any grain - instance, database, storage unit - but v_entity_ancestry resolves every one of them up to its instance, so the link works from any row. The Server column is kept but hidden: there is no host card in the drill-down, the host is shown on the instance card.
             }
         )
 

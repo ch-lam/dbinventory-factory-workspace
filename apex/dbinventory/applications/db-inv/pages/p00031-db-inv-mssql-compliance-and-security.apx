@@ -213,9 +213,7 @@ page 31 (
         column ENTITY_ID (
             reportColumnQueryId: 13
             derivedColumn: N
-            heading {
-                heading: Entity id
-            }
+            type: hidden
             layout {
                 sequence: 210
             }
@@ -224,9 +222,7 @@ page 31 (
         column HOSTNAME (
             reportColumnQueryId: 14
             derivedColumn: N
-            heading {
-                heading: Server
-            }
+            type: hidden
             layout {
                 sequence: 220
             }

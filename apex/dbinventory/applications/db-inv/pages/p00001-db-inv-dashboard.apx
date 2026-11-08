@@ -9,6 +9,9 @@ page 1 (
     navigation {
         cursorFocus: doNotFocusCursor
     }
+    css {
+        fileUrls: #APP_FILES#css/coverage.css
+    }
     security {
         pageAccessProtection: argumentsMustHaveChecksum
         formAutoComplete: false
@@ -268,10 +271,30 @@ page 1 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select ( select count(*) from ref_application where active = 1 ) applications,
-                       ( select count(distinct database_id) from v_application_database ) covered,
-                       ( select count(*) from v_database_without_application ) unclaimed
-                  from dual
+                -- total = covered + unclaimed = count(dim_database) : la vue
+                -- v_database_without_application est dim_database moins
+                -- v_application_database, les deux badges s'additionnent donc
+                -- toujours au total. Les paliers se comparent sur le ratio NON
+                -- arrondi : 96,6 % reste vert, il ne passe pas bleu par arrondi.
+                select applications,
+                       covered,
+                       unclaimed,
+                       case when total = 0                 then 'is-none'
+                            when covered * 100 < 25 * total then 'is-critical'
+                            when covered * 100 < 75 * total then 'is-warning'
+                            when covered * 100 < 97 * total then 'is-ok'
+                            else 'is-full'
+                       end coverage_class,
+                       case when total = 0 then 'No database in the inventory'
+                            else trunc( covered * 100 / total ) || '% of ' || total
+                                 || ' databases attached to an application'
+                       end coverage_title
+                  from ( select c.*,
+                                c.covered + c.unclaimed total
+                           from ( select ( select count(*) from ref_application where active = 1 ) applications,
+                                         ( select count(distinct database_id) from v_application_database ) covered,
+                                         ( select count(*) from v_database_without_application ) unclaimed
+                                    from dual ) c )
                 ```
         }
         layout {
@@ -286,9 +309,10 @@ page 1 (
                 #DEFAULT#
                 t-Form--stretchInputs
             ]
+            cssClasses: dbinv-coverage
         }
         comments {
-            comments: Unclaimed is the number this band exists for, and the only one on this page that measures work rather than state. It never falls to zero on its own: a database appears there the moment the ETL discovers it, which is exactly when somebody should be asked whose it is.
+            comments: Unclaimed is the number this band exists for, and the only one on this page that measures work rather than state. It never falls to zero on its own: a database appears there the moment the ETL discovers it, which is exactly when somebody should be asked whose it is. The two database badges are coloured by the same ratio, attached / all databases: red below 25%, yellow below 75%, green below 97%, blue from 97%. They always share a colour, on purpose. The Badge List template has no per-column class, so the class rides on the link (linkAttributes) and css/coverage.css lifts it to the badge with :has().
         }
         reportLayout {
             numberOfRows: 1
@@ -330,7 +354,7 @@ page 1 (
             derivedColumn: N
             type: link
             heading {
-                heading: Databases covered
+                heading: DBs attached to Apps
                 alignment: end
             }
             layout {
@@ -342,6 +366,7 @@ page 1 (
                     page: 80
                 }
                 linkText: #COVERED#
+                linkAttributes: class="dbinv-cov #COVERAGE_CLASS#" title="#COVERAGE_TITLE#"
             }
         )
 
@@ -350,7 +375,7 @@ page 1 (
             derivedColumn: N
             type: link
             heading {
-                heading: Databases unclaimed
+                heading: DBs not attached to Apps
                 alignment: end
             }
             layout {
@@ -362,6 +387,25 @@ page 1 (
                     page: 80
                 }
                 linkText: #UNCLAIMED#
+                linkAttributes: class="dbinv-cov #COVERAGE_CLASS#" title="#COVERAGE_TITLE#"
+            }
+        )
+
+        column COVERAGE_CLASS (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 40
+            }
+        )
+
+        column COVERAGE_TITLE (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 50
             }
         )
 

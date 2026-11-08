@@ -13,6 +13,9 @@ cd apex/dbinventory/bin
 
 # 2. Import — dans la MÊME session SQLcl authentifiée que la validation.
 #    (voir .agents/skills/apex/apexlang/references/ops/runtime-gates/)
+#    Session lancée à la main : JAVA_HOME doit pointer un JDK 17+, comme pour
+#    validate.sh (qui le trouve seul). Sinon `apex import` échoue sur
+#    UnsupportedClassVersionError. Voir bin/_sqlcl_env.sh (find_jdk).
 
 # 3. Ce que la compilation ne prouve pas.
 ./post_import.sh ../applications/db-inv DEV_DBINVENTORY_dbinventory

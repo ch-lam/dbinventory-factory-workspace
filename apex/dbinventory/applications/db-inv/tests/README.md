@@ -51,8 +51,8 @@ Both exit non-zero on failure, so they can gate a deployment script.
 - **A page or a component changed**: `apex_page_test.mjs --pages <ids>`.
 - **After an import**: both. An import resets attributes that cannot be expressed
   in the `.apx`, so a page that worked before an import can be broken by it —
-  today `P71_UPLOAD`, which must be set back to `APEX_APPLICATION_TEMP_FILES` in
-  the builder every time.
+  today `P71_UPLOAD` and `P85_UPLOAD`, which must be set back to
+  `APEX_APPLICATION_TEMP_FILES` in the builder every time (see `DEPLOY.md`).
 
 ## First: are both tests looking at the same database?
 

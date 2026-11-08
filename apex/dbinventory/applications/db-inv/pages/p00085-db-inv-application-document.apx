@@ -41,10 +41,48 @@ page 85 (
         }
     )
 
+    region remove-warning (
+        name: Remove
+        title: Remove
+        type: staticContent
+        source {
+            htmlCode:
+                ```
+                <p><strong>Delete this document?</strong></p>
+                <p>Unlike the other entries of the registry, a document is really deleted, stored file included, and the file cannot be recovered from here. The journal keeps its title, the reason and the fingerprint of the file, so what was withdrawn stays visible.</p>
+                ```
+        }
+        layout {
+            sequence: 5
+            slot: contentBody
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Shown only when the dialog is opened from the trash icon of the application screen. That icon opens this same dialog in remove mode instead of asking for a confirmation, because APEXlang has no confirmation property on a button and the app does not use javascript: links. The fields are read-only and Save is hidden, so the only things left to do are to remove or to cancel - which is what a confirmation is.
+        }
+        serverSideCondition {
+            type: item=value
+            item: P85_MODE
+            value: REMOVE
+        }
+    )
+
     pageItem P85_DOCUMENT_ID (
         type: hidden
         layout {
             sequence: 10
+            region: @document
+            slot: regionBody
+        }
+    )
+
+    pageItem P85_MODE (
+        type: hidden
+        layout {
+            sequence: 15
             region: @document
             slot: regionBody
         }
@@ -83,6 +121,10 @@ page 85 (
         help {
             helpText: What this document is, in one line. It is what a reader scans, so make it say something.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P85_MODE
+        }
     )
 
     pageItem P85_DOC_KIND (
@@ -109,6 +151,10 @@ page 85 (
         validation {
             valueRequired: true
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P85_MODE
+        }
     )
 
     pageItem P85_EXTERNAL_URL (
@@ -134,6 +180,10 @@ page 85 (
         help {
             helpText: Where the document lives when it is not stored here. A link needs no privileges to record, so it works even where storing files does not.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P85_MODE
+        }
     )
 
     pageItem P85_UPLOAD (
@@ -156,7 +206,11 @@ page 85 (
             helpText: Stored inside the database and fingerprinted with SHA-256 on the way in, so it can later be proven to be the file that was filed. On an existing entry, attaching a new file replaces the old one; leaving this empty keeps it.
         }
         comments {
-            comments: KNOWN GAP - set Storage Type to "Table APEX_APPLICATION_TEMP_FILES" in the builder after EVERY import. It cannot be set from the .apx: APEXlang has no property group for plugin attributes on a page item, so a settings block is rejected. Left unset the item inherits storage_type DB_COLUMN, a BLOB column it has no source for, and the page dies at render with WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Validation does not catch it - the chain checks this file compiles, not that the page runs. T_001 check 2 catches it. The BROWSER TEST DOES NOT: this item sits in a static content region, where the bad storage type renders harmlessly, unlike P71_UPLOAD which sits in a report region and dies loudly. Same metadata, different region type, opposite symptom - and the silent one is the dangerous one, because the page looks fine while the upload lands nowhere and the save process finds nothing in apex_application_temp_files. Written as a comments block, not a // comment, because an APEX export round-trip strips // comments and keeps these. This is the second item in this application with the same gap, so the manual step now has the checklist this comment once asked for: APEXLang/DEPLOY.md lists both items, and APEXLang/post_import.sh runs T_001 after every import and fails the deployment while either one is wrong. Add a third item to that table if one ever appears.
+            comments: KNOWN GAP - set Storage Type to "Table APEX_APPLICATION_TEMP_FILES" in the builder after EVERY import. It cannot be set from the .apx: APEXlang has no property group for plugin attributes on a page item, so a settings block is rejected. Left unset the item inherits storage_type DB_COLUMN, a BLOB column it has no source for, and the page dies at render with WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Validation does not catch it - the chain checks this file compiles, not that the page runs. T_001 check 2 catches it. The BROWSER TEST DOES NOT: this item sits in a static content region, where the bad storage type renders harmlessly, unlike P71_UPLOAD which sits in a report region and dies loudly. Same metadata, different region type, opposite symptom - and the silent one is the dangerous one, because the page looks fine while the upload lands nowhere and the save process finds nothing in apex_application_temp_files. Written as a comments block, not a // comment, because an APEX export round-trip strips // comments and keeps these. This is the second item in this application with the same gap, so the manual step now has the checklist this comment once asked for: APEXLang/DEPLOY.md lists both items, and APEXLang/post_import.sh runs T_001 after every import and fails the deployment while either one is wrong. Add a third item to that table if one ever appears. Hidden rather than read-only in remove mode: a file picker has nothing to show read-only.
+        }
+        serverSideCondition {
+            type: itemIsNull
+            item: P85_MODE
         }
     )
 
@@ -178,7 +232,7 @@ page 85 (
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P85_CURRENT_FILE
+            item: P85_CURRENT_FILE
         }
     )
 
@@ -202,6 +256,10 @@ page 85 (
         validation {
             maxLength: 2000
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P85_MODE
+        }
     )
 
     pageItem P85_REVIEW_DUE_DATE (
@@ -222,6 +280,10 @@ page 85 (
         }
         help {
             helpText: When someone should check this still describes reality. A document register without review dates becomes a list of things that used to be true.
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P85_MODE
         }
     )
 
@@ -276,11 +338,11 @@ page 85 (
             action: submitPage
         }
         comments {
-            comments: This one really deletes the row, unlike the group and source screens which deactivate. A stored document is a BLOB, and keeping every superseded copy for ever is a different decision from keeping a contact entry. The journal keeps the title, the reason and the fingerprint, so what was withdrawn is still visible - which is the part that matters to a reader.
+            comments: This one really deletes the row, unlike the group and source screens which deactivate. A stored document is a BLOB, and keeping every superseded copy for ever is a different decision from keeping a contact entry. The journal keeps the title, the reason and the fingerprint, so what was withdrawn is still visible - which is the part that matters to a reader. It keeps the SHA-256 at every move of the file: DOCUMENT_ADDED when stored, DOCUMENT_REPLACED (old and new fingerprint) when a new file is uploaded over it, DOCUMENT_REMOVED when deleted.
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P85_DOCUMENT_ID
+            item: P85_DOCUMENT_ID
         }
     )
 
@@ -300,8 +362,8 @@ page 85 (
             action: submitPage
         }
         serverSideCondition {
-            type: itemIsNotNull
-            item: @P85_DOCUMENT_ID
+            type: expression
+            plsqlExpression: :P85_DOCUMENT_ID is not null and :P85_MODE is null
         }
     )
 
@@ -320,6 +382,10 @@ page 85 (
         }
         behavior {
             action: submitPage
+        }
+        serverSideCondition {
+            type: itemIsNull
+            item: P85_MODE
         }
     )
 

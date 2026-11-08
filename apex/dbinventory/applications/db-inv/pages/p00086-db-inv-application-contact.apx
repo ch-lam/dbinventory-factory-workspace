@@ -43,10 +43,48 @@ page 86 (
         }
     )
 
+    region remove-warning (
+        name: Remove
+        title: Remove
+        type: staticContent
+        source {
+            htmlCode:
+                ```
+                <p><strong>Remove this contact from the application?</strong></p>
+                <p>Nothing is deleted: the contact is deactivated, the journal keeps who it was and why it was removed, and adding the same person in the same role again brings the entry back.</p>
+                ```
+        }
+        layout {
+            sequence: 5
+            slot: contentBody
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Shown only when the dialog is opened from the trash icon of the application screen. That icon opens this same dialog in remove mode instead of asking for a confirmation, because APEXlang has no confirmation property on a button and the app does not use javascript: links. The fields are read-only and Save is hidden, so the only things left to do are to remove or to cancel - which is what a confirmation is.
+        }
+        serverSideCondition {
+            type: item=value
+            item: P86_MODE
+            value: REMOVE
+        }
+    )
+
     pageItem P86_CONTACT_ID (
         type: hidden
         layout {
             sequence: 10
+            region: @contact
+            slot: regionBody
+        }
+    )
+
+    pageItem P86_MODE (
+        type: hidden
+        layout {
+            sequence: 15
             region: @contact
             slot: regionBody
         }
@@ -88,6 +126,10 @@ page 86 (
         help {
             helpText: The same catalogue the responsible groups use, so a reader can put a face next to a group without translating between two vocabularies.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P86_MODE
+        }
     )
 
     pageItem P86_FULL_NAME (
@@ -110,6 +152,10 @@ page 86 (
         validation {
             valueRequired: true
             maxLength: 200
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P86_MODE
         }
     )
 
@@ -136,6 +182,10 @@ page 86 (
         help {
             helpText: What they do, which is what remains useful after they leave and the name stops matching anybody.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P86_MODE
+        }
     )
 
     pageItem P86_EMAIL (
@@ -160,6 +210,10 @@ page 86 (
         }
         help {
             helpText: The person's own address. The distribution list belongs on the group, not here.
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P86_MODE
         }
     )
 
@@ -186,6 +240,10 @@ page 86 (
         help {
             helpText: The number that works out of hours, if there is one. That is the reason this screen exists.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P86_MODE
+        }
     )
 
     pageItem P86_LDAP_LOGIN (
@@ -210,6 +268,10 @@ page 86 (
         }
         help {
             helpText: The identifier that does not change when the display name does; the only field here that can be matched against the directory later.
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P86_MODE
         }
     )
 
@@ -237,6 +299,10 @@ page 86 (
         help {
             helpText: Advisory, not enforced. Two people marked first is a question for the next review, not something to refuse at three in the morning.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P86_MODE
+        }
     )
 
     pageItem P86_NOTE (
@@ -261,6 +327,10 @@ page 86 (
         }
         help {
             helpText: Anything a future reader needs, such as when not to call this person.
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P86_MODE
         }
     )
 
@@ -297,11 +367,11 @@ page 86 (
             action: submitPage
         }
         comments {
-            comments: No confirmation prompt, for the same reason as the group screen: APEXlang has no property for one and confirmMessage is rejected. Tolerable here because Remove deactivates rather than deletes, and the journal keeps the name and the reason.
+            comments: No confirmation prompt, for the same reason as the group screen: APEXlang has no property for one and confirmMessage is rejected. The confirmation is the remove mode instead (P86_MODE = REMOVE, opened from the trash icon of the application screen). Remove deactivates rather than deletes, the journal keeps the name and the reason, and adding the same person in the same role again reactivates the entry.
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P86_CONTACT_ID
+            item: P86_CONTACT_ID
         }
     )
 
@@ -320,6 +390,10 @@ page 86 (
         }
         behavior {
             action: submitPage
+        }
+        serverSideCondition {
+            type: itemIsNull
+            item: P86_MODE
         }
     )
 

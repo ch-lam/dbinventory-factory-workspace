@@ -33,10 +33,48 @@ page 82 (
         }
     )
 
+    region remove-warning (
+        name: Remove
+        title: Remove
+        type: staticContent
+        source {
+            htmlCode:
+                ```
+                <p><strong>Remove this group from the application?</strong></p>
+                <p>It stops being listed as responsible. Nothing is deleted: the group is deactivated, the journal keeps who was responsible and why it was removed, and adding the same group again brings it back.</p>
+                ```
+        }
+        layout {
+            sequence: 5
+            slot: contentBody
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Shown only when the dialog is opened from the trash icon of the application screen. That icon opens this same dialog in remove mode instead of asking for a confirmation, because APEXlang has no confirmation property on a button and the app does not use javascript: links. The fields are read-only and Save is hidden, so the only things left to do are to remove or to cancel - which is what a confirmation is.
+        }
+        serverSideCondition {
+            type: item=value
+            item: P82_MODE
+            value: REMOVE
+        }
+    )
+
     pageItem P82_GROUP_ID (
         type: hidden
         layout {
             sequence: 10
+            region: @group
+            slot: regionBody
+        }
+    )
+
+    pageItem P82_MODE (
+        type: hidden
+        layout {
+            sequence: 15
             region: @group
             slot: regionBody
         }
@@ -75,6 +113,10 @@ page 82 (
         validation {
             valueRequired: true
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P82_MODE
+        }
     )
 
     pageItem P82_GROUP_NAME (
@@ -101,6 +143,10 @@ page 82 (
         help {
             helpText: The name this group is known by outside this tool.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P82_MODE
+        }
     )
 
     pageItem P82_CONTACT_EMAIL (
@@ -125,6 +171,10 @@ page 82 (
         }
         help {
             helpText: Preferably a distribution list rather than a person, so it survives someone leaving.
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P82_MODE
         }
     )
 
@@ -151,6 +201,10 @@ page 82 (
         help {
             helpText: Short directory name, for example GRP-APP-DBA.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P82_MODE
+        }
     )
 
     pageItem P82_LDAP_DN (
@@ -172,6 +226,10 @@ page 82 (
         }
         validation {
             maxLength: 1000
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P82_MODE
         }
     )
 
@@ -198,6 +256,10 @@ page 82 (
         help {
             helpText: Identifier of this group in a CMDB, a ticketing system or a contract.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P82_MODE
+        }
     )
 
     pageItem P82_NOTE (
@@ -219,6 +281,10 @@ page 82 (
         }
         validation {
             maxLength: 1000
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P82_MODE
         }
     )
 
@@ -255,11 +321,11 @@ page 82 (
             action: submitPage
         }
         comments {
-            comments: No confirmation prompt: APEXlang has no property for one. The vendor buttons guidance lists "confirmation message/style" as a behavior specific, but the compiler metadata contains no such key and confirmMessage is rejected as an invalid property. Do not try again without checking the metadata first. It is tolerable here because Remove deactivates rather than deletes, and the journal records who did it.
+            comments: No confirmation prompt: APEXlang has no property for one. The vendor buttons guidance lists "confirmation message/style" as a behavior specific, but the compiler metadata contains no such key and confirmMessage is rejected as an invalid property. Do not try again without checking the metadata first. The confirmation is the remove mode instead: the trash icon of the application screen opens this dialog with P82_MODE = REMOVE, which shows what removing means, makes the fields read-only and hides Save. Remove deactivates rather than deletes, and the journal records who did it.
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P82_GROUP_ID
+            item: P82_GROUP_ID
         }
     )
 
@@ -278,6 +344,10 @@ page 82 (
         }
         behavior {
             action: submitPage
+        }
+        serverSideCondition {
+            type: itemIsNull
+            item: P82_MODE
         }
     )
 

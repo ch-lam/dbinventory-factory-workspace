@@ -22,6 +22,11 @@
 --      cannot be expressed in the .apx, so every import resets it and only a
 --      check like this one notices.
 --   3. Items pointing at a shared list of values that does not exist.
+--   4. Conditions that test an item which does not exist. APEX evaluates them
+--      against an empty value without a word, so a button guarded by "item is
+--      not null" simply never shows. Fifteen components of pages 81-86 were
+--      hidden that way, by an item written @P81_APPLICATION_ID in the .apx: the
+--      compiler stored the @ as part of the name, and both validations passed.
 --
 -- WHAT IT DOES NOT CATCH
 --   Anything that only shows up when the page is rendered: template issues,
@@ -143,6 +148,78 @@ begin
             if l_n = 0 then
                fail('shared list of values does not exist', 'page ' || v.page_id,
                     v.item_name || ' references ' || v.lov_named_lov);
+            end if;
+         end;
+      end if;
+   end loop;
+
+   -- ---------------------------------------------------------------------
+   -- 4. Item-based conditions must name an item that exists. Display and
+   --    read-only conditions alike, on every component type that has one.
+   --    In a .apx the item is written bare (item: P81_X); written @P81_X it
+   --    compiles, imports, and names nothing.
+   -- ---------------------------------------------------------------------
+   dbms_output.put_line('4. Conditions name existing items');
+   for c in ( with conds as (
+                 select page_id, 'button ' || button_name what,
+                        condition_type_code code, condition_expression1 item
+                   from apex_application_page_buttons where application_id = c_app
+                 union all
+                 select page_id, 'item ' || item_name,
+                        condition_type_code, condition_expression1
+                   from apex_application_page_items where application_id = c_app
+                 union all
+                 select page_id, 'item ' || item_name || ' (read-only)',
+                        read_only_condition_type_code, read_only_condition_exp1
+                   from apex_application_page_items where application_id = c_app
+                 union all
+                 select page_id, 'region ' || region_name,
+                        condition_type_code, condition_expression1
+                   from apex_application_page_regions where application_id = c_app
+                 union all
+                 select page_id, 'region ' || region_name || ' (read-only)',
+                        read_only_condition_type_code, read_only_condition_exp1
+                   from apex_application_page_regions where application_id = c_app
+                 union all
+                 select page_id, 'process ' || process_name,
+                        condition_type_code, condition_expression1
+                   from apex_application_page_proc where application_id = c_app
+                 union all
+                 select page_id, 'column ' || region_name || '.' || column_alias,
+                        condition_type_code, condition_expression1
+                   from apex_application_page_rpt_cols where application_id = c_app
+                 union all
+                 select page_id, 'dynamic action ' || dynamic_action_name,
+                        condition_type_code, condition_expression1
+                   from apex_application_page_da where application_id = c_app )
+              select page_id, what, item
+                from conds
+               where code in ( 'ITEM_IS_NULL', 'ITEM_IS_NOT_NULL',
+                               'ITEM_IS_ZERO', 'ITEM_IS_NOT_ZERO',
+                               'ITEM_IS_NULL_OR_ZERO', 'ITEM_NOT_NULL_OR_ZERO',
+                               'ITEM_CONTAINS_NO_SPACES', 'ITEM_IS_NUMERIC',
+                               'ITEM_IS_NOT_NUMERIC', 'ITEM_IS_ALPHANUMERIC',
+                               'VAL_OF_ITEM_IN_COND_EQ_COND2',
+                               'VAL_OF_ITEM_IN_COND_NOT_EQ_COND2',
+                               'VALUE_OF_ITEM_IN_CONDITION_IN_COLON_DELIMITED_LIST',
+                               'VALUE_OF_ITEM_IN_CONDITION_NOT_IN_COLON_DELIMITED_LIST' )
+               order by page_id, what ) loop
+      if in_scope(c.page_id) then
+         l_checked := l_checked + 1;
+         declare
+            l_n pls_integer;
+         begin
+            select count(*) into l_n
+              from ( select item_name from apex_application_page_items
+                      where application_id = c_app
+                     union all
+                     select item_name from apex_application_items
+                      where application_id = c_app )
+             where item_name = upper(trim(c.item));
+            if l_n = 0 then
+               fail('condition tests an item that does not exist', 'page ' || c.page_id,
+                    c.what || ' tests "' || c.item || '"'
+                    || case when c.item like '@%' then ' - write the item without @ in the .apx' end);
             end if;
          end;
       end if;

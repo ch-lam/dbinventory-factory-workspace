@@ -577,6 +577,162 @@ begin
    end;
 
    -- ---------------------------------------------------------------------
+   -- 16. Removing is reversible. Removing deactivates, and the unique keys
+   --     cover inactive rows, so adding the same thing back used to raise a
+   --     duplicate the screen could not show. It must reactivate the row
+   --     instead -- same id, active again, journalled as an addition -- while
+   --     a duplicate of something still active keeps being refused.
+   -- ---------------------------------------------------------------------
+   dbms_output.put_line('16. Detached or removed, then added back');
+   declare
+      l_again  number;
+      l_raised boolean := false;
+      l_err    varchar2(400);
+   begin
+      -- the attachment from section 4
+      pkg_dbinv_application.unlink_entity(l_link, 'detached for T_001');
+      l_again := pkg_dbinv_application.link_entity(l_app, 'INSTANCE', l_instance,
+                                                   'attached again for T_001');
+      l_checked := l_checked + 1;
+      select count(*) into l_n from ref_application_entity
+       where app_entity_id = l_link and active = 1;
+      if l_again = l_link and l_n = 1 then
+         ok('a detached instance attaches again on the same row');
+      else
+         fail('link_entity after unlink_entity', 'expected row ' || l_link
+              || ' reactivated, got ' || nvl(to_char(l_again), 'null'));
+      end if;
+
+      l_checked := l_checked + 1;
+      select count(*) into l_n from ref_application_event
+       where application_id = l_app and event_type = 'ENTITY_LINKED'
+         and note = 'attached again for T_001';
+      if l_n = 1 then
+         ok('the second attachment is journalled as a link');
+      else
+         fail('ENTITY_LINKED on reactivation', 'expected 1 journal entry, got ' || l_n);
+      end if;
+
+      -- still active, so attaching it a third time is a real duplicate
+      begin
+         l_again := pkg_dbinv_application.link_entity(l_app, 'INSTANCE', l_instance);
+      exception when others then
+         l_raised := true; l_err := sqlerrm;
+      end;
+      expect_rejected('attaching what is already attached', l_raised, l_err);
+
+      -- the contact removed in section 12
+      l_again := pkg_dbinv_application.add_contact(
+                    p_application_id => l_app,
+                    p_contact_role   => 'ADMIN',
+                    p_full_name      => 'On Call',
+                    p_email          => 'oncall@example.invalid' );
+      l_checked := l_checked + 1;
+      select count(*) into l_n from ref_application_contact
+       where contact_id = l_contact and active = 1
+         and email = 'oncall@example.invalid' and phone is null;
+      if l_again = l_contact and l_n = 1 then
+         ok('a removed contact comes back on the same row, with the new details');
+      else
+         fail('add_contact after remove_contact', 'expected row ' || l_contact
+              || ' reactivated with the new details, got ' || nvl(to_char(l_again), 'null'));
+      end if;
+
+      l_checked := l_checked + 1;
+      select count(*) into l_n from ref_application_event
+       where application_id = l_app and event_type = 'CONTACT_ADDED' and subject_ref = 'On Call';
+      if l_n = 2 then
+         ok('the contact coming back is journalled as an addition');
+      else
+         fail('CONTACT_ADDED on reactivation', 'expected 2 additions for On Call, got ' || l_n);
+      end if;
+
+      -- the group from section 1
+      pkg_dbinv_application.remove_group(l_group, 'team renamed for T_001');
+      l_again := pkg_dbinv_application.add_group(
+                    p_application_id  => l_app,
+                    p_group_type_code => 'ADMIN',
+                    p_group_name      => 'DBA team',
+                    p_contact_email   => 'dba2@example.invalid' );
+      l_checked := l_checked + 1;
+      select count(*) into l_n from ref_application_group
+       where group_id = l_group and active = 1 and contact_email = 'dba2@example.invalid';
+      if l_again = l_group and l_n = 1 then
+         ok('a removed group comes back on the same row, with the new details');
+      else
+         fail('add_group after remove_group', 'expected row ' || l_group
+              || ' reactivated with the new details, got ' || nvl(to_char(l_again), 'null'));
+      end if;
+
+      l_raised := false;
+      begin
+         l_again := pkg_dbinv_application.add_group(
+                       p_application_id  => l_app,
+                       p_group_type_code => 'ADMIN',
+                       p_group_name      => 'DBA team',
+                       p_contact_email   => 'dba3@example.invalid' );
+      exception when others then
+         l_raised := true; l_err := sqlerrm;
+      end;
+      expect_rejected('adding a group that is still active', l_raised, l_err);
+   end;
+
+   -- ---------------------------------------------------------------------
+   -- 17. Replacing the file of a document leaves both fingerprints behind.
+   --     Done the way page 85 does it: an UPDATE of the content. The journal
+   --     used to record nothing here, so the fingerprint of the file that was
+   --     replaced was lost, and the new one never written.
+   -- ---------------------------------------------------------------------
+   dbms_output.put_line('17. A stored file replaced by another');
+   declare
+      l_doc4 number;
+      l_old  varchar2(64 char);
+      l_new  varchar2(64 char);
+   begin
+      l_doc4 := pkg_dbinv_application.add_document(
+                   p_application_id => l_app,
+                   p_title          => 'Architecture, stored',
+                   p_doc_kind       => 'DIAGRAM',
+                   p_file_name      => 'archi-v1.txt',
+                   p_content        => utl_raw.cast_to_raw('architecture, first issue') );
+      select checksum_sha256 into l_old from ref_application_document where document_id = l_doc4;
+
+      pkg_dbinv_application.set_reason('new issue for T_001');
+      update ref_application_document
+         set file_name = 'archi-v2.txt',
+             content   = utl_raw.cast_to_raw('architecture, second issue')
+       where document_id = l_doc4;
+      pkg_dbinv_application.set_reason(null);
+      select checksum_sha256 into l_new from ref_application_document where document_id = l_doc4;
+
+      l_checked := l_checked + 1;
+      select count(*) into l_n from ref_application_event
+       where application_id = l_app and event_type = 'DOCUMENT_REPLACED'
+         and subject_ref = 'Architecture, stored'
+         and old_value = l_old and new_value = l_new
+         and note like 'new issue for T_001 - archi-v1.txt -> archi-v2.txt%';
+      if l_n = 1 and l_old <> l_new then
+         ok('the replacement is journalled with the old and the new fingerprint');
+      else
+         fail('DOCUMENT_REPLACED', 'expected 1 entry carrying ' || l_old || ' -> ' || l_new
+              || ', got ' || l_n);
+      end if;
+
+      -- an edit that leaves the file alone is not a replacement
+      update ref_application_document
+         set title = 'Architecture, stored, renamed'
+       where document_id = l_doc4;
+      l_checked := l_checked + 1;
+      select count(*) into l_n from ref_application_event
+       where application_id = l_app and event_type = 'DOCUMENT_REPLACED';
+      if l_n = 1 then
+         ok('renaming a document without touching its file is not taken for a replacement');
+      else
+         fail('DOCUMENT_REPLACED', 'expected still 1 replacement, got ' || l_n);
+      end if;
+   end;
+
+   -- ---------------------------------------------------------------------
    dbms_output.put_line(rpad('-', 78, '-'));
    dbms_output.put_line(l_checked || ' checks run, ' || l_failures || ' failure(s)');
 

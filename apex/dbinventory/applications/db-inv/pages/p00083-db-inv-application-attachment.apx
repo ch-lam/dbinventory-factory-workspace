@@ -44,10 +44,51 @@ page 83 (
         }
     )
 
+    region remove-warning (
+        name: Detach
+        title: Detach
+        type: staticContent
+        source {
+            htmlCode:
+                ```
+                <p><strong>Detach this from the application?</strong></p>
+                <p>Every database it covers goes back to the list of databases with no
+                application - all the databases of an instance, when an instance is
+                detached. Nothing is deleted: attaching the same thing again restores
+                the coverage, and the journal keeps both moves.</p>
+                ```
+        }
+        layout {
+            sequence: 5
+            slot: contentBody
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Shown only when the dialog is opened from the trash icon of the application screen (P83_MODE = REMOVE). It stands in for a confirmation prompt, which APEXlang cannot express on a button.
+        }
+        serverSideCondition {
+            type: item=value
+            item: P83_MODE
+            value: REMOVE
+        }
+    )
+
     pageItem P83_APP_ENTITY_ID (
         type: hidden
         layout {
             sequence: 10
+            region: @attachment
+            slot: regionBody
+        }
+    )
+
+    pageItem P83_MODE (
+        type: hidden
+        layout {
+            sequence: 15
             region: @attachment
             slot: regionBody
         }
@@ -62,8 +103,70 @@ page 83 (
         }
     )
 
-    pageItem P83_ENTITY (
+    pageItem P83_PRESET_TYPE (
+        type: hidden
+        layout {
+            sequence: 21
+            region: @attachment
+            slot: regionBody
+        }
+        comments {
+            comments: Set by the links of page 80, with P83_PRESET_ID, to open this dialog on a given database or instance. Two items rather than P83_ENTITY directly, because its value carries a colon (DATABASE:12), which is the separator of a classic APEX URL.
+        }
+    )
+
+    pageItem P83_PRESET_ID (
+        type: hidden
+        layout {
+            sequence: 22
+            region: @attachment
+            slot: regionBody
+        }
+    )
+
+    pageItem P83_APPLICATION_PICK (
         type: selectList
+        label {
+            label: Application
+            alignment: right
+        }
+        lov {
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select a.app_code || ' - ' || a.app_name d,
+                       a.application_id r
+                  from ref_application a
+                 where a.lifecycle_status <> 'RETIRED'
+                 order by a.app_code
+                ```
+            displayNullValue: true
+            nullDisplayValue: - select the application that owns it -
+        }
+        layout {
+            sequence: 25
+            region: @attachment
+            slot: regionBody
+            alignment: left
+        }
+        appearance {
+            template: @/required-floating
+            templateOptions: #DEFAULT#
+        }
+        validation {
+            valueRequired: true
+        }
+        comments {
+            comments: Only shown when the dialog is opened from the list of databases with no application on page 80, where the database is known and the application is not. From the application screen P83_APPLICATION_ID is already set and this item is not rendered, so its required validation does not fire either.
+        }
+        serverSideCondition {
+            type: itemIsNull
+            item: P83_APPLICATION_ID
+        }
+    )
+
+    pageItem P83_ENTITY (
+        type: selectOne
         label {
             label: Attach to
             alignment: right
@@ -71,8 +174,6 @@ page 83 (
         lov {
             type: sharedComponent
             lov: @application-attachable-entity
-            displayNullValue: true
-            nullDisplayValue: - select a host, an instance or a database -
         }
         layout {
             sequence: 30
@@ -88,7 +189,14 @@ page 83 (
             valueRequired: true
         }
         help {
-            helpText: One list rather than a type and an identifier, so a host cannot be picked with a database id by mistake. The entries are grouped by level and each says which it is.
+            helpText: Type to search. One list rather than a type and an identifier, so a host cannot be picked with a database id by mistake. Each entry says which level it is - Host, Instance or Database.
+        }
+        comments {
+            comments: Select One rather than a plain select list: the list holds every host, instance and database of the estate, several hundred entries, and a select list with no search is not usable at that size. Read-only on an existing attachment, because there is no API to move an attachment - detach it and attach the right thing instead.
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P83_APP_ENTITY_ID
         }
     )
 
@@ -110,7 +218,7 @@ page 83 (
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P83_APP_ENTITY_ID
+            item: P83_APP_ENTITY_ID
         }
     )
 
@@ -136,6 +244,10 @@ page 83 (
         }
         help {
             helpText: Why the attachment is at this level, when that is not obvious.
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P83_APP_ENTITY_ID
         }
     )
 
@@ -172,11 +284,11 @@ page 83 (
             action: submitPage
         }
         comments {
-            comments: No confirmation prompt: APEXlang has no property for one, and confirmMessage is rejected. This one deserved a prompt more than most, since detaching an instance returns every database under it to the unclaimed list - eighteen of them in the case this was first tried on. The mitigation is that detaching deactivates rather than deletes: re-attaching restores the coverage, and the journal holds both moves.
+            comments: No confirmation prompt: APEXlang has no property for one, and confirmMessage is rejected. This one deserved a prompt more than most, since detaching an instance returns every database under it to the unclaimed list - eighteen of them in the case this was first tried on. The confirmation is the remove mode instead: the trash icon of the application screen opens this dialog with P83_MODE = REMOVE, which spells out the consequence before Detach is pressed. Detaching deactivates rather than deletes: attaching the same thing again reactivates the row (link_entity, since the unique key covers inactive rows) and restores the coverage, and the journal holds both moves.
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P83_APP_ENTITY_ID
+            item: P83_APP_ENTITY_ID
         }
     )
 
@@ -198,7 +310,7 @@ page 83 (
         }
         serverSideCondition {
             type: itemIsNull
-            item: @P83_APP_ENTITY_ID
+            item: P83_APP_ENTITY_ID
         }
     )
 
@@ -237,6 +349,8 @@ page 83 (
                      into :P83_APPLICATION_ID, :P83_ENTITY, :P83_NOTE, :P83_CURRENT
                      from ref_application_entity e
                     where e.app_entity_id = :P83_APP_ENTITY_ID;
+                elsif :P83_PRESET_TYPE in ( 'HOST', 'INSTANCE', 'DATABASE' ) then
+                   :P83_ENTITY := :P83_PRESET_TYPE || ':' || :P83_PRESET_ID;
                 end if;
                 ```
         }
@@ -264,8 +378,10 @@ page 83 (
                    -- No foreign key can do that on a polymorphic reference, and an
                    -- attachment pointing at nothing resolves to no database at all
                    -- -- which reads exactly like an application nobody attached.
+                   -- From page 80 the application is picked here, from page 81 it
+                   -- arrives with the dialog.
                    l_new := pkg_dbinv_application.link_entity(
-                      p_application_id => :P83_APPLICATION_ID,
+                      p_application_id => nvl(:P83_APPLICATION_ID, :P83_APPLICATION_PICK),
                       p_entity_type    => l_type,
                       p_entity_id      => l_id,
                       p_note           => :P83_NOTE );

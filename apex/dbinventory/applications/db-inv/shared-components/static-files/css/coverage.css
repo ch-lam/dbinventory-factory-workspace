@@ -1,0 +1,52 @@
+/* Couverture applicative du dashboard (page 1, region application-coverage).
+   Declaree par la page 1 via css { fileUrls }, et nulle part ailleurs.
+
+   Les deux badges « DBs attached to Apps » et « DBs not attached to Apps »
+   prennent la couleur du ratio bases attachees / toutes les bases, calcule
+   dans la requete de la region (colonne COVERAGE_CLASS) :
+     is-critical < 25 %, is-warning < 75 %, is-ok < 97 %, is-full >= 97 %,
+     is-none quand l'inventaire est vide.
+
+   Le template Badge List n'offre aucune classe par colonne : la couleur y vient
+   de la position (u-colors sur la liste). La classe est donc portee par le lien
+   de la colonne (linkAttributes), a l'interieur du badge, et :has() la remonte
+   jusqu'au fond du badge. Le prefixe .dbinv-coverage (classe de la region)
+   donne la specificite qu'il faut pour passer devant
+   .u-colors > :nth-child(n) .u-color.
+
+   Variables de theme, jamais de couleur en dur -- comme nis2.css, le badge doit
+   suivre vita-dark. La palette est celle des cartes Compliance & Security de la
+   meme page (u-color-9 / 7 / 4 : Critical / Warning / OK), plus u-color-1 pour
+   le bleu : toute la page parle le meme code couleur. Les --ut-palette-danger
+   et consorts, d'abord essayes, donnaient un rouge trop agressif. */
+
+.dbinv-coverage .t-BadgeList-item:has(.dbinv-cov.is-critical) .t-BadgeList-wrap {
+   background-color: var(--u-color-9);
+   color: var(--u-color-9-contrast);
+}
+
+.dbinv-coverage .t-BadgeList-item:has(.dbinv-cov.is-warning) .t-BadgeList-wrap {
+   background-color: var(--u-color-7);
+   color: var(--u-color-7-contrast);
+}
+
+.dbinv-coverage .t-BadgeList-item:has(.dbinv-cov.is-ok) .t-BadgeList-wrap {
+   background-color: var(--u-color-4);
+   color: var(--u-color-4-contrast);
+}
+
+.dbinv-coverage .t-BadgeList-item:has(.dbinv-cov.is-full) .t-BadgeList-wrap {
+   background-color: var(--u-color-1);
+   color: var(--u-color-1-contrast);
+}
+
+.dbinv-coverage .t-BadgeList-item:has(.dbinv-cov.is-none) .t-BadgeList-wrap {
+   background-color: var(--ut-component-highlight-background-color);
+   color: var(--ut-component-text-default-color);
+}
+
+/* Le chiffre est un lien : sans ceci il garde la couleur de lien du theme au
+   lieu du contraste de la couleur de fond. */
+.dbinv-coverage .dbinv-cov {
+   color: inherit;
+}

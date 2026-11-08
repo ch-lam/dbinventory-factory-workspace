@@ -68,12 +68,19 @@ page 1 (
                        -- P<page>_DOMAIN. clear_cache remet a zero les facettes
                        -- d'une visite precedente. Pas de page de conformite pour
                        -- MySQL : lien sans filtre.
+                       -- A 100 %, la facette Compliance arrive avec ses deux
+                       -- valeurs : la page montre alors tous les controles du
+                       -- domaine au lieu d'une liste vide. Sous 100 %, elle garde
+                       -- sa valeur par defaut, Non compliant.
                        case when platform in ( 'ORACLE', 'MSSQL', 'POSTGRES' )
                             then apex_page.get_url(
                                     p_page        => case platform when 'ORACLE' then 21 when 'MSSQL' then 31 else 41 end,
                                     p_clear_cache => case platform when 'ORACLE' then '21' when 'MSSQL' then '31' else '41' end,
-                                    p_items       => case platform when 'ORACLE' then 'P21_DOMAIN' when 'MSSQL' then 'P31_DOMAIN' else 'P41_DOMAIN' end,
-                                    p_values      => initcap(score_domain) )
+                                    p_items       => case platform when 'ORACLE' then 'P21' when 'MSSQL' then 'P31' else 'P41' end || '_DOMAIN'
+                                                     || case when score_value = 100
+                                                             then ',' || case platform when 'ORACLE' then 'P21' when 'MSSQL' then 'P31' else 'P41' end || '_COMPLIANCE' end,
+                                    p_values      => initcap(score_domain)
+                                                     || case when score_value = 100 then ',Non compliant:Compliant' end )
                             else apex_page.get_url( p_page => case platform when 'MYSQL' then 51 else 1 end )
                        end details_apex_page_number,
                        row_number() over ( order by platform, score_domain ) scoring_order

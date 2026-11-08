@@ -32,7 +32,8 @@ page 31 (
                        d.db_name,
                        f.item_key,
                        f.expected_value,
-                       case when f.exception_id is not null then 'Granted derogation'
+                       case when f.is_compliant = 1 then 'Compliant'
+                            when f.exception_id is not null then 'Granted derogation'
                             when f.is_norm_exception = 1 then 'Accepted by the norm'
                             -- Une derogation saisie mais pas encore appliquee par le
                             -- scoring : sans ce statut, la ligne restait identique apres
@@ -70,8 +71,13 @@ page 31 (
                        -- ROWID en alphabet sur pour une URL : + et / y changeraient
                        -- de sens. La page 71 fait la traduction inverse.
                        translate( rowidtochar(f.rowid), '+/', '-_' ) finding_rowid,
-                       case when f.exception_id is null and f.is_norm_exception = 0 and p.pend_id is null
-                            then 'Grant' end grant_label
+                       case when f.is_compliant = 0 and f.exception_id is null and f.is_norm_exception = 0 and p.pend_id is null
+                            then 'Grant' end grant_label,
+                       -- Conforme ou non, pour la facette Compliance : le rapport
+                       -- lit tous les constats, la facette (Non compliant par
+                       -- defaut) fait le tri. Une carte du dashboard a 100 %
+                       -- arrive avec les deux valeurs, donc tous les controles.
+                       case f.is_compliant when 1 then 'Compliant' else 'Non compliant' end compliance
                   from fact_control_finding f
                   join ref_control_rule r
                     on r.rule_code = f.rule_code
@@ -91,13 +97,13 @@ page 31 (
                                   from v_exception_finding_match m
                                   join ref_exception e2 on e2.exception_id = m.exception_id
                                  where m.finding_rowid = f.rowid
+                                   and f.is_compliant = 0
                                    and e2.active = 1
                                    and e2.status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' )
                                    and ( e2.end_date is null or e2.end_date >= trunc(sysdate) )
                                  order by e2.exception_id desc
                                  fetch first 1 row only ) p
                  where i.platform = 'MSSQL'
-                   and f.is_compliant = 0
                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
                 ```
         }
@@ -243,6 +249,15 @@ page 31 (
             type: hidden
             layout {
                 sequence: 235
+            }
+        )
+
+        column COMPLIANCE (
+            reportColumnQueryId: 21
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 210
             }
         )
 
@@ -873,6 +888,34 @@ page 31 (
             }
             source {
                 databaseColumn: DB_NAME
+            }
+        )
+
+        facet P31_COMPLIANCE (
+            type: checkboxGroup
+            label {
+                label: Compliance
+            }
+            lov {
+                type: distinctValues
+                sortDirection: desc
+            }
+            layout {
+                sequence: 12
+            }
+            listEntries {
+                zeroCountEntries: showLast
+                sortByTopCounts: false
+            }
+            source {
+                databaseColumn: COMPLIANCE
+            }
+            default {
+                type: static
+                staticValue: Non compliant
+            }
+            comments {
+                comments: Non compliant by default, which is the page as it always was. Ticking Compliant as well shows every control, the only useful view once a domain reaches 100%; a dashboard card at 100% arrives with both values already ticked.
             }
         )
 

@@ -449,6 +449,31 @@ create or replace package body pkg_dbinv_application as
       returning group_id into l_id;
 
       return l_id;
+   exception
+      when dup_val_on_index then
+         -- The unique key covers removed rows too, since removing deactivates.
+         -- Adding back a group that was removed brings that row back with the
+         -- new details, so its history stays in one place. A group that is
+         -- still active is a genuine duplicate and keeps raising.
+         update ref_application_group
+            set active          = 1,
+                contact_email   = p_contact_email,
+                ldap_dn         = p_ldap_dn,
+                ldap_group_name = p_ldap_group_name,
+                external_ref    = p_external_ref,
+                note            = p_note,
+                updated_by      = nvl(sys_context('APEX$SESSION','APP_USER'), user),
+                updated_date    = sysdate
+          where application_id  = p_application_id
+            and group_type_code = upper(p_group_type_code)
+            and group_name      = p_group_name
+            and active          = 0
+         returning group_id into l_id;
+
+         if l_id is null then
+            raise;
+         end if;
+         return l_id;
    end add_group;
 
 
@@ -526,6 +551,31 @@ create or replace package body pkg_dbinv_application as
       returning contact_id into l_id;
 
       return l_id;
+   exception
+      when dup_val_on_index then
+         -- Same reasoning as add_group: a removed contact added back is the
+         -- same person in the same role, so the old row is reactivated rather
+         -- than refused. An active duplicate keeps raising.
+         update ref_application_contact
+            set active       = 1,
+                job_title    = p_job_title,
+                email        = p_email,
+                phone        = p_phone,
+                ldap_login   = p_ldap_login,
+                is_primary   = nvl(p_is_primary, 0),
+                note         = p_note,
+                updated_by   = nvl(sys_context('APEX$SESSION','APP_USER'), user),
+                updated_date = sysdate
+          where application_id = p_application_id
+            and contact_role   = upper(p_contact_role)
+            and full_name      = p_full_name
+            and active         = 0
+         returning contact_id into l_id;
+
+         if l_id is null then
+            raise;
+         end if;
+         return l_id;
    end add_contact;
 
 
@@ -603,6 +653,25 @@ create or replace package body pkg_dbinv_application as
       returning app_entity_id into l_id;
 
       return l_id;
+   exception
+      when dup_val_on_index then
+         -- Detaching deactivates, and the unique key covers inactive rows, so
+         -- attaching the same thing again used to fail with a duplicate the
+         -- screen could not show. The detached row is reactivated instead.
+         -- An attachment that is still active is a genuine duplicate.
+         update ref_application_entity
+            set active = 1,
+                note   = p_note
+          where application_id = p_application_id
+            and entity_type    = upper(p_entity_type)
+            and entity_id      = p_entity_id
+            and active         = 0
+         returning app_entity_id into l_id;
+
+         if l_id is null then
+            raise;
+         end if;
+         return l_id;
    end link_entity;
 
 
@@ -806,6 +875,15 @@ begin
          :old.application_id, 'GROUP_REMOVED', :old.group_name,
          pkg_dbinv_application.current_reason, :old.contact_email );
 
+   elsif :old.active = 0 and :new.active = 1 then
+      -- A removed group added back (add_group reactivates the row): to the
+      -- reader of the journal this is an addition, not an edit.
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, new_value )
+      values (
+         :new.application_id, 'GROUP_ADDED', :new.group_name, :new.group_type_code,
+         nvl(:new.contact_email, nvl(:new.ldap_group_name, :new.external_ref)) );
+
    else
       insert into ref_application_event (
          application_id, event_type, subject_ref, note, old_value, new_value )
@@ -843,6 +921,14 @@ begin
          pkg_dbinv_application.current_reason,
          nvl(:old.email, nvl(:old.phone, :old.ldap_login)) );
 
+   elsif :old.active = 0 and :new.active = 1 then
+      -- A removed contact added back (add_contact reactivates the row).
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, new_value )
+      values (
+         :new.application_id, 'CONTACT_ADDED', :new.full_name, :new.contact_role,
+         nvl(:new.email, nvl(:new.phone, :new.ldap_login)) );
+
    else
       insert into ref_application_event (
          application_id, event_type, subject_ref, note, old_value, new_value )
@@ -872,6 +958,14 @@ begin
       values (
          :old.application_id, 'ENTITY_UNLINKED',
          :old.entity_type || ' ' || :old.entity_id, pkg_dbinv_application.current_reason );
+
+   elsif :old.active = 0 and :new.active = 1 then
+      -- Attached again after a detach (link_entity reactivates the row).
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note )
+      values (
+         :new.application_id, 'ENTITY_LINKED',
+         :new.entity_type || ' ' || :new.entity_id, :new.note );
    end if;
 end;
 /
@@ -950,6 +1044,23 @@ begin
          nvl(pkg_dbinv_application.current_reason, 'removed')
             || ' - ' || nvl(:old.file_name, :old.external_url),
          nvl(:old.checksum_sha256, 'link only') );
+
+   elsif nvl(:old.checksum_sha256, 'link only') <> nvl(:new.checksum_sha256, 'link only') then
+      -- A new file over an existing document. Without this branch the old
+      -- fingerprint vanished with the old content and the new one was never
+      -- written, so the journal could not say which file had been filed when.
+      -- Covers a file added to a link-only document as well. Needs
+      -- DOCUMENT_REPLACED in ref_app_evt_type_ck (V__010, or V__013 on a schema
+      -- installed before it).
+      insert into ref_application_event (
+         application_id, event_type, subject_ref, note, old_value, new_value )
+      values (
+         :new.application_id, 'DOCUMENT_REPLACED', substr(:new.title, 1, 200),
+         substr(nvl(pkg_dbinv_application.current_reason, 'replaced')
+                || ' - ' || nvl(:old.file_name, :old.external_url)
+                || ' -> ' || nvl(:new.file_name, :new.external_url), 1, 1000),
+         nvl(:old.checksum_sha256, 'link only'),
+         nvl(:new.checksum_sha256, 'link only') );
 
    elsif nvl(:new.last_review_date, date '0001-01-01')
          <> nvl(:old.last_review_date, date '0001-01-01') then

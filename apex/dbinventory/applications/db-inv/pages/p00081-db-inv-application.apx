@@ -90,7 +90,8 @@ page 81 (
                        ae.note,
                        ae.created_by,
                        ae.created_date,
-                       ae.app_entity_id
+                       ae.app_entity_id,
+                       'Detach' remove_link
                   from ref_application_entity ae
                  where ae.application_id = :P81_APPLICATION_ID
                    and ae.active = 1
@@ -194,6 +195,31 @@ page 81 (
             }
             layout {
                 sequence: 30
+            }
+        )
+
+        column REMOVE_LINK (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Detach
+            }
+            layout {
+                sequence: 90
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 83
+                    items: {
+                        P83_APP_ENTITY_ID: #APP_ENTITY_ID#
+                        P83_MODE: REMOVE
+                    }
+                    clearCache: 83
+                }
+                linkText: <span class="fa fa-trash-o" aria-hidden="true"></span><span class="u-VisuallyHidden">Detach</span>
+                linkAttributes: title="Detach"
             }
         )
 
@@ -333,7 +359,9 @@ page 81 (
                        g.ldap_group_name,
                        g.external_ref,
                        t.sort_order,
-                       g.group_id
+                       g.group_id,
+                       'Edit' edit_link,
+                       'Remove' remove_link
                   from ref_application_group g
                   join ref_application_group_type t
                     on t.group_type_code = g.group_type_code
@@ -451,6 +479,55 @@ page 81 (
             }
         )
 
+        column EDIT_LINK (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Edit
+            }
+            layout {
+                sequence: 900
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 82
+                    items: {
+                        P82_GROUP_ID: #GROUP_ID#
+                    }
+                    clearCache: 82
+                }
+                linkText: <span class="fa fa-pencil" aria-hidden="true"></span><span class="u-VisuallyHidden">Edit</span>
+                linkAttributes: title="Edit"
+            }
+        )
+
+        column REMOVE_LINK (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Remove
+            }
+            layout {
+                sequence: 910
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 82
+                    items: {
+                        P82_GROUP_ID: #GROUP_ID#
+                        P82_MODE: REMOVE
+                    }
+                    clearCache: 82
+                }
+                linkText: <span class="fa fa-trash-o" aria-hidden="true"></span><span class="u-VisuallyHidden">Remove</span>
+                linkAttributes: title="Remove"
+            }
+        )
+
     )
 
     region contacts (
@@ -470,7 +547,9 @@ page 81 (
                        c.ldap_login,
                        case c.is_primary when 1 then 'Yes' end first_to_try,
                        t.sort_order * 10 + ( 1 - c.is_primary ) sort_key,
-                       c.contact_id
+                       c.contact_id,
+                       'Edit' edit_link,
+                       'Remove' remove_link
                   from ref_application_contact c
                   join ref_application_group_type t
                     on t.group_type_code = c.contact_role
@@ -613,6 +692,55 @@ page 81 (
             }
         )
 
+        column EDIT_LINK (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Edit
+            }
+            layout {
+                sequence: 900
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 86
+                    items: {
+                        P86_CONTACT_ID: #CONTACT_ID#
+                    }
+                    clearCache: 86
+                }
+                linkText: <span class="fa fa-pencil" aria-hidden="true"></span><span class="u-VisuallyHidden">Edit</span>
+                linkAttributes: title="Edit"
+            }
+        )
+
+        column REMOVE_LINK (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Remove
+            }
+            layout {
+                sequence: 910
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 86
+                    items: {
+                        P86_CONTACT_ID: #CONTACT_ID#
+                        P86_MODE: REMOVE
+                    }
+                    clearCache: 86
+                }
+                linkText: <span class="fa fa-trash-o" aria-hidden="true"></span><span class="u-VisuallyHidden">Remove</span>
+                linkAttributes: title="Remove"
+            }
+        )
+
     )
 
     region documents (
@@ -631,7 +759,9 @@ page 81 (
                        r.review_state,
                        r.review_due_date,
                        r.review_rank,
-                       r.document_id
+                       r.document_id,
+                       'Edit' edit_link,
+                       'Remove' remove_link
                   from v_application_document_review r
                  where r.application_id = :P81_APPLICATION_ID
                 ```
@@ -749,6 +879,55 @@ page 81 (
             }
         )
 
+        column EDIT_LINK (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Edit
+            }
+            layout {
+                sequence: 900
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 85
+                    items: {
+                        P85_DOCUMENT_ID: #DOCUMENT_ID#
+                    }
+                    clearCache: 85
+                }
+                linkText: <span class="fa fa-pencil" aria-hidden="true"></span><span class="u-VisuallyHidden">Edit</span>
+                linkAttributes: title="Edit"
+            }
+        )
+
+        column REMOVE_LINK (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Remove
+            }
+            layout {
+                sequence: 910
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 85
+                    items: {
+                        P85_DOCUMENT_ID: #DOCUMENT_ID#
+                        P85_MODE: REMOVE
+                    }
+                    clearCache: 85
+                }
+                linkText: <span class="fa fa-trash-o" aria-hidden="true"></span><span class="u-VisuallyHidden">Remove</span>
+                linkAttributes: title="Remove"
+            }
+        )
+
     )
 
     region sources (
@@ -764,7 +943,9 @@ page 81 (
                        s.repo_url,
                        s.branch,
                        s.note,
-                       s.source_id
+                       s.source_id,
+                       'Edit' edit_link,
+                       'Remove' remove_link
                   from ref_application_source s
                  where s.application_id = :P81_APPLICATION_ID
                    and s.active = 1
@@ -854,6 +1035,55 @@ page 81 (
             }
             layout {
                 sequence: 10
+            }
+        )
+
+        column EDIT_LINK (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Edit
+            }
+            layout {
+                sequence: 900
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 84
+                    items: {
+                        P84_SOURCE_ID: #SOURCE_ID#
+                    }
+                    clearCache: 84
+                }
+                linkText: <span class="fa fa-pencil" aria-hidden="true"></span><span class="u-VisuallyHidden">Edit</span>
+                linkAttributes: title="Edit"
+            }
+        )
+
+        column REMOVE_LINK (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Remove
+            }
+            layout {
+                sequence: 910
+                columnAlignment: center
+            }
+            link {
+                target: {
+                    page: 84
+                    items: {
+                        P84_SOURCE_ID: #SOURCE_ID#
+                        P84_MODE: REMOVE
+                    }
+                    clearCache: 84
+                }
+                linkText: <span class="fa fa-trash-o" aria-hidden="true"></span><span class="u-VisuallyHidden">Remove</span>
+                linkAttributes: title="Remove"
             }
         )
 
@@ -1410,7 +1640,7 @@ page 81 (
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P81_APPLICATION_ID
+            item: P81_APPLICATION_ID
         }
     )
 
@@ -1439,7 +1669,7 @@ page 81 (
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P81_APPLICATION_ID
+            item: P81_APPLICATION_ID
         }
     )
 
@@ -1468,7 +1698,7 @@ page 81 (
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P81_APPLICATION_ID
+            item: P81_APPLICATION_ID
         }
     )
 
@@ -1497,7 +1727,7 @@ page 81 (
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P81_APPLICATION_ID
+            item: P81_APPLICATION_ID
         }
     )
 
@@ -1526,7 +1756,7 @@ page 81 (
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P81_APPLICATION_ID
+            item: P81_APPLICATION_ID
         }
     )
 
@@ -1566,10 +1796,11 @@ page 81 (
         }
         behavior {
             action: submitPage
+            warnOnUnsavedChanges: doNotCheck
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P81_APPLICATION_ID
+            item: P81_APPLICATION_ID
         }
     )
 
@@ -1588,7 +1819,208 @@ page 81 (
         }
         behavior {
             action: submitPage
+            warnOnUnsavedChanges: doNotCheck
         }
+        comments {
+            comments: warnOnUnsavedChanges is set to doNotCheck on purpose. Left out, a submit button takes the page default, which is to warn on this full page - and the browser then asked to confirm leaving the page on every Save, the one click that saves the changes it warns about. The page warning stays on for real navigation away.
+        }
+    )
+
+    dynamicAction refresh-after-attachment-dialog (
+        name: Refresh After Attachment Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @attachments
+        }
+
+        action refresh-attachments (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @attachments
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-databases (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @databases
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
+        )
+
+        action refresh-history (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @history
+            }
+            execution {
+                sequence: 30
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-after-group-dialog (
+        name: Refresh After Group Dialog
+        execution {
+            sequence: 20
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @groups
+        }
+
+        action refresh-groups (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @groups
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-history (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @history
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-after-contact-dialog (
+        name: Refresh After Contact Dialog
+        execution {
+            sequence: 30
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @contacts
+        }
+
+        action refresh-contacts (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @contacts
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-history (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @history
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-after-document-dialog (
+        name: Refresh After Document Dialog
+        execution {
+            sequence: 40
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @documents
+        }
+
+        action refresh-documents (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @documents
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-history (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @history
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
+        )
+
+    )
+
+    dynamicAction refresh-after-source-dialog (
+        name: Refresh After Source Dialog
+        execution {
+            sequence: 50
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @sources
+        }
+
+        action refresh-sources (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @sources
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-history (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @history
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
+        )
+
     )
 
     process load-application (

@@ -33,10 +33,48 @@ page 84 (
         }
     )
 
+    region remove-warning (
+        name: Remove
+        title: Remove
+        type: staticContent
+        source {
+            htmlCode:
+                ```
+                <p><strong>Remove this repository from the application?</strong></p>
+                <p>Nothing is deleted: the entry is deactivated and the journal keeps when it was removed and why.</p>
+                ```
+        }
+        layout {
+            sequence: 5
+            slot: contentBody
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        comments {
+            comments: Shown only when the dialog is opened from the trash icon of the application screen. That icon opens this same dialog in remove mode instead of asking for a confirmation, because APEXlang has no confirmation property on a button and the app does not use javascript: links. The fields are read-only and Save is hidden, so the only things left to do are to remove or to cancel - which is what a confirmation is.
+        }
+        serverSideCondition {
+            type: item=value
+            item: P84_MODE
+            value: REMOVE
+        }
+    )
+
     pageItem P84_SOURCE_ID (
         type: hidden
         layout {
             sequence: 10
+            region: @source
+            slot: regionBody
+        }
+    )
+
+    pageItem P84_MODE (
+        type: hidden
+        layout {
+            sequence: 15
             region: @source
             slot: regionBody
         }
@@ -75,6 +113,10 @@ page 84 (
         validation {
             valueRequired: true
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P84_MODE
+        }
     )
 
     pageItem P84_REPO_URL (
@@ -101,6 +143,10 @@ page 84 (
         help {
             helpText: The clone or browse URL, whichever a colleague would need to find the code.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P84_MODE
+        }
     )
 
     pageItem P84_BRANCH (
@@ -126,6 +172,10 @@ page 84 (
         help {
             helpText: Only when the branch carrying what runs in production is not the default one.
         }
+        readOnly {
+            type: itemIsNotNull
+            item: P84_MODE
+        }
     )
 
     pageItem P84_NOTE (
@@ -147,6 +197,10 @@ page 84 (
         }
         validation {
             maxLength: 1000
+        }
+        readOnly {
+            type: itemIsNotNull
+            item: P84_MODE
         }
     )
 
@@ -183,11 +237,11 @@ page 84 (
             action: submitPage
         }
         comments {
-            comments: No confirmation prompt: APEXlang has no property for one, and confirmMessage is rejected as invalid. Tolerable because Remove deactivates rather than deletes, and the journal keeps who did it.
+            comments: No confirmation prompt: APEXlang has no property for one, and confirmMessage is rejected as invalid. The confirmation is the remove mode instead (P84_MODE = REMOVE, opened from the trash icon of the application screen). Remove deactivates rather than deletes, and the journal keeps who did it.
         }
         serverSideCondition {
             type: itemIsNotNull
-            item: @P84_SOURCE_ID
+            item: P84_SOURCE_ID
         }
     )
 
@@ -206,6 +260,10 @@ page 84 (
         }
         behavior {
             action: submitPage
+        }
+        serverSideCondition {
+            type: itemIsNull
+            item: P84_MODE
         }
     )
 

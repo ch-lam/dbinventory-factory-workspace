@@ -233,8 +233,10 @@ page 80 (
                        u.db_name,
                        u.environment,
                        u.instance_name,
-                       u.hostname
+                       u.hostname,
+                       d.instance_id
                   from v_database_without_application u
+                  join dim_database d on d.database_id = u.database_id
                 ```
         }
         layout {
@@ -249,7 +251,7 @@ page 80 (
             ]
         }
         comments {
-            comments: The backlog of the registry, and the reason it is on the same page as the applications rather than hidden behind a menu entry. It never falls to zero on its own: a database appears here the moment a collect discovers it, which is exactly when somebody should be asked whose it is. Attaching an instance rather than each of its databases is what makes this list shrink at a usable rate.
+            comments: The backlog of the registry, and the reason it is on the same page as the applications rather than hidden behind a menu entry. It never falls to zero on its own: a database appears here the moment a collect discovers it, which is exactly when somebody should be asked whose it is. Attaching an instance rather than each of its databases is what makes this list shrink at a usable rate. Both names are links to the attachment dialog with the entity filled in and the application left to pick: the database name attaches that database, the instance name attaches the whole instance - the second is the one to prefer, as the dialog itself says. instance_id comes from dim_database rather than from the view, so the view stays as the inventory side reads it.
         }
         reportLayout {
             numberOfRows: 25
@@ -282,11 +284,33 @@ page 80 (
         column DB_NAME (
             reportColumnQueryId: 3
             derivedColumn: N
+            type: link
             heading {
                 heading: Database
             }
             layout {
                 sequence: 20
+            }
+            link {
+                target: {
+                    page: 83
+                    items: {
+                        P83_PRESET_TYPE: DATABASE
+                        P83_PRESET_ID: #DATABASE_ID#
+                    }
+                    clearCache: 83
+                }
+                linkText: #DB_NAME#
+                linkAttributes: title="Attach this database to an application"
+            }
+        )
+
+        column INSTANCE_ID (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 15
             }
         )
 
@@ -315,11 +339,24 @@ page 80 (
         column INSTANCE_NAME (
             reportColumnQueryId: 5
             derivedColumn: N
+            type: link
             heading {
                 heading: Instance
             }
             layout {
                 sequence: 50
+            }
+            link {
+                target: {
+                    page: 83
+                    items: {
+                        P83_PRESET_TYPE: INSTANCE
+                        P83_PRESET_ID: #INSTANCE_ID#
+                    }
+                    clearCache: 83
+                }
+                linkText: #INSTANCE_NAME#
+                linkAttributes: title="Attach the whole instance to an application"
             }
         )
 
@@ -357,6 +394,43 @@ page 80 (
             }
             warnOnUnsavedChanges: doNotCheck
         }
+    )
+
+    dynamicAction refresh-after-attachment-dialog (
+        name: Refresh After Attachment Dialog
+        execution {
+            sequence: 10
+        }
+        when {
+            event: apexafterclosedialog
+            selectionType: region
+            region: @unclaimed
+        }
+
+        action refresh-unclaimed (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @unclaimed
+            }
+            execution {
+                sequence: 10
+                fireOnInit: false
+            }
+        )
+
+        action refresh-applications (
+            action: refresh
+            affectedElements {
+                selectionType: region
+                region: @applications
+            }
+            execution {
+                sequence: 20
+                fireOnInit: false
+            }
+        )
+
     )
 
 )

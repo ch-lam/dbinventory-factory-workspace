@@ -1,12 +1,12 @@
 {
   "version": 1,
   "compilerProvenance": {
-    "buildID": "26.1.0+3102",
-    "metadataHash": "6a1eb24a95ae",
+    "buildID": "26.2.0+3479",
+    "metadataHash": "863417236b69",
     "normalizerVersion": "node-json-v1",
     "coverage": "curated_subset",
-    "verifiedAt": "2026-06-02T10:36:38Z",
-    "notes": "Curated repo-safe subset verified against the active compiler metadata provenance. This file may intentionally narrow compiler-valid behavior, but it is not the compiler source of truth."
+    "verifiedAt": "2026-11-10T19:30:00Z",
+    "notes": "Curated repo-safe subset verified against the active compiler metadata provenance. This file may intentionally narrow compiler-valid behavior, but it is not the compiler source of truth. LOCAL PATCH (dbinventory, 2026-11-10): Oracle ships this file for 26.1.0+3102 only. Re-stamped for 26.2.0+3479 after .agents/skills/apex/compare-compiler-metadata.cjs found no curated property or enum value removed between the two builds (341 properties, 202 enum values); the content is unchanged. See .agents/skills/apex/LOCAL-PATCHES.md."
   },
   "notes": "Canonical machine-readable safe subset for covered APEXlang component attributes. For covered shapes, templates and agent prose must not contradict this file. Packaged compiler metadata and direct compiler validation remain authoritative when they disagree with this file. For calendar settings.createLink and settings.viewEditLink, the preferred emitted contract is a structured object with required page and optional items. Existing form/report page reuse vs new page creation must be confirmed explicitly with the user, report type must be chosen explicitly for new view-link report pages, and target pages or item names must not be inferred.",
   "components": {

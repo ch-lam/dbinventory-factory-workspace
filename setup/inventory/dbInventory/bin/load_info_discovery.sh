@@ -27,22 +27,20 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COLLECT_DIR="${SCRIPT_DIR}/../collect"
 
-# ── Connexion Oracle ──────────────────────────────────────────────────────────
-DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="Change:ME:001"
-DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
 MAIL_TO="lambert.christophe@chl.lu"
 
-# Même branche que les trois loaders moteur : sans elle, ce script ne sait
-# viser que la base codée en dur ci-dessus, et fixtures/load_fixtures.sh ne
-# peut pas le détourner vers la base de démonstration. Il chargerait alors la
-# discovery de démo dans la base de développement, que les garde-fous de
-# load_fixtures.sh existent précisément pour protéger.
-if [[ -n "${DBINVENTORY_CONN_NAME:-}" ]]; then
-    SQLCL_ARGS=( -S -name "${DBINVENTORY_CONN_NAME}" )
-else
-    SQLCL_ARGS=( -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" )
-fi
+# ── Cible SQLcl ───────────────────────────────────────────────────────────────
+# Même choix de base que les trois loaders moteur (_dbinventory_env.sh) : sans
+# lui, fixtures/load_fixtures.sh ne pourrait pas détourner ce script vers la
+# base de démonstration. Il chargerait alors la discovery de démo dans la base
+# de développement, que les garde-fous de load_fixtures.sh existent précisément
+# pour protéger.
+source "${SCRIPT_DIR}/_dbinventory_env.sh"
+dbinv_sqlcl_args
+
+# Les LOAD reçoivent un chemin relatif (voir plus bas) : on se place dans bin/,
+# sans quoi le script échouerait sous cron.
+cd "${SCRIPT_DIR}"
 
 # ── Date du run ───────────────────────────────────────────────────────────────
 RUN_DATE="${1:-$(date '+%Y-%m-%d')}"
@@ -78,7 +76,7 @@ LOAD_LINUX="${COLLECT_DIR}/discovery_linux.load.csv"
 # Les commandes LOAD, elles, reçoivent un chemin RELATIF, comme dans les trois
 # loaders moteur. SQLcl est un binaire Windows : un chemin Git Bash absolu
 # (/g/Developpement/...) lui est illisible, il le lit comme C:\g\...
-# Le prix est que ce script doit tourner depuis bin/, ce que fait la chaîne.
+# D'où le cd "${SCRIPT_DIR}" en tête de script.
 REL_MSSQL="../collect/discovery_mssql.load.csv"
 REL_LINUX="../collect/discovery_linux.load.csv"
 

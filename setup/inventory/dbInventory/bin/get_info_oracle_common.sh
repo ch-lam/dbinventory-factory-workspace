@@ -11,10 +11,15 @@
 # export PATH="${PATH}:${ORACLE_HOME}"
 
 MONITORING_USER="monitoring"
-MONITORING_PASS="Change:ME:001"
 MAIL_TO="lambert.christophe@chl.lu"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Mot de passe du compte de collecte : MONITORING_ORACLE_PASS, lu dans le .env
+# (voir _dbinventory_env.sh et ../.env.example). Jamais dans le dépôt.
+source "${SCRIPT_DIR}/_dbinventory_env.sh"
+dbinv_monitoring_pass oracle
+
 LIST_DIR="${SCRIPT_DIR}/../collect"
 LIST_FILE="${SCRIPT_DIR}/../collect/oracle_database_lists.lst"
 

@@ -5,7 +5,6 @@
 # =============================================================================
 
 MONITORING_USER="monitoring"
-MONITORING_PASS="Change:ME:001"
 MAIL_TO="lambert.christophe@chl.lu"
 
 # Base de connexion par defaut pour les requetes cluster-wide (pg_database,
@@ -13,6 +12,12 @@ MAIL_TO="lambert.christophe@chl.lu"
 DEFAULT_DB="postgres"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Mot de passe du compte de collecte : MONITORING_POSTGRES_PASS, lu dans le .env
+# (voir _dbinventory_env.sh et ../.env.example). Jamais dans le dépôt.
+source "${SCRIPT_DIR}/_dbinventory_env.sh"
+dbinv_monitoring_pass postgres
+
 LIST_DIR="${SCRIPT_DIR}/../collect"
 LIST_FILE="${SCRIPT_DIR}/../collect/postgres_database_lists.lst"
 

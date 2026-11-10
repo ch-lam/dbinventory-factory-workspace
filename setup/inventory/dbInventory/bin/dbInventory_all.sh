@@ -15,9 +15,14 @@
 #                les scores calcules dessus seraient faux. On garde ceux de la
 #                veille plutot.
 #   calcul    -> compute_info_all.sh envoie son propre mail en cas d'echec.
+#
+# Base visee : DBINVENTORY_TARGET, prod par defaut (voir _dbinventory_env.sh).
+# Le rechargement de la meme collecte dans la base de test est l'affaire de
+# dbInventory_load_test.sh, a planifier apres celui-ci.
 # =============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/_cron_env.sh"
 
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 

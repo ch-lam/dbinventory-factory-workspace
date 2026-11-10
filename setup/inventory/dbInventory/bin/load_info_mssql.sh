@@ -12,21 +12,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ── Connexion Oracle ──────────────────────────────────────────────────────────
-DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="Change:ME:001"
-DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
 # ── Cible SQLcl ───────────────────────────────────────────────────────────────
-# Par defaut, le triplet ci-dessus : le comportement de production ne change pas.
-# Si DBINVENTORY_CONN_NAME est positionnee, on passe par une connexion SQLcl
-# nommee a la place. C'est ce qui permet de charger un jeu de donnees de
-# demonstration dans une autre base sans toucher au staging du dev, que cette
-# machine ne peut pas recollecter -- le chargement commence par TRUNCATE.
-if [[ -n "${DBINVENTORY_CONN_NAME:-}" ]]; then
-    SQLCL_ARGS=( -S -name "${DBINVENTORY_CONN_NAME}" )
-else
-    SQLCL_ARGS=( -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" )
-fi
+# Base visée : DBINVENTORY_TARGET (prod par defaut, ou test) avec les secrets du
+# .env, ou DBINVENTORY_CONN_NAME pour une connexion SQLcl nommee. C'est ce qui
+# permet de charger un jeu de donnees de demonstration dans une autre base sans
+# toucher au staging du dev, que cette machine ne peut pas recollecter -- le
+# chargement commence par TRUNCATE. Voir _dbinventory_env.sh.
+source "${SCRIPT_DIR}/_dbinventory_env.sh"
+dbinv_sqlcl_args
+
+# Les LOAD lisent ../collect en chemin RELATIF, que SQLcl resout depuis son
+# repertoire courant. Sous cron ce n'est pas bin/ : on s'y place. Un chemin
+# absolu ne conviendrait pas sous Git Bash, ou SQLcl est un binaire Windows qui
+# ne sait pas lire /g/...
+cd "${SCRIPT_DIR}"
+
 MAIL_TO="lambert.christophe@chl.lu"
 
 # ── Log ───────────────────────────────────────────────────────────────────────
@@ -209,9 +209,12 @@ parse_load_log "${LOG_FILE}" || {
 # =============================================================================
 # Archivage des fichiers .csv MSSQL
 # =============================================================================
-DIR_TIME=$(date '+%y%m%d%H%M%S')
-mkdir -p "../collect/${DIR_TIME}"
-cp ../collect/mssql*.csv "../collect/${DIR_TIME}/"
-
-log "Fichiers archivés dans ../collect/${DIR_TIME}/"
+# Desactive (DBINVENTORY_ARCHIVE=0) par les chargements de test : ils relisent
+# les CSV que le chargement de production a deja archives.
+if [[ "${DBINVENTORY_ARCHIVE:-1}" == "1" ]]; then
+    DIR_TIME=$(date '+%y%m%d%H%M%S')
+    mkdir -p "../collect/${DIR_TIME}"
+    cp ../collect/mssql*.csv "../collect/${DIR_TIME}/"
+    log "Fichiers archivés dans ../collect/${DIR_TIME}/"
+fi
 log "Chargement terminé."

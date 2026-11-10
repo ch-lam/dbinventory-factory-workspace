@@ -6,7 +6,7 @@
 #   2. compiler-truth audit (skill) -> offline diagnostic
 #
 # Usage: ./validate.sh <app_dir> [db_connection_name]
-#   e.g. ./validate.sh ../applications/db-inv
+#   e.g. ./validate.sh ../applications/dbinventory
 #
 # The SQLcl prerequisites (JDK 17+, dumb JLine terminal, stdin from a real
 # file) are explained in _sqlcl_env.sh; do not drop them. One more is checked

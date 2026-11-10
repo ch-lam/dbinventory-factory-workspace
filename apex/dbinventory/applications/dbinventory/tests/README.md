@@ -1,4 +1,4 @@
-# Tests of the DB-INV application
+# Tests of the DBINVENTORY application
 
 Two tests, covering two different failure modes. They are complementary: neither
 replaces the other, and neither replaces APEXlang validation.
@@ -28,7 +28,7 @@ above it, so the one at the repository root is found from here.
 
 ## Running them
 
-From the application directory, `apex/dbinventory/applications/db-inv`.
+From the application directory, `apex/dbinventory/applications/dbinventory`.
 
 ```bash
 # database side -- after every schema change or import

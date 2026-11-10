@@ -68,7 +68,7 @@ passer des chemins Windows : `/g/...` est lu comme `C:\g\...`. Ce sont exactemen
 prérequis de `apex/dbinventory/bin/_sqlcl_env.sh`, d'où le helper commun plutôt qu'une troisième copie.
 Sur le serveur de production, ces réglages sont sans effet.
 
-Le générateur n'a **aucune dépendance npm**, comme le test navigateur de l'application (`apex/dbinventory/applications/db-inv/tests/apex_page_test.mjs`).
+Le générateur n'a **aucune dépendance npm**, comme le test navigateur de l'application (`apex/dbinventory/applications/dbinventory/tests/apex_page_test.mjs`).
 
 ---
 

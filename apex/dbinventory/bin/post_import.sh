@@ -23,7 +23,7 @@
 # shipping a form that quietly loses files.
 #
 # Usage: ./post_import.sh <app_dir> [db_connection_name]
-#   e.g. ./post_import.sh ../applications/db-inv
+#   e.g. ./post_import.sh ../applications/dbinventory
 #
 # The smoke test belongs to the application: <app_dir>/tests/T_001_apex_page_smoke.sql.
 # The items that need the manual step are listed in <app_dir>/DEPLOY.md.

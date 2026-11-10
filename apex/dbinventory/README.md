@@ -5,7 +5,7 @@ Un répertoire sous `apex/` = un workspace APEX. Celui-ci porte :
 | | Quoi | Où |
 |---|---|---|
 | Schéma | `DBINVENTORY` (schéma principal du workspace) | [`database/dbinventory/`](../../database/dbinventory/) |
-| Application | `DB-INV`, id 100 | [`applications/db-inv/`](applications/db-inv/) |
+| Application | `DBINVENTORY`, id 100 | [`applications/dbinventory/`](applications/dbinventory/) |
 
 ## Les trois niveaux, et où chacun vit
 
@@ -34,7 +34,7 @@ cd ../..
 ./fixtures/load_fixtures.sh <conn_demo>           # jeu de démonstration, si besoin
 
 # 4. Chaque application : voir son DEPLOY.md
-#    applications/db-inv/DEPLOY.md
+#    applications/dbinventory/DEPLOY.md
 ```
 
 Lancer les scripts `X_` **depuis `database/dbinventory/`** : leurs `@` sont
@@ -46,8 +46,8 @@ Les scripts prennent **le répertoire d'une application** en premier argument :
 
 ```bash
 cd apex/dbinventory/bin
-./validate.sh    ../applications/db-inv [conn]   # apex validate + audit hors ligne
-./post_import.sh ../applications/db-inv [conn]   # T_001 de l'appli, après import
+./validate.sh    ../applications/dbinventory [conn]   # apex validate + audit hors ligne
+./post_import.sh ../applications/dbinventory [conn]   # T_001 de l'appli, après import
 ```
 
 Les prérequis SQLcl (JDK 17+, terminal JLine `dumb`, stdin depuis un vrai

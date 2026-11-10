@@ -775,7 +775,7 @@ page 81 (
             templateOptions: #DEFAULT#
         }
         comments {
-            comments: A document is stored, linked, or both. The location column shows the file name when there is one and the URL otherwise, so a reader can tell at a glance which documents live here and which only have a pointer. Upload happens on page 85 and works, with one manual step after every import: the fileUpload storage type cannot be expressed in the .apx and is reset to a BLOB column it has no source for. post_import.sh fails the deployment until it is put back - see APEXLang/DEPLOY.md.
+            comments: A document is stored, linked, or both. The location column shows the file name when there is one and the URL otherwise, so a reader can tell at a glance which documents live here and which only have a pointer. Upload happens on page 85, whose fileUpload item carries storage { type: appTempFiles } in its .apx; post_import.sh checks after every import that it held - see DEPLOY.md.
         }
         reportLayout {
             numberOfRows: 20

@@ -33,40 +33,44 @@ de greffon des items sont relus.
 Un passage propre est **nécessaire, pas suffisant**. Rien ici ne rend une page :
 ni template, ni action dynamique, ni comportement client.
 
-## L'étape manuelle, et pourquoi elle le reste
+## Les items de téléversement : le bloc `storage`
 
-APEXlang n'a pas de groupe de propriétés pour les attributs de greffon d'un item
-de page. Le **Storage Type** d'un `fileUpload` n'est donc pas exprimable dans le
-`.apx`, et **chaque import le remet à `DB_COLUMN`** — une colonne BLOB dont
-l'item n'a aucune source.
+Un `fileUpload` importé sans indication de stockage tombe sur `DB_COLUMN`, une
+colonne BLOB dont l'item n'a aucune source. Les deux items de l'application
+portent donc dans le `.apx` :
 
-Après chaque import, dans le builder :
+```
+storage {
+    type: appTempFiles
+}
+```
 
-| Page | Item | Réglage |
-|---|---|---|
-| 71 — Dérogation | `P71_UPLOAD` | Settings > Storage Type = **Table APEX_APPLICATION_TEMP_FILES** |
-| 85 — Document d'application | `P85_UPLOAD` | idem |
+| Page | Item |
+|---|---|
+| 71 — Dérogation | `P71_UPLOAD` |
+| 85 — Document d'application | `P85_UPLOAD` |
 
-Les deux items ne se trompent pas de la même façon, et c'est ce qui rend cette
-liste nécessaire :
+*Pour mémoire :* jusqu'au 2026-11-10, on croyait ce réglage impossible à écrire
+dans le `.apx`, et on le refaisait dans le builder (*Settings > Storage Type =
+Table APEX_APPLICATION_TEMP_FILES*) après chaque import. C'était faux : le bloc
+est accepté et appliqué par les compilateurs 26.1.0+3102 (SQLcl 26.2.2) et
+26.2.0+3479 (SQLcl 26.3.1). Le diagnostic s'était fié aux métadonnées du
+compilateur, qui ne listent pas ce groupe, et seul un bloc `settings` avait été
+essayé.
+
+Les deux items ne se trompent pas de la même façon quand le bloc manque, et
+c'est pourquoi `post_import.sh` le vérifie encore après chaque import :
 
 - `P71_UPLOAD` est dans une région de type rapport. La page **meurt bruyamment**,
-  sur `WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE`. On ne peut pas l'oublier.
-- `P85_UPLOAD` est dans une région `staticContent`. Les mêmes métadonnées s'y
-  affichent **sans rien dire**. La page paraît juste, le fichier téléversé
-  n'atterrit nulle part, et le processus d'enregistrement ne trouve rien dans
-  `apex_application_temp_files`. Aucun test de navigateur ne voit ça.
+  sur `WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE`.
+- `P85_UPLOAD` est dans une région `staticContent`. La page s'affiche **sans rien
+  dire**, le fichier téléversé n'atterrit nulle part, et le processus
+  d'enregistrement ne trouve rien dans `apex_application_temp_files`. Aucun test
+  de navigateur ne voit ça.
 
-C'est le cas silencieux qui justifie `post_import.sh` : l'étape reste manuelle,
-mais l'oublier arrête désormais le déploiement au lieu de livrer un formulaire
-qui perd les fichiers sans le dire.
-
-**Si un troisième item de téléversement apparaît**, l'ajouter au tableau
-ci-dessus, sur le même format (`| <page> — … |`). `T_001` le détectera tout
-seul — il balaie tous les items dont le type d'affichage contient « file » —
-mais le message d'aide de `post_import.sh` est **construit à partir de ce
-tableau** : un item qui n'y figure pas n'y sera pas cité, et enverrait son
-lecteur chercher.
+**Un nouvel item de téléversement** doit porter le même bloc. `T_001` le
+contrôle tout seul : il balaie tous les items dont le type d'affichage contient
+« file ».
 
 ## Ordre vis-à-vis de la base
 

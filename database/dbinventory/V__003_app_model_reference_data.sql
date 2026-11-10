@@ -105,8 +105,13 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
    values ( 'ORACLE_OUT_OF_SUPPORT', 'ORACLE', 'LIFECYCLE', 'out_of_support', 'INSTANCE', 'Engine version end-of-support', 'HIGH' );
 
 -- Licensing controls (score_domain = LICENSING)
+-- Oracle splits current and past option usage into two controls, so that each
+-- category can carry its own weight (70/30, see ref_scoring_weight): a past
+-- usage is still billed at audit, but it no longer grows and weighs less.
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'ORACLE_LICENSING_LMS', 'ORACLE', 'LICENSING', 'licensing', 'INSTANCE', 'Oracle feature usage (LMS) licensing', 'HIGH' );
+insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
+   values ( 'ORACLE_LICENSING_LMS_PAST', 'ORACLE', 'LICENSING', 'licensing_past', 'INSTANCE', 'Oracle feature usage (LMS) licensing, past usage', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_LICENSING', 'MSSQL', 'LICENSING', 'licensing', 'INSTANCE', 'MSSQL edition/licensing', 'MEDIUM' );
 
@@ -410,6 +415,23 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_NETWORK_ENCRYPTION_ON', 'ORACLE_NETWORK_ENCRYPTION', 'INSTANCE', '*',
             'SQL*Net traffic must be encrypted', 'The collect only emits a row when the session reports an encryption service adapter; a collected instance with no such row is non-compliant.', 'MEDIUM' );
+
+
+-- Oracle option and pack usage (LMS). One finding per option in use, read from
+-- Oracle's own usage script (oracle_lms) through v_oracle_lms_usage. A licence
+-- the CHL does hold is proven by a derogation whose evidence is the contract
+-- (ref_exception_document.doc_kind = LICENSE), not by a rule exemption.
+-- Scope of the norm: instances whose perimeter licence has scoring_impact = 0
+-- (SAP runtime, FREE, PROVIDER, INCCI) carry their options in that licence and
+-- are not judged. No NIS2 domain: licensing is a contractual exposure, not one
+-- of the article 21(2) measures, and T_003 exempts the LICENSING domain from
+-- that classification.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_LMS_OPTION_IN_USE', 'ORACLE_LICENSING_LMS', 'INSTANCE', 'option / pack',
+            'No unlicensed Oracle option or pack in use', 'CURRENT_USAGE or PAST_OR_CURRENT_USAGE reported by the LMS usage script. Multitenant is recounted from the collected PDBs: up to 3 user PDBs need no licence from 19c, 1 before. On Standard Edition no option can be licensed at all.', 'HIGH' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_LMS_OPTION_PAST_USE', 'ORACLE_LICENSING_LMS_PAST', 'INSTANCE', 'option / pack',
+            'No past usage of an unlicensed Oracle option or pack', 'PAST_USAGE reported by the LMS usage script: the option is no longer used, but an audit still counts it.', 'MEDIUM' );
 
 
 -- Threshold-based and lifecycle controls: a single rule each, evaluated once per
@@ -795,7 +817,10 @@ insert into ref_scoring_weight ( platform, score_domain, category, weight ) valu
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'MSSQL', 'LIFECYCLE', 'patch_level', 30 );
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'LIFECYCLE', 'out_of_support', 100 );
 insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'MSSQL', 'LICENSING', 'licensing', 100 );
-insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'LICENSING', 'licensing', 100 );
+-- ORACLE LICENSING: an option in use today outweighs one used in the past, the
+-- same 70/30 reasoning as MSSQL LIFECYCLE above.
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'LICENSING', 'licensing', 70 );
+insert into ref_scoring_weight ( platform, score_domain, category, weight ) values ( 'ORACLE', 'LICENSING', 'licensing_past', 30 );
 
 -- POSTGRES SECURITY  (sum = 100)
 -- Weighted by what a deviation actually opens up rather than by how many rules

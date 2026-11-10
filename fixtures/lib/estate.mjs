@@ -94,6 +94,12 @@ export function buildEstate (world, rng) {
       };
    });
 
+   // Une base en Standard Edition 2, pour que la règle LMS ait un cas où aucune
+   // option n'est licenciable. Choisie sans tirage : consommer le flux partagé
+   // ici décalerait tout le parc MSSQL et PostgreSQL construit ensuite.
+   const se2 = oraDbs.find(d => !d.isCdb && d.license === 'CPU' && !d.version.startsWith('18'));
+   if (se2) se2.edition = 'Standard Edition 2';
+
    // ---------------------------------------------------------------- MSSQL
    const msHosts = [];
    for (let i = 1; i <= world.mssql.hosts; i++) {

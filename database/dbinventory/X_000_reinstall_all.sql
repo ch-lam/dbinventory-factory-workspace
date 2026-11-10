@@ -11,6 +11,7 @@
 @V__011_create_application_api.sql
 @V__012_fix_audit_user_defaults.sql
 @V__013_journal_document_replacement.sql
+@V__014_oracle_licensing_lms.sql
 
 -- Last, and not optional: a package body that fails to compile does not stop the
 -- run above -- SQLcl prints the errors and carries on to "Commit complete."

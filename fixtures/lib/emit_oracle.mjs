@@ -68,6 +68,72 @@ const SYS_PRIVS = ['SELECT ANY TABLE', 'ALTER SYSTEM', 'CREATE ANY PROCEDURE', '
 const HIGH_ROLES = ['DBA', 'GSMADMIN_ROLE', 'EXP_FULL_DATABASE'];
 const SENSITIVE_PKGS = ['UTL_FILE', 'UTL_HTTP', 'UTL_SMTP', 'DBMS_LOB'];
 
+// ----------------------------------------------------------------- LMS
+// Sortie du script d'Oracle sur l'usage des options et packs (oracle_lms.sql),
+// sous sa forme réelle :
+//   * non-CDB : une ligne par produit, grouping_id 0, con_id -1, sans conteneur ;
+//   * CDB     : une ligne par produit ET par conteneur (CDB$ROOT, puis chaque
+//               PDB), plus l'agrégat grouping_id 1 '--ALL--'.
+// Les valeurs d'usage sont celles que le script produit vraiment.
+//
+// Ce que le jeu doit exercer (T_003 exige les deux verdicts de chaque règle) :
+//   * des instances CPU avec une option en usage, d'autres avec un usage passé
+//     de Diagnostics/Tuning, d'autres sans rien ;
+//   * les bases SAP avec Advanced Compression et Partitioning en usage, hors
+//     contrôle par leur licence ;
+//   * Multitenant signalé sur CHAQUE CDB, comme le fait le script : l'ETL le
+//     recompte, et une CDB 19c+ à 3 PDB au plus doit en ressortir conforme ;
+//   * la base Standard Edition 2 avec Partitioning, qu'aucune licence ne couvre.
+const LMS_OPTIONS = ['Partitioning', 'Advanced Compression', 'Diagnostics Pack', 'Tuning Pack',
+                     'Real Application Testing', '.Database Gateway'];
+const LMS_USAGE = { 4: 'CURRENT_USAGE', 2: 'PAST_USAGE', 1: 'NO_USAGE' };
+
+function lmsRows ({ cid, estate, world, rngLms: rng }) {
+   const dbs = estate.oracle.databases;
+   const D = world.defects;
+   const pool = dbs.filter(db => db.license !== 'SAP');
+   const inUse = new Set(markShare(rng, pool, D.ORACLE_LMS_OPTION_IN_USE).filter(x => x.bad).map(x => x.item));
+   const past = new Set(markShare(rng, pool, D.ORACLE_LMS_OPTION_PAST_USE).filter(x => x.bad).map(x => x.item));
+
+   const rows = [];
+   for (const db of dbs) {
+      // Rang d'usage par produit pour la base : 4 actuel, 2 passé, 1 aucun.
+      const rank = new Map(LMS_OPTIONS.map(p => [p, 1]));
+      if (db.license === 'SAP') {
+         rank.set('Advanced Compression', 4);
+         rank.set('Partitioning', 4);
+      }
+      if (past.has(db)) {
+         for (const p of rng.sample(['Diagnostics Pack', 'Tuning Pack'], rng.int(1, 2))) rank.set(p, 2);
+      }
+      if (inUse.has(db)) rank.set(rng.pick(LMS_OPTIONS), 4);
+      if (db.edition === 'Standard Edition 2') rank.set('Partitioning', 4);
+      const products = db.isCdb ? [...LMS_OPTIONS, 'Multitenant'] : LMS_OPTIONS;
+      if (db.isCdb) rank.set('Multitenant', 4);
+
+      const row = (grouping, conId, container, p, r) => ({
+         collect_id: cid, grouping_id: grouping, con_id: conId, db_pdb_name: container,
+         product_name: p, usage_detected: LMS_USAGE[r], last_sample_date: '20260830',
+         first_usage_date: r > 1 ? '20250312' : null,
+         last_usage_date: r === 4 ? '20260830' : r === 2 ? '20251015' : null,
+         db_name: db.dbName, hostname: db.host.hostname
+      });
+
+      if (!db.isCdb) {
+         for (const p of products) rows.push(row(0, -1, null, p, rank.get(p)));
+         continue;
+      }
+      // CDB : Multitenant vit dans CDB$ROOT, les options dans la première PDB.
+      for (const p of products) {
+         rows.push(row(0, 1, 'CDB$ROOT', p, p === 'Multitenant' ? rank.get(p) : 1));
+         db.pdbs.forEach((pdb, k) =>
+            rows.push(row(0, 3 + k, pdb, p, p !== 'Multitenant' && k === 0 ? rank.get(p) : 1)));
+         rows.push(row(1, null, '--ALL--', p, rank.get(p)));
+      }
+   }
+   return rows;
+}
+
 export function emitOracle (ctx) {
    const { outDir, world, rng, estate, cid, snapshot } = ctx;
    const hosts = estate.oracle.hosts;
@@ -133,13 +199,12 @@ export function emitOracle (ctx) {
       psu_applied: db.version.split('.').slice(0, 2).join('.') + '.0.0.0'
    })));
 
-   writeCsv(outDir, 'oracle_lms', dbs.flatMap(db =>
-      ['Partitioning', 'Advanced Compression', 'Diagnostics Pack'].map((p, k) => ({
-         collect_id: cid, grouping_id: 0, con_id: k, db_pdb_name: db.dbName,
-         product_name: p, usage_detected: rng.chance(0.25) ? 'DETECTED' : 'NO_USAGE',
-         last_sample_date: '20260901', first_usage_date: null, last_usage_date: null,
-         db_name: db.dbName, hostname: db.host.hostname
-      }))));
+   // Les tirages de l'ancienne émission LMS sont consommés à l'identique : les
+   // retirer décalerait tout ce qui suit dans le flux Oracle (sauvegardes,
+   // capacité, sécurité) et réécrirait la référence pour rien. L'usage des
+   // options est désormais tiré dans son propre flux, rngLms.
+   for (let n = 0; n < dbs.length * 3; n++) rng.chance(0.25);
+   writeCsv(outDir, 'oracle_lms', lmsRows(ctx));
 
    writeCsv(outDir, 'oracle_client_version', dbs.filter(() => rng.chance(0.6)).map(db => ({
       collect_id: cid, db_name: db.dbName, db_version: db.version,

@@ -312,7 +312,7 @@ begin
    --    sur 1034 constats parce qu'elle ne pouvait structurellement pas rougir.
    --
    --    Exclues : les règles inactives, et les contrôles catalogués sans règle
-   --    (les deux *_LICENSING, dont la logique LMS est différée).
+   --    (MSSQL_LICENSING, dont la norme n'est pas arrêtée).
    select count(*), listagg(rule_code, ', ') within group ( order by rule_code )
      into l_n, l_txt
      from ( select f.rule_code
@@ -476,11 +476,16 @@ begin
    --     quelque chose n'est pas classé, cette assertion dit QUOI. Une règle
    --     non classée ne casse rien -- elle disparaît simplement de la bande,
    --     et un écart réel cesse d'être compté sans que rien ne rougisse.
-   select count(*), listagg(rule_code, ', ') within group ( order by rule_code )
+   --     Exclu : le domaine LICENSING. Une option utilisée sans licence est une
+   --     exposition contractuelle, pas une des mesures de l'article 21(2) ; la
+   --     classer quelque part ferait rougir la posture NIS2 pour une facture.
+   select count(*), listagg(r.rule_code, ', ') within group ( order by r.rule_code )
      into l_n, l_txt
-     from ref_control_rule
-    where active = 1
-      and nis2_domain_code is null;
+     from ref_control_rule r
+     join ref_control c on c.control_code = r.control_code
+    where r.active = 1
+      and c.score_domain <> 'LICENSING'
+      and r.nis2_domain_code is null;
    if l_n = 0 then
       ok('toute regle active porte un domaine NIS2');
    else
@@ -640,6 +645,41 @@ begin
                         where a.entity_type = e.entity_type
                           and a.entity_id = e.entity_id );
    expect_zero('chaque rattachement vise une entite qui existe', l_n, 'rattachement(s) orphelin(s)');
+
+   -- 29. LMS : une instance hors périmètre de licence n'a aucun constat.
+   --     Les bases SAP portent leurs options dans la licence runtime SAP : un
+   --     constat sur elles noierait les vrais écarts sous des dizaines de faux.
+   select count(*) into l_n
+     from fact_control_finding f
+    where f.rule_code like 'ORACLE_LMS%'
+      and f.entity_type = 'INSTANCE'
+      and f.entity_id in ( select instance_id from v_oracle_lms_usage where in_scope = 0 );
+   expect_zero('LMS : aucun constat hors perimetre de licence', l_n, 'constat(s) sur une instance SAP/FREE/PROVIDER/INCCI');
+
+   -- 30. LMS : aucun écart sur un produit que la vue dit non utilisé.
+   --     C'est le recompte Multitenant qui est visé : le script d'Oracle le
+   --     signale sur toute CDB, et une CDB 19c à 3 PDB au plus n'en doit rien.
+   select count(*) into l_n
+     from fact_control_finding f
+     join v_oracle_lms_usage u
+       on u.instance_id = f.entity_id and u.product_name = f.item_key
+    where f.rule_code like 'ORACLE_LMS%'
+      and f.is_compliant = 0
+      and u.usage_status = 'NO_USAGE';
+   expect_zero('LMS : aucun ecart sur un produit non utilise', l_n, 'ecart(s) sur un produit recompte NO_USAGE');
+
+   -- 31. LMS : le recompte Multitenant a bien servi au moins une fois.
+   --     Sans cela, l'assertion 30 passerait sur un jeu sans aucune CDB.
+   select count(*) into l_n
+     from v_oracle_lms_usage
+    where product_name = 'Multitenant'
+      and reported_usage = 'CURRENT_USAGE'
+      and usage_status = 'NO_USAGE';
+   if l_n > 0 then
+      ok('LMS : recompte Multitenant exerce');
+   else
+      fail('LMS : recompte Multitenant exerce', 'aucune CDB recomptee');
+   end if;
 
    dbms_output.put_line('T_003 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s), '
       || l_warned || ' avertissement(s).');

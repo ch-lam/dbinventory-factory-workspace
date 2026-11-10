@@ -116,10 +116,12 @@ storage {
 }
 ```
 
-That block needs the APEXLang compiler 26.2 (SQLcl 26.3). Until then it could
-not be written, and every import left both items on `DB_COLUMN` until someone
-set *Storage Type* back to `APEX_APPLICATION_TEMP_FILES` in the builder. The
-first import with the block, on 2026-11-10, held without that step.
+For the record: until 2026-11-10 this was believed impossible to write in the
+`.apx`, and every import was followed by setting *Storage Type* back to
+`APEX_APPLICATION_TEMP_FILES` in the builder. It was a misdiagnosis — the
+compiler metadata lists no such group, and only a `settings` block had been
+tried. The block is accepted and applied by compilers 26.1.0+3102 and
+26.2.0+3479 alike.
 
 **Still check it after every import — ask the database:**
 
@@ -128,7 +130,7 @@ sql -S -name "$APEX_DB_CONN" @tests/T_001_apex_page_smoke.sql
 ```
 
 Check 2 lists every upload item left on `DB_COLUMN`, on the environment in front
-of you: one written without the block, or an import made with an older SQLcl.
+of you — typically a new upload item written without the block.
 
 ### The browser test cannot replace it here
 

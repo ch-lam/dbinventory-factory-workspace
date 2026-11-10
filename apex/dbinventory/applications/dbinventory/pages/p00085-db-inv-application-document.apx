@@ -209,7 +209,7 @@ page 85 (
             helpText: Stored inside the database and fingerprinted with SHA-256 on the way in, so it can later be proven to be the file that was filed. On an existing entry, attaching a new file replaces the old one; leaving this empty keeps it.
         }
         comments {
-            comments: storage.type appTempFiles is load-bearing: the save process reads the file from apex_application_temp_files. Left unset, the item inherits storage type DB_COLUMN, and in this static content region the page renders harmlessly while the upload lands nowhere - unlike P71_UPLOAD, which dies loudly in a report region. Until the APEXLang compiler 26.2 (SQLcl 26.3) this could not be written in the .apx and had to be set in the builder after every import; T_001 check 2 still verifies it after each import, which the browser test cannot. Hidden rather than read-only in remove mode: a file picker has nothing to show read-only.
+            comments: storage.type appTempFiles is load-bearing: the save process reads the file from apex_application_temp_files. Left unset, the item inherits storage type DB_COLUMN, and in this static content region the page renders harmlessly while the upload lands nowhere - unlike P71_UPLOAD, which dies loudly in a report region. Until 2026-11-10 this was believed impossible to write in the .apx - the compiler metadata lists no such group - and was set in the builder after every import. Wrong: the block is accepted and applied by compiler 26.1.0+3102 and 26.2.0+3479 alike. T_001 check 2 still verifies it after each import, which the browser test cannot. Hidden rather than read-only in remove mode: a file picker has nothing to show read-only.
         }
         serverSideCondition {
             type: itemIsNull

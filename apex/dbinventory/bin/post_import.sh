@@ -8,9 +8,10 @@
 #
 # The one it was written for is the fileUpload storage type. An item imported
 # without `storage { type: appTempFiles }` lands on DB_COLUMN -- a BLOB column
-# the item has no source for. Before the APEXLang compiler 26.2 (SQLcl 26.3) the
-# .apx could not say it, and every import needed a manual step in the builder;
-# now the .apx says it, and this gate proves the import kept it.
+# the item has no source for. Until 2026-11-10 the .apx was believed unable to say
+# it -- the compiler metadata lists no such group -- and every import needed a
+# manual step in the builder; the .apx now says it, and this gate proves the
+# import kept it.
 #
 #   * On page 71 the item sits in a report region and the page dies loudly with
 #     WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE.
@@ -72,10 +73,8 @@ the .apx, give it
         type: appTempFiles
     }
 
-then validate and import again. This needs the APEXLang compiler 26.2 or later
-(SQLcl 26.3+): older compilers reject the block, and the only way out was the
-builder (Settings > Storage Type = "Table APEX_APPLICATION_TEMP_FILES") after
-every import.
+then validate and import again. The compiler accepts it (checked on 26.1.0+3102
+and 26.2.0+3479) even though its metadata does not list it.
 MSG
    exit 1
 fi

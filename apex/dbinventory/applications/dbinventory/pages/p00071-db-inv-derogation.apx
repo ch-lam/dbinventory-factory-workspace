@@ -722,7 +722,7 @@ page 71 (
             helpText: Licence, vendor manual, signed approval. Each file is fingerprinted with SHA-256 when attached, so it can later be proven to be the one that was filed.
         }
         comments {
-            comments: storage.type appTempFiles is load-bearing: the attach process reads the file from apex_application_temp_files. Left unset, the item inherits storage type DB_COLUMN, a BLOB column it has no source for, and the page dies at render with WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Until the APEXLang compiler 26.2 (SQLcl 26.3) this could not be written in the .apx and had to be set in the builder after every import; T_001 check 2 still verifies it after each import.
+            comments: storage.type appTempFiles is load-bearing: the attach process reads the file from apex_application_temp_files. Left unset, the item inherits storage type DB_COLUMN, a BLOB column it has no source for, and the page dies at render with WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Until 2026-11-10 this was believed impossible to write in the .apx - the compiler metadata lists no such group - and was set in the builder after every import. Wrong: the block is accepted and applied by compiler 26.1.0+3102 and 26.2.0+3479 alike. T_001 check 2 still verifies it after each import.
         }
     )
 

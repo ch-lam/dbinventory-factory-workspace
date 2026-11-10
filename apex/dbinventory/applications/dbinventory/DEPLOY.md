@@ -16,8 +16,6 @@ cd apex/dbinventory/bin
 #    Session lancée à la main : JAVA_HOME doit pointer un JDK 17+, comme pour
 #    validate.sh (qui le trouve seul). Sinon `apex import` échoue sur
 #    UnsupportedClassVersionError. Voir bin/_sqlcl_env.sh (find_jdk).
-#    SQLcl 26.3+ (compilateur APEXLang 26.2) : voir « Les items de
-#    téléversement » plus bas.
 
 # 3. Ce que la compilation ne prouve pas.
 ./post_import.sh ../applications/dbinventory DEV_DBINVENTORY_dbinventory
@@ -52,10 +50,13 @@ storage {
 | 71 — Dérogation | `P71_UPLOAD` |
 | 85 — Document d'application | `P85_UPLOAD` |
 
-**Ce bloc exige le compilateur APEXLang 26.2, donc SQLcl 26.3 ou plus.** Avant,
-il n'était pas exprimable, et il fallait régler *Settings > Storage Type =
-Table APEX_APPLICATION_TEMP_FILES* dans le builder après **chaque** import. Un
-SQLcl plus ancien refuserait aujourd'hui le `.apx`.
+*Pour mémoire :* jusqu'au 2026-11-10, on croyait ce réglage impossible à écrire
+dans le `.apx`, et on le refaisait dans le builder (*Settings > Storage Type =
+Table APEX_APPLICATION_TEMP_FILES*) après chaque import. C'était faux : le bloc
+est accepté et appliqué par les compilateurs 26.1.0+3102 (SQLcl 26.2.2) et
+26.2.0+3479 (SQLcl 26.3.1). Le diagnostic s'était fié aux métadonnées du
+compilateur, qui ne listent pas ce groupe, et seul un bloc `settings` avait été
+essayé.
 
 Les deux items ne se trompent pas de la même façon quand le bloc manque, et
 c'est pourquoi `post_import.sh` le vérifie encore après chaque import :

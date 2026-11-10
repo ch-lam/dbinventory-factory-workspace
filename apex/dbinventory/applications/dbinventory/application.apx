@@ -1,4 +1,4 @@
-app DB-INV (
+app DBINVENTORY (
     name: Databases Inventory
     version: " Version 1.0"
     logo {

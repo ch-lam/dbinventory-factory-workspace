@@ -16,3 +16,7 @@
 # so a CRLF baseline would differ on every single line.
 fixtures/out/** text eol=lf
 fixtures/expected/*.csv text eol=lf
+
+# The collect scripts source their .env with bash: a CRLF copy of this template
+# would leave a carriage return at the end of every password.
+setup/inventory/dbInventory/.env.example text eol=lf

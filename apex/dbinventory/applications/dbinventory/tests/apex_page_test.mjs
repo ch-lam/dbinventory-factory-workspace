@@ -26,7 +26,7 @@
 //   global WebSocket -- stable since Node 22.
 //
 // USAGE
-//   From the application directory (apex/dbinventory/applications/db-inv):
+//   From the application directory (apex/dbinventory/applications/dbinventory):
 //   node tests/apex_page_test.mjs                  every page in PAGES
 //   node tests/apex_page_test.mjs --pages 70,71    after a targeted change
 //   node tests/apex_page_test.mjs --profile RSSI   as another user

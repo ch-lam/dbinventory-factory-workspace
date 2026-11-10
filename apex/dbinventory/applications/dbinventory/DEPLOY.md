@@ -1,4 +1,4 @@
-# Déployer l'application DB-INV (id 100)
+# Déployer l'application DBINVENTORY (id 100)
 
 Ce qui est propre à cette application. L'ordre général — instance, workspace,
 schéma, puis applications — est dans [`../../README.md`](../../README.md).
@@ -9,7 +9,7 @@ Trois étapes, dans cet ordre, et la troisième n'est pas optionnelle.
 cd apex/dbinventory/bin
 
 # 1. Le .apx compile-t-il ?
-./validate.sh ../applications/db-inv DEV_DBINVENTORY_dbinventory
+./validate.sh ../applications/dbinventory DEV_DBINVENTORY_dbinventory
 
 # 2. Import — dans la MÊME session SQLcl authentifiée que la validation.
 #    (voir .agents/skills/apex/apexlang/references/ops/runtime-gates/)
@@ -18,7 +18,7 @@ cd apex/dbinventory/bin
 #    UnsupportedClassVersionError. Voir bin/_sqlcl_env.sh (find_jdk).
 
 # 3. Ce que la compilation ne prouve pas.
-./post_import.sh ../applications/db-inv DEV_DBINVENTORY_dbinventory
+./post_import.sh ../applications/dbinventory DEV_DBINVENTORY_dbinventory
 ```
 
 ## Ce que l'étape 3 rattrape

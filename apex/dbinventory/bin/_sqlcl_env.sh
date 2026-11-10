@@ -70,7 +70,7 @@ sqlcl_compiler_jar() {
 resolve_app_dir() {
    local dir
    if [[ -z "${1:-}" ]]; then
-      echo "ERROR: missing application directory, e.g. ../applications/db-inv" >&2
+      echo "ERROR: missing application directory, e.g. ../applications/dbinventory" >&2
       return 1
    fi
    dir="$(cd "$1" 2>/dev/null && pwd)" || { echo "ERROR: $1 is not a directory." >&2; return 1; }

@@ -15,20 +15,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ── Connexion Oracle ──────────────────────────────────────────────────────────
-DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="Change:ME:001"
-DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
-
 # ── Cible SQLcl ───────────────────────────────────────────────────────────────
-# Par defaut, le triplet ci-dessus : le comportement de production ne change pas.
-# Si DBINVENTORY_CONN_NAME est positionnee, on passe par une connexion SQLcl
-# nommee a la place, comme dans les load_info_*.sh.
-if [[ -n "${DBINVENTORY_CONN_NAME:-}" ]]; then
-    SQLCL_ARGS=( -S -name "${DBINVENTORY_CONN_NAME}" )
-else
-    SQLCL_ARGS=( -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" )
-fi
+# Même choix de base que les load_info_*.sh : DBINVENTORY_TARGET (prod par
+# defaut, ou test) avec les secrets du .env, ou DBINVENTORY_CONN_NAME.
+# Voir _dbinventory_env.sh.
+source "${SCRIPT_DIR}/_dbinventory_env.sh"
+dbinv_sqlcl_args
+cd "${SCRIPT_DIR}"
 MAIL_TO="lambert.christophe@chl.lu"
 
 # ── Log ───────────────────────────────────────────────────────────────────────

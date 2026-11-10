@@ -27,20 +27,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="${1:-${SCRIPT_DIR}/../collect}"
 
-# ── Connexion Oracle ──────────────────────────────────────────────────────────
-DBINVENTORY_USER="dbinventory"
-DBINVENTORY_PASS="Change:ME:001"
-DBINVENTORY_DSN="ORA-DEV:1521/DBINVENTORY_TST"
-
-# Même branche que les load_info_*.sh. Sans elle ce script ne sait viser que
-# la base codée en dur ci-dessus, donc il ne peut être exercé ni sur la base
-# de démonstration ni ailleurs — et c'est pourtant lui qui décide, chaque
-# nuit, du périmètre que la collecte va lire.
-if [[ -n "${DBINVENTORY_CONN_NAME:-}" ]]; then
-    SQLCL_ARGS=( -S -name "${DBINVENTORY_CONN_NAME}" )
-else
-    SQLCL_ARGS=( -S "${DBINVENTORY_USER}/${DBINVENTORY_PASS}@${DBINVENTORY_DSN}" )
-fi
+# ── Cible SQLcl ───────────────────────────────────────────────────────────────
+# Même choix de base que les load_info_*.sh (_dbinventory_env.sh). Sans lui ce
+# script ne saurait viser qu'une seule base, donc il ne pourrait être exercé ni
+# sur la base de démonstration ni ailleurs — et c'est pourtant lui qui décide,
+# quand DBINV_GEN_COLLECT_LISTS=1, du périmètre que la collecte va lire.
+source "${SCRIPT_DIR}/_dbinventory_env.sh"
+dbinv_sqlcl_args
 
 log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*"; }
 

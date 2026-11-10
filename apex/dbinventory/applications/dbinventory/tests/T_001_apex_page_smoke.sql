@@ -18,9 +18,10 @@
 --      to warn you. Every region query is parsed against the live schema.
 --   2. Items whose plugin attributes were left at a default that breaks the page
 --      at render -- today, a fileUpload sitting on storage_type DB_COLUMN with no
---      source, which is exactly the NO_VALID_BLOB_SOURCE failure. That attribute
---      cannot be expressed in the .apx, so every import resets it and only a
---      check like this one notices.
+--      source, which is exactly the NO_VALID_BLOB_SOURCE failure. Since the
+--      APEXLang compiler 26.2 (SQLcl 26.3) the .apx says it -- storage { type:
+--      appTempFiles } -- but an item written without the block still imports
+--      on DB_COLUMN, and on page 85 nothing else would notice.
 --   3. Items pointing at a shared list of values that does not exist.
 --   4. Conditions that test an item which does not exist. APEX evaluates them
 --      against an empty value without a word, so a button guarded by "item is
@@ -123,8 +124,8 @@ begin
             and nvl(i.item_source_type, 'x') not in ( 'Database Column' ) then
             fail('fileUpload stores into a BLOB column it has no source for',
                  'page ' || i.page_id,
-                 i.item_name || ' - set Storage Type to APEX_APPLICATION_TEMP_FILES in the builder; '
-                 || 'it cannot be set from the .apx and every import resets it');
+                 i.item_name || ' - add storage { type: appTempFiles } to the item in the .apx '
+                 || '(APEXLang compiler 26.2+, i.e. SQLcl 26.3+), then import again');
          end if;
       end if;
    end loop;

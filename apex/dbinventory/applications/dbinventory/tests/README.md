@@ -49,10 +49,10 @@ Both exit non-zero on failure, so they can gate a deployment script.
   every region query against the live schema, which is how a back-end change that
   silently breaks a page gets caught.
 - **A page or a component changed**: `apex_page_test.mjs --pages <ids>`.
-- **After an import**: both. An import resets attributes that cannot be expressed
-  in the `.apx`, so a page that worked before an import can be broken by it —
-  today `P71_UPLOAD` and `P85_UPLOAD`, which must be set back to
-  `APEX_APPLICATION_TEMP_FILES` in the builder every time (see `DEPLOY.md`).
+- **After an import**: both. An import sets every attribute the `.apx` leaves out
+  to its default, so a page that worked before an import can be broken by it —
+  the `fileUpload` items `P71_UPLOAD` and `P85_UPLOAD` were, until their storage
+  block could be written in the `.apx` (see `DEPLOY.md`).
 
 ## First: are both tests looking at the same database?
 
@@ -106,27 +106,29 @@ no npm registry access. Re-tested on 2026-08-15: `npm ping` and a tarball lookup
 both succeed against `https://registry.npmjs.org/`, with no proxy configured. The
 claim was wrong; the design stands on its own merits.
 
-## After every import — the manual step, and why it is a list now
+## After every import — the upload items
 
-An import resets attributes that the `.apx` cannot express. Today two items are
-affected, both `fileUpload`:
+Both `fileUpload` items carry their storage type in the `.apx`:
 
-| Page | Item | Set Storage Type to |
-| --- | --- | --- |
-| 71 | `P71_UPLOAD` | `APEX_APPLICATION_TEMP_FILES` |
-| 85 | `P85_UPLOAD` | `APEX_APPLICATION_TEMP_FILES` |
+```
+storage {
+    type: appTempFiles
+}
+```
 
-**Do not maintain that table by hand — ask the database:**
+That block needs the APEXLang compiler 26.2 (SQLcl 26.3). Until then it could
+not be written, and every import left both items on `DB_COLUMN` until someone
+set *Storage Type* back to `APEX_APPLICATION_TEMP_FILES` in the builder. The
+first import with the block, on 2026-11-10, held without that step.
+
+**Still check it after every import — ask the database:**
 
 ```bash
 sql -S -name "$APEX_DB_CONN" @tests/T_001_apex_page_smoke.sql
 ```
 
-Check 2 lists exactly the items that need the step, on the environment in front
-of you. A table in a README drifts; the check does not.
-
-Why it is manual at all, and what would end it, is proven in T1 of the field
-notes: the compiler has no property for the storage type, and no API sets it.
+Check 2 lists every upload item left on `DB_COLUMN`, on the environment in front
+of you: one written without the block, or an import made with an older SQLcl.
 
 ### The browser test cannot replace it here
 

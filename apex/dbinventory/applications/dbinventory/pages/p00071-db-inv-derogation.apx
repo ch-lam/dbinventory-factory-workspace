@@ -707,6 +707,9 @@ page 71 (
         label {
             label: Attach a file
         }
+        storage {
+            type: appTempFiles
+        }
         layout {
             sequence: 20
             region: @documents
@@ -719,7 +722,7 @@ page 71 (
             helpText: Licence, vendor manual, signed approval. Each file is fingerprinted with SHA-256 when attached, so it can later be proven to be the one that was filed.
         }
         comments {
-            comments: KNOWN GAP - set Storage Type to "Table APEX_APPLICATION_TEMP_FILES" in the builder after EVERY import. It cannot be set from the .apx: APEXlang has no property group for plugin attributes on a page item, so a settings block is rejected. Left unset the item inherits storage_type DB_COLUMN, a BLOB column it has no source for, and the page dies at render with WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Validation does not catch it - the chain checks this file compiles, not that the page runs. Written as a comments block, not a // comment, because an APEX export round-trip strips // comments and keeps these.
+            comments: storage.type appTempFiles is load-bearing: the attach process reads the file from apex_application_temp_files. Left unset, the item inherits storage type DB_COLUMN, a BLOB column it has no source for, and the page dies at render with WWV_FLOW_NATIVE_ITEM.NO_VALID_BLOB_SOURCE. Until the APEXLang compiler 26.2 (SQLcl 26.3) this could not be written in the .apx and had to be set in the builder after every import; T_001 check 2 still verifies it after each import.
         }
     )
 

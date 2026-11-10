@@ -482,6 +482,22 @@ list navigation-menu (
         }
     )
 
+    entry licensing (
+        label: Licensing (LMS)
+        icon {
+            imageIconCssClasses: fa-certificate
+        }
+        layout {
+            sequence: 25
+            parentEntry: @oracle
+        }
+        link {
+            target: {
+                page: 22
+            }
+        }
+    )
+
 
     entry ms-patching (
         label: Patching

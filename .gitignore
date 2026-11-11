@@ -40,3 +40,7 @@ setup/inventory/dbInventory/collect/[0-9]*/
 # package on 2026-07-17; it is noise, and an upgrade of the package dropped it.
 __pycache__/
 *.pyc
+
+# Exports de bin/export_ref_data.sh : noms, adresses et documents saisis.
+# Ne jamais versionner, quel que soit l'endroit où ils sont posés.
+dbinventory_applications_*.json

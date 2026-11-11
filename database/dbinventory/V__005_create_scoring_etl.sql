@@ -108,8 +108,14 @@ lms as (
              when 'PAST_USAGE'            then 2
              else 1
           end usage_rank,
-          to_date(l.first_usage_date default null on conversion error, 'YYYYMMDD') first_usage,
-          to_date(l.last_usage_date  default null on conversion error, 'YYYYMMDD') last_usage
+          -- validate_conversion, not to_date(... default null on conversion
+          -- error): on 23.26 a GROUP BY GROUPING SETS over this view -- which is
+          -- how a faceted search counts its facets (page 22) -- fails with
+          -- ORA-43907, the rewrite no longer seeing the default as a literal.
+          case when validate_conversion(l.first_usage_date as date, 'YYYYMMDD') = 1
+               then to_date(l.first_usage_date, 'YYYYMMDD') end first_usage,
+          case when validate_conversion(l.last_usage_date as date, 'YYYYMMDD') = 1
+               then to_date(l.last_usage_date, 'YYYYMMDD') end last_usage
      from oracle_lms l
 ),
 prod as (

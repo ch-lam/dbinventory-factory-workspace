@@ -1,23 +1,23 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "apex": {
       "source": "oracle/skills",
       "sourceType": "github",
       "skillPath": "apex/SKILL.md",
-      "computedHash": "b8a51fd86da7f7220bd3557845933ada31a33d6d6c38037d2a247d22a8839bd9"
+      "computedHash": ""
     },
     "apex-field-notes": {
       "source": "ch-lam/apex-field-notes",
       "sourceType": "github",
       "skillPath": "skills/apex-field-notes/SKILL.md",
-      "computedHash": "ed0a34f310a7dd46c973d50e11a9762d833d9cad5ec441b92817b2ea8361005a"
+      "computedHash": "280b79d19b21b16a44cdddcc71b2961a60320c3fb6a4988a3fd2e1b8ca56ebc2"
     },
     "db": {
       "source": "oracle/skills",
       "sourceType": "github",
       "skillPath": "db/SKILL.md",
-      "computedHash": "17bdf403737694c11350d5eee46da965ae900bdf607ecdbec16d764dae1862a2"
+      "computedHash": "0fa0b6aa881db3b63564178372c6e356dfcd94ec191ab1cd9558026da9dd5d4e"
     }
   }
 }

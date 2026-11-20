@@ -6,6 +6,8 @@
 #   2. compiler-truth audit (skill) -> offline diagnostic
 #
 # Usage: ./validate.sh <app_dir> [db_connection_name]
+# Without a connection it runs `apex validate` in /nolog, like the validate job
+# of the pipeline.
 #   e.g. ./validate.sh ../applications/dbinventory
 #
 # The SQLcl prerequisites (JDK 17+, dumb JLine terminal, stdin from a real
@@ -20,9 +22,8 @@ BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$BIN_DIR/_sqlcl_env.sh"
 
 APP_DIR="$(resolve_app_dir "${1:-}")" || exit 1
-DB_CONN="${2:-DEV_DBINVENTORY_dbinventory}"
+DB_CONN="${2:-}"
 SKILL_DIR="$(cd "$BIN_DIR/../../../.agents/skills/apex/apexlang" && pwd)"
-APP_DIR_WIN="$(to_win "$APP_DIR")"
 
 JDK="$(find_jdk)"
 if [[ -z "$JDK" ]]; then
@@ -41,13 +42,16 @@ fi
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-printf 'apex validate -input %s\nexit\n' "$APP_DIR_WIN" > "$work/av.sql"
+printf 'apex validate -input %s\nexit\n' "$APP_DIR" > "$work/av.sql"
 : > "$work/stdin"
 
-echo "=== apex validate (SQLcl, live via $DB_CONN) on $(basename "$APP_DIR") ==="
+if [[ -n "$DB_CONN" ]]; then sql_target=(-name "$DB_CONN"); via="live via $DB_CONN"
+else sql_target=(/nolog); via="/nolog"; fi
+
+echo "=== apex validate (SQLcl, $via) on $(basename "$APP_DIR") ==="
 JAVA_HOME="$JDK" \
 JAVA_TOOL_OPTIONS="$APEX_SQLCL_TOOL_OPTIONS" \
-   sql -S -name "$DB_CONN" @"$work/av.sql" < "$work/stdin" 2>&1 \
+   sql -S "${sql_target[@]}" @"$work/av.sql" < "$work/stdin" 2>&1 \
    | grep -v 'Picked up JAVA_TOOL_OPTIONS' | tee "$work/live.out"
 
 # SQLcl exits 0 even when apex validate reports errors or cannot read the
@@ -66,7 +70,7 @@ COMPILER_JAR="$(sqlcl_compiler_jar)"
 compiler_opt=()
 if [[ -n "$COMPILER_JAR" ]]; then
    echo "compiler: $COMPILER_JAR"
-   compiler_opt=( --compiler-oracle-home "$(to_win "$COMPILER_JAR")" )
+   compiler_opt=( --compiler-oracle-home "$COMPILER_JAR" )
 else
    echo "WARNING: no APEXLang compiler found next to SQLcl; the audit picks its own," >&2
    echo "         which may not be the one apex validate used." >&2

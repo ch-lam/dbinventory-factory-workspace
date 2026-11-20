@@ -32,7 +32,7 @@ From the application directory, `apex/dbinventory/applications/dbinventory`.
 
 ```bash
 # database side -- after every schema change or import
-sql -S -name DEV_DBINVENTORY_dbinventory @tests/T_001_apex_page_smoke.sql
+sql -S -name DEMO_DBINVENTORY_dbinventory @tests/T_001_apex_page_smoke.sql
 
 # rendering -- after every import, or on the pages whose components changed
 node tests/apex_page_test.mjs

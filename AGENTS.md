@@ -29,3 +29,12 @@ repository works.
   row goes in the table of `README.md`.
 - No secret in the repository: connections are saved in SQLcl, and the pipeline's credentials
   are GitLab variables.
+
+## Ce dépôt
+- L'application `DBINVENTORY` a l'id 110, en DEV comme en DEMO.
+- Les `T__` de `database/dbinventory/` ne contiennent que des contrôles indépendants des
+  données ; les contrôles qui ont besoin des fixtures sont dans `fixtures/checks/`.
+- Les fixtures se chargent en DEMO seulement (`fixtures/load_fixtures.sh`), jamais en DEV.
+- Les envois de fichiers (pages 71 et 85) exigent `EXECUTE ON SYS.DBMS_CRYPTO` pour le schéma.
+- Après chaque import, lancer `apex/dbinventory/bin/post_import.sh` : `apex validate` ne
+  prouve pas que l'import a gardé le bloc `storage` des items de téléversement.

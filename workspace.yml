@@ -1,0 +1,28 @@
+# Workspace manifest, read by the factory pipeline (dbinventory/ci-templates).
+# It is the single source of the applications this repository deploys.
+workspace:
+  name: DBINVENTORY
+
+# DEV is deployed by the pipeline, from the default branch only. DEMO is a clone
+# of DEV, with the same workspace, schema and application ids; the agents deploy
+# to it themselves.
+environments:
+  - name: dev
+    provisioning:
+      mode: existing
+  - name: demo
+    provisioning:
+      mode: existing
+
+# One entry per application, in deployment order (a library before its
+# subscribers). Example:
+#
+#   - slug: orders                                # short id, used in file names
+#     name: Orders                                # display name
+#     alias: ORDERS                               # APEX alias = the source folder name
+#     source: apex/dbinventory/applications/orders
+#     order: 10
+#     ids:
+#       dev: 110                                  # fixed ids, outside 3000-8999
+#       demo: 110
+applications: []

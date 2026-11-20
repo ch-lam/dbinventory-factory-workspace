@@ -1,0 +1,8 @@
+# R__ files of schema DBINVENTORY, in the order migrate.sh replays them:
+# a file comes after everything it depends on. One file name per line;
+# '#' starts a comment. Every R__*.sql of this folder must be listed.
+#
+# ---- Views
+# ---- Standalone functions and procedures
+# ---- Package specifications
+# ---- Package bodies

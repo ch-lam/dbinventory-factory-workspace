@@ -5,7 +5,7 @@ Un répertoire sous `apex/` = un workspace APEX. Celui-ci porte :
 | | Quoi | Où |
 |---|---|---|
 | Schéma | `DBINVENTORY` (schéma principal du workspace) | [`database/dbinventory/`](../../database/dbinventory/) |
-| Application | `DBINVENTORY`, id 100 | [`applications/dbinventory/`](applications/dbinventory/) |
+| Application | `DBINVENTORY`, id 110 | [`applications/dbinventory/`](applications/dbinventory/) |
 
 ## Les trois niveaux, et où chacun vit
 
@@ -21,24 +21,19 @@ application dépend d'un schéma, jamais l'inverse.
 
 ## Installer, dans cet ordre
 
+En factory, l'instance APEX, le workspace et le schéma vide existent déjà : le
+dossier `workspace/` (et `setup/`) ne sert qu'à une installation sur site.
+
 ```bash
-# 1. Instance APEX et schéma vide : setup/pdb_dbinventory/000_install_pdb_inventory.md
+# 1. Les objets du schéma (DEMO ; DEV est changée par le pipeline de main)
+database/dbinventory/migrate.sh DEMO_DBINVENTORY_dbinventory
+./fixtures/load_fixtures.sh DEMO_DBINVENTORY_dbinventory   # jeu de démonstration, DEMO seulement
 
-# 2. Le workspace (en SYS sur la PDB ; les mots de passe sont demandés)
-sql sys@<pdb> as sysdba @apex/dbinventory/workspace/001_create_workspace.sql
-
-# 3. Les objets du schéma
-cd database/dbinventory
-sql -S -name <conn> @X_000_reinstall_all.sql      # ou X_001 pour repartir de zéro
-cd ../..
-./fixtures/load_fixtures.sh <conn_demo>           # jeu de démonstration, si besoin
-
-# 4. Chaque application : voir son DEPLOY.md
+# 2. Chaque application : voir son DEPLOY.md
 #    applications/dbinventory/DEPLOY.md
 ```
 
-Lancer les scripts `X_` **depuis `database/dbinventory/`** : leurs `@` sont
-relatifs.
+Le schéma s'installe par ses `V__` (`R__` pour le code), appliqués par `migrate.sh`.
 
 ## Outillage commun — `bin/`
 
@@ -46,11 +41,11 @@ Les scripts prennent **le répertoire d'une application** en premier argument :
 
 ```bash
 cd apex/dbinventory/bin
-./validate.sh    ../applications/dbinventory [conn]   # apex validate + audit hors ligne
-./post_import.sh ../applications/dbinventory [conn]   # T_001 de l'appli, après import
+./validate.sh    ../applications/dbinventory [conn]   # apex validate (/nolog sans conn) + audit hors ligne
+./post_import.sh ../applications/dbinventory [conn]   # T_001 de l'appli, après import (défaut DEMO_DBINVENTORY_dbinventory)
 ```
 
-Les prérequis SQLcl (JDK 17+, terminal JLine `dumb`, stdin depuis un vrai
+Les prérequis SQLcl (JDK 17+, le JDK 21 de /usr/lib/jvm, terminal JLine `dumb`, stdin depuis un vrai
 fichier) sont expliqués et gérés dans `bin/_sqlcl_env.sh`.
 
 ## Les règles qui gardent cette structure tenable

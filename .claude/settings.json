@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sql -S -name DEV_DBINVENTORY_dbinventory *)"
+      "Bash(sql -S -name DEV_DBINVENTORY_dbinventory_agent *)",
+      "Bash(sql -S -name DEMO_DBINVENTORY_dbinventory *)"
     ]
   }
 }

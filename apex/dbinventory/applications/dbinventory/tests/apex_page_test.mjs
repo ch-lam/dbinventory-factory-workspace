@@ -20,7 +20,7 @@
 //   login page. A real browser runs that JavaScript, so it stays correct across
 //   APEX upgrades instead of re-implementing a protocol that moves.
 //
-//   Edge is driven over the Chrome DevTools Protocol using Node's built-in
+//   A Chromium build (APEX_TEST_BROWSER) is driven over the Chrome DevTools Protocol using Node's built-in
 //   WebSocket: no npm dependency, so no install step and no lockfile to carry
 //   when this file is copied into another repository. Needs a Node exposing a
 //   global WebSocket -- stable since Node 22.
@@ -83,13 +83,14 @@ const argOf = name => {
 const env      = loadEnv();
 const profile  = (argOf('profile') || 'ADMIN').toUpperCase();
 const baseUrl  = (env.APEX_BASE_URL || '').replace(/\/+$/, '');
-const appId    = env.APEX_APP_ID || '100';
+const appId    = env.APEX_APP_ID || '110';
 const user     = env[`APEX_USER_${profile}`];
 const password = env[`APEX_PASS_${profile}`];
-const browser  = env.APEX_TEST_BROWSER || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
+const browser  = env.APEX_TEST_BROWSER;
 const headless = !args.includes('--head');
 
 if (!baseUrl) fail('APEX_BASE_URL is not set in .env');
+if (!browser) fail('APEX_TEST_BROWSER is not set in .env (path of a Chromium build)');
 if (!user || !password) {
   fail(`profile ${profile} has no credentials in .env `
      + `(expected APEX_USER_${profile} and APEX_PASS_${profile})`);
@@ -113,7 +114,7 @@ const PAGES = argOf('pages')
 //
 // Why not pass item values in the URL instead: the pages carry
 // pageAccessProtection: argumentsMustHaveChecksum, so APEX rejects
-//   f?p=100:81:SESSION::::P81_APPLICATION_ID:4
+//   f?p=110:81:SESSION::::P81_APPLICATION_ID:4
 // with "Contact your application administrator." That is the protection working,
 // not a bug -- and the checksum cannot be computed from outside. Clicking is the
 // only honest route, and it is the one a user takes anyway.
@@ -282,7 +283,7 @@ try {
     fail('login failed for profile ' + profile + (msg ? ' - ' + msg.trim().slice(0, 200) : ''));
   }
 
-  // Carry the session id explicitly. `f?p=100:70` with an empty session slot
+  // Carry the session id explicitly. `f?p=110:70` with an empty session slot
   // starts a NEW, unauthenticated session and the page bounces straight back to
   // the login screen -- which looks exactly like a broken page if you do not
   // know to look for it. APEX puts the id either in ?session= on a friendly URL

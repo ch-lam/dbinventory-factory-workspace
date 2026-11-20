@@ -31,7 +31,6 @@
 --   the old constraint refuses, so the first replaced file would fail.
 -- ============================================================================
 
-alter session set current_schema=dbinventory;
 
 set serveroutput on size unlimited
 

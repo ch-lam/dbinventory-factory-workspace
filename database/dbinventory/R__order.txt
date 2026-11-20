@@ -2,7 +2,47 @@
 # a file comes after everything it depends on. One file name per line;
 # '#' starts a comment. Every R__*.sql of this folder must be listed.
 #
+
 # ---- Views
-# ---- Standalone functions and procedures
+R__v_benchmark_mapping_gap.sql
+R__v_entity_ancestry.sql
+R__v_exception_finding_match.sql
+R__v_exception_review.sql
+R__v_nis2_posture.sql
+R__v_entity_collect_date.sql
+R__v_environment_identity.sql
+R__v_discovery_status.sql
+R__v_application_database.sql
+R__v_database_without_application.sql
+R__v_application_document_review.sql
+R__v_application_overview.sql
+R__v_entity_application.sql
+
 # ---- Package specifications
+R__pkg_dbinv_inventory.sql
+R__pkg_dbinv_scoring.sql
+R__pkg_dbinv_discovery.sql
+R__pkg_dbinv_exception.sql
+R__pkg_dbinv_application.sql
+R__pkg_dbinv_transfer.sql
+
 # ---- Package bodies
+R__pkg_dbinv_inventory_BODY.sql
+R__pkg_dbinv_scoring_BODY.sql
+R__pkg_dbinv_discovery_BODY.sql
+R__pkg_dbinv_exception_BODY.sql
+R__pkg_dbinv_application_BODY.sql
+R__pkg_dbinv_transfer_BODY.sql
+
+# ---- Triggers (after the packages they call)
+R__ref_exception_event_append_only.sql
+R__ref_exc_doc_before_write.sql
+R__ref_exc_doc_journal.sql
+R__ref_application_event_append_only.sql
+R__ref_application_journal.sql
+R__ref_app_grp_journal.sql
+R__ref_app_ctc_journal.sql
+R__ref_app_ent_journal.sql
+R__ref_app_src_journal.sql
+R__ref_app_doc_before_write.sql
+R__ref_app_doc_journal.sql

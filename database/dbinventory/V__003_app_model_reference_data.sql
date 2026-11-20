@@ -438,7 +438,6 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
             'Engine build must be at the latest published patch level', 'dim_instance.engine_version must be at or above product_support.current_patch_level for its major version, compared on the build and revision numbers. Note: an instance kept on the GDR-only branch reads as behind, because the reference tracks the cumulative-update train.', 'MEDIUM' );
 
 
-
 -- ============================================================
 -- PostgreSQL rules
 -- ------------------------------------------------------------

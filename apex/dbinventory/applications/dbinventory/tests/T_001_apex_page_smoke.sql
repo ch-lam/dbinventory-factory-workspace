@@ -48,7 +48,12 @@ set feedback off
 set verify off
 whenever sqlerror exit failure
 
-define P_APP  = 100
+-- the application id is read from the dictionary, not hard-coded: it is 110 in
+-- DEV and DEMO, but the alias is what the source carries.
+column app_id new_value P_APP noprint
+select to_char(application_id) as app_id
+  from apex_applications
+ where alias = 'DBINVENTORY' and workspace = 'DBINVENTORY';
 -- leave empty to test every page
 define P_PAGE = ""
 

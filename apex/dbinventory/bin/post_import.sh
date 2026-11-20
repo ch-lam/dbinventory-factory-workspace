@@ -37,7 +37,7 @@ BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$BIN_DIR/_sqlcl_env.sh"
 
 APP_DIR="$(resolve_app_dir "${1:-}")" || exit 1
-DB_CONN="${2:-DEV_DBINVENTORY_dbinventory}"
+DB_CONN="${2:-DEMO_DBINVENTORY_dbinventory}"
 
 SMOKE="$APP_DIR/tests/T_001_apex_page_smoke.sql"
 if [[ ! -f "$SMOKE" ]]; then
@@ -54,7 +54,7 @@ trap 'rm -rf "$work"' EXIT
 echo "=== APEX page smoke test (live via $DB_CONN) ==="
 JAVA_HOME="${JDK:-${JAVA_HOME:-}}" \
 JAVA_TOOL_OPTIONS="$APEX_SQLCL_TOOL_OPTIONS" \
-   sql -S -name "$DB_CONN" @"$(to_win "$SMOKE")" < "$work/stdin" 2>&1 \
+   sql -S -name "$DB_CONN" @"$SMOKE" < "$work/stdin" 2>&1 \
    | grep -v 'Picked up JAVA_TOOL_OPTIONS' | tee "$work/smoke.out"
 rc="${PIPESTATUS[0]}"
 

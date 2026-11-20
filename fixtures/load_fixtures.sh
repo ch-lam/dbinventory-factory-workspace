@@ -76,7 +76,7 @@ SERVICE="$(echo "${SERVICE}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
 
 if [[ -z "${SERVICE}" ]]; then
     echo "ERREUR: impossible de lire v_environment_identity sur « ${DB_CONN} »." >&2
-    echo "  Le modèle est-il installé ? (X_000_reinstall_all.sql)" >&2
+    echo "  Le modèle est-il installé ? (database/dbinventory/migrate.sh <conn>)" >&2
     exit 1
 fi
 log "Base cible : ${SERVICE}"
@@ -209,4 +209,4 @@ if [[ "${APPS_RC}" -ne 0 ]]; then
     exit 1
 fi
 
-log "Terminé. Assertions : sql -S -name ${DB_CONN} @database/dbinventory/T_003_fixture_expectations.sql"
+log "Terminé. Assertions : sql -S -name ${DB_CONN} @fixtures/checks/T_003_fixture_expectations.sql"

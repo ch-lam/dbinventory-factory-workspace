@@ -3,7 +3,7 @@
     "name" : "DBINVENTORY"
   },
   "app" : {
-    "id" : 100,
+    "id" : 110,
     "runtime" : {
       "debugging" : true
     }

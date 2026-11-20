@@ -380,7 +380,7 @@ par apex validate avant commit.
 Vérification
 
 1. Déploiement : V__006 puis V__007 sur la base de dev
-(sql -S -name DEV_DBINVENTORY_dbinventory), en model-only — surtout pas
+(sql -S -name DEMO_DBINVENTORY_dbinventory), en model-only — surtout pas
 X_001, qui viderait le staging non recollectable. Ajouter les deux fichiers
 à X_000_reinstall_all.sql. Vérifier que les packages compilent VALID.
 2. Chargement réel : charger discovery_MSSQL_20260715.csv tel quel (BOM et

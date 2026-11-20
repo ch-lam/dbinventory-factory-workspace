@@ -1,7 +1,7 @@
 -- =============================================================================
 -- T_003  –  Assertions sur le jeu de données de démonstration
 --
---   sql -S -name DEMO_DBINVENTORY_dbinventory @database/dbinventory/T_003_fixture_expectations.sql
+--   sql -S -name DEMO_DBINVENTORY_dbinventory @fixtures/checks/T_003_fixture_expectations.sql
 --
 -- Deux natures de vérification, volontairement séparées.
 --

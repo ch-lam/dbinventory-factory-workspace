@@ -25,4 +25,12 @@ environments:
 #     ids:
 #       dev: 110                                  # fixed ids, outside 3000-8999
 #       demo: 110
-applications: []
+applications:
+  - slug: dbinventory
+    name: Databases Inventory
+    alias: DBINVENTORY
+    source: apex/dbinventory/applications/dbinventory
+    order: 10
+    ids:
+      dev: 110
+      demo: 110

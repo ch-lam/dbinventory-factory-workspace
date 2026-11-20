@@ -1,4 +1,4 @@
-# Déployer l'application DBINVENTORY (id 100)
+# Déployer l'application DBINVENTORY (id 110)
 
 Ce qui est propre à cette application. L'ordre général — instance, workspace,
 schéma, puis applications — est dans [`../../README.md`](../../README.md).
@@ -9,16 +9,17 @@ Trois étapes, dans cet ordre, et la troisième n'est pas optionnelle.
 cd apex/dbinventory/bin
 
 # 1. Le .apx compile-t-il ?
-./validate.sh ../applications/dbinventory DEV_DBINVENTORY_dbinventory
+./validate.sh ../applications/dbinventory     # /nolog, comme le job validate du pipeline
 
-# 2. Import — dans la MÊME session SQLcl authentifiée que la validation.
+# 2. Import en DEMO (le merger) ; DEV est importée par le pipeline de main.
+#    Import — dans la MÊME session SQLcl authentifiée que la validation.
 #    (voir .agents/skills/apex/apexlang/references/ops/runtime-gates/)
 #    Session lancée à la main : JAVA_HOME doit pointer un JDK 17+, comme pour
 #    validate.sh (qui le trouve seul). Sinon `apex import` échoue sur
 #    UnsupportedClassVersionError. Voir bin/_sqlcl_env.sh (find_jdk).
 
 # 3. Ce que la compilation ne prouve pas.
-./post_import.sh ../applications/dbinventory DEV_DBINVENTORY_dbinventory
+./post_import.sh ../applications/dbinventory DEMO_DBINVENTORY_dbinventory
 ```
 
 ## Ce que l'étape 3 rattrape
@@ -74,6 +75,6 @@ contrôle tout seul : il balaie tous les items dont le type d'affichage contient
 
 ## Ordre vis-à-vis de la base
 
-Le schéma d'abord, l'application ensuite : `T_001` analyse le SQL des régions
+Le schéma d'abord (`database/dbinventory/migrate.sh <conn>`), l'application ensuite : `T_001` analyse le SQL des régions
 contre le schéma vivant, et échouerait sur une colonne qui n'existe pas encore.
 Voir [`../../README.md`](../../README.md).

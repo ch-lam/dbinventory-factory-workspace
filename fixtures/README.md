@@ -28,8 +28,11 @@ node fixtures/generate.mjs
 # Après un changement de règle VOULU : on recapture, puis on relit le diff git
 ./fixtures/check_baseline.sh DEMO_DBINVENTORY_dbinventory --capture
 
+# Les contrôles T_001, T_003, T_004 et T_005 vivent dans fixtures/checks/ : ils exigent le jeu de
+# démonstration et ne peuvent pas tourner dans database/dbinventory/ (DEV est vide).
+
 # La promotion depuis la discovery — s'annule, ne déplace aucune mesure
-sql -S -name DEMO_DBINVENTORY_dbinventory @database/dbinventory/T_004_discovery_promotion.sql
+sql -S -name DEMO_DBINVENTORY_dbinventory @fixtures/checks/T_004_discovery_promotion.sql
 
 # La chaîne elle-même : les .lst régénérés DEPUIS LA BASE
 DBINVENTORY_CONN_NAME=DEMO_DBINVENTORY_dbinventory \

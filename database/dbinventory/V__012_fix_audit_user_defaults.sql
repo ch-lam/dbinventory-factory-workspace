@@ -33,7 +33,6 @@
 -- run by a script, so the schema user is the right answer there.
 -- ============================================================================
 
-alter session set current_schema=dbinventory;
 
 set serveroutput on size unlimited
 

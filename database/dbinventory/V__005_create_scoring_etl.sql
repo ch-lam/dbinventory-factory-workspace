@@ -41,8 +41,12 @@
 --     keeps exactly the shape it had before this refactoring, so load_scoring
 --     and the APEX pages are untouched.
 --
+-- LICENSING (Oracle only): option and pack usage from Oracle's LMS usage script,
+-- read through v_oracle_lms_usage (below), which the licensing page reads too.
+-- MSSQL_LICENSING stays catalogued without a rule.
+--
 -- NOT YET IMPLEMENTED (documented gaps, no policy fabricated here):
---   * LICENSING scoring: requires LMS logic; deferred.
+--   * MSSQL LICENSING scoring: no edition/licence norm settled yet.
 --   * PDB_OS_CREDENTIAL is collected but has no settled norm; it is catalogued
 --     in ref_control_rule at active = 0 rather than judged on a made-up value.
 --
@@ -57,6 +61,154 @@
 --     carries no verdict. Every Oracle predicate below is evaluated from the raw
 --     collected values.
 -- ============================================================================
+
+
+-- ============================================================================
+-- v_oracle_lms_usage
+-- ----------------------------------------------------------------------------
+-- One row per (instance, product) of Oracle's option and pack usage script
+-- (bin/sql/oracle_lms.sql -> staging oracle_lms), with the perimeter that
+-- decides whether it is judged. Shared by load_findings_licensing and the
+-- licensing page, so the screen can never disagree with the score on what is
+-- in use.
+--
+-- Why a view over the staging and not a fact: the usage script already carries
+-- its own history (first and last usage dates). What the model needs is the
+-- latest reading, which is exactly what the staging holds.
+--
+-- Reading the script output:
+--   * a CDB reports one row per container (grouping_id = 0) plus an aggregate
+--     over all of them (grouping_id = 1, '--ALL--'); a non-CDB reports one row.
+--     Taking the strongest usage over every row of a database never counts a
+--     container twice and never misses one.
+--   * Multitenant: the script counts it as used as soon as a CDB holds more
+--     than one PDB, which was the rule before 19c. From 19c, up to 3 user PDBs
+--     need no licence. The usage is recounted from oracle_pdbs (PDB$SEED is not
+--     collected there) and a current usage within the free allowance is read as
+--     no usage. The script itself is Oracle's and is left untouched.
+--   * products prefixed with '.' are separate products (Database Gateway,
+--     GoldenGate, Exadata...), not database options. They stay judged: a
+--     gateway other than the free ODBC one is licensed on its own.
+--   * scope: an instance whose perimeter licence has scoring_impact = 0 (SAP
+--     runtime, FREE, PROVIDER, INCCI) is shown but not judged. An unknown
+--     licence is judged: the conservative side.
+-- ============================================================================
+create or replace view v_oracle_lms_usage as
+with
+lms as (
+   select l.db_name,
+          l.product_name,
+          l.grouping_id,
+          -- the aggregate row names no container
+          nullif(trim(l.db_pdb_name), '--ALL--') container_name,
+          upper(trim(l.usage_detected)) usage_detected,
+          case upper(trim(l.usage_detected))
+             when 'CURRENT_USAGE'         then 4
+             when 'PAST_OR_CURRENT_USAGE' then 3
+             when 'PAST_USAGE'            then 2
+             else 1
+          end usage_rank,
+          -- validate_conversion, not to_date(... default null on conversion
+          -- error): on 23.26 a GROUP BY GROUPING SETS over this view -- which is
+          -- how a faceted search counts its facets (page 22) -- fails with
+          -- ORA-43907, the rewrite no longer seeing the default as a literal.
+          case when validate_conversion(l.first_usage_date as date, 'YYYYMMDD') = 1
+               then to_date(l.first_usage_date, 'YYYYMMDD') end first_usage,
+          case when validate_conversion(l.last_usage_date as date, 'YYYYMMDD') = 1
+               then to_date(l.last_usage_date, 'YYYYMMDD') end last_usage
+     from oracle_lms l
+),
+prod as (
+   select db_name,
+          product_name,
+          max(usage_rank) usage_rank,
+          min(first_usage) first_usage_date,
+          max(last_usage) last_usage_date,
+          listagg(distinct case when grouping_id = 0 and usage_rank >= 2 then container_name end, ', ')
+             within group ( order by case when grouping_id = 0 and usage_rank >= 2 then container_name end )
+             containers
+     from lms
+    group by db_name, product_name
+),
+-- One instance per database name, as the security findings do: a RAC database
+-- has several rows in oracle_databases and option usage belongs to the database.
+od as (
+   select db_name, hostname, instance_name, environment, license_type
+     from ( select od.db_name, od.hostname, od.instance_name, od.environment, od.license_type,
+                   row_number() over ( partition by od.db_name order by od.instance_name ) rn
+              from oracle_databases od )
+    where rn = 1
+),
+pdbs as (
+   select hostname, instance_name, count(*) user_pdbs
+     from oracle_pdbs
+    where pdb_name not like 'PDB$%'
+    group by hostname, instance_name
+),
+base as (
+   select di.instance_id,
+          od.hostname,
+          od.instance_name,
+          p.db_name,
+          od.environment,
+          od.license_type,
+          case when nvl(lt.scoring_impact, 100) > 0 then 1 else 0 end in_scope,
+          di.edition,
+          di.engine_version,
+          to_number(regexp_substr(di.engine_version, '^[0-9]+')) major_version,
+          p.product_name,
+          case when p.product_name like '.%' then 1 else 0 end is_separate_product,
+          p.usage_rank,
+          p.first_usage_date,
+          p.last_usage_date,
+          p.containers,
+          nvl(pc.user_pdbs, 0) user_pdbs
+     from prod p
+     left join od on od.db_name = p.db_name
+     left join dim_host dh on dh.platform = 'ORACLE' and dh.hostname = od.hostname
+     left join dim_instance di on di.host_id = dh.host_id and di.instance_name = od.instance_name
+     left join licence_types lt on lt.license_type = od.license_type
+     left join pdbs pc on pc.hostname = od.hostname and pc.instance_name = od.instance_name
+),
+judged as (
+   select b.*,
+          case when b.major_version >= 19 then 3 else 1 end free_pdbs,
+          case when b.product_name = 'Multitenant'
+                and b.usage_rank >= 3
+                and b.user_pdbs <= case when b.major_version >= 19 then 3 else 1 end
+               then 1
+               else b.usage_rank
+          end effective_rank
+     from base b
+)
+select instance_id,
+       hostname,
+       instance_name,
+       db_name,
+       environment,
+       license_type,
+       in_scope,
+       edition,
+       engine_version,
+       product_name,
+       ltrim(product_name, '.') product_label,
+       is_separate_product,
+       case usage_rank when 4 then 'CURRENT_USAGE' when 3 then 'PAST_OR_CURRENT_USAGE'
+                       when 2 then 'PAST_USAGE' else 'NO_USAGE' end reported_usage,
+       case effective_rank when 4 then 'CURRENT_USAGE' when 3 then 'PAST_OR_CURRENT_USAGE'
+                           when 2 then 'PAST_USAGE' else 'NO_USAGE' end usage_status,
+       case when effective_rank <> usage_rank
+            then user_pdbs || ' user PDB(s), up to ' || free_pdbs || ' need no Multitenant licence on '
+                 || nvl(engine_version, 'this version')
+       end usage_note,
+       containers,
+       first_usage_date,
+       last_usage_date,
+       user_pdbs
+  from judged;
+
+comment on table v_oracle_lms_usage is 'Oracle option and pack usage per (instance, product), from the LMS usage script, with the perimeter licence that decides whether it is judged and the Multitenant recount; read by load_findings_licensing and by the licensing page.';
+
 
 create or replace package pkg_dbinv_scoring as
 
@@ -352,6 +504,40 @@ create or replace package body pkg_dbinv_scoring as
          -- Collected-entity witnesses (see header).
          w_inst as ( select distinct db_name from oracle_security_parameter ),
          w_db   as ( select distinct db_name, pdb_name from oracle_security_profile ),
+         -- Databases left in REQUESTED network encryption: the unencrypted-client
+         -- audit table exists in at least one of their containers.
+         net_audit as (
+            select db_name,
+                   listagg(distinct pdb_name, ', ') within group ( order by pdb_name ) containers
+              from oracle_sec_net_enc_audit
+             where record_type = 'AUDIT'
+             group by db_name
+         ),
+         -- Their unencrypted clients seen in the 30 days before the snapshot --
+         -- counted from the snapshot date, not from today, so a replayed snapshot
+         -- keeps its verdicts. The audit table also keys on the OS user; it is
+         -- folded here so the item_key (container, user, machine, program) stays
+         -- unique.
+         net_clients as (
+            select db_name, pdb_name, username, machine, program,
+                   listagg(distinct osuser, ', ') within group ( order by osuser ) osusers,
+                   min(first_seen) first_seen,
+                   max(last_seen) last_seen,
+                   sum(logons) logons
+              from ( select a.db_name, a.pdb_name,
+                            nvl(a.username, '-') username, nvl(a.machine, '-') machine,
+                            nvl(a.program, '-') program, nvl(a.osuser, '-') osuser,
+                            case when validate_conversion(a.first_seen as date, 'YYYY-MM-DD HH24:MI:SS') = 1
+                                 then to_date(a.first_seen, 'YYYY-MM-DD HH24:MI:SS') end first_seen,
+                            case when validate_conversion(a.last_seen as date, 'YYYY-MM-DD HH24:MI:SS') = 1
+                                 then to_date(a.last_seen, 'YYYY-MM-DD HH24:MI:SS') end last_seen,
+                            case when validate_conversion(a.logon_count as number) = 1
+                                 then to_number(a.logon_count) end logons
+                       from oracle_sec_net_enc_audit a
+                      where a.record_type = 'CLIENT' )
+             where last_seen >= p_snapshot_date - 30
+             group by db_name, pdb_name, username, machine, program
+         ),
          -- Accounts Oracle ships and maintains itself: out of scope of the
          -- privilege and profile rules. This is the norm's own scope, not a
          -- derogation, so it must never reach the RSSI review list.
@@ -621,6 +807,41 @@ create or replace package body pkg_dbinv_scoring as
                    on ne.db_name = wi.db_name
                   and upper(nvl(trim(ne.sqlnet_encryption), 'EMPTY')) <> 'EMPTY'
             union all
+            -- ---------- SQL*Net encryption mode (per instance) ----------
+            -- The audit table only exists on a database left in REQUESTED: its
+            -- presence is the deviation, whatever it holds. A derogation is
+            -- what documents why the database cannot go to REQUIRED.
+            select 'ORACLE_NETWORK_ENCRYPTION_REQUIRED', wi.db_name, cast(null as varchar2(200 char)), '*',
+                   case when na.db_name is null then 1 else 0 end,
+                   case when na.db_name is null then 'no unencrypted-client audit table'
+                        else substr('REQUESTED (audit table in ' || na.containers || ')', 1, 400) end,
+                   'REQUIRED: no unencrypted-client audit table'
+            from w_inst wi
+            left join net_audit na on na.db_name = wi.db_name
+            union all
+            -- ---------- unencrypted clients (per instance, REQUESTED only) ----------
+            -- One deviation per client; a database whose audit table holds no
+            -- recent client gets one compliant row. Without the audit table the
+            -- rule does not apply and emits nothing.
+            select 'ORACLE_NETWORK_UNENCRYPTED_CLIENT', nc.db_name, cast(null as varchar2(200 char)),
+                   substr(case when nc.pdb_name <> 'NON CONTAINER' then nc.pdb_name || ': ' end
+                          || nc.username || '@' || nc.machine || ' (' || nc.program || ')', 1, 200),
+                   0,
+                   substr('last seen ' || to_char(nc.last_seen, 'YYYY-MM-DD HH24:MI')
+                          || ', ' || nvl(to_char(nc.logons), '?') || ' logon(s) since '
+                          || nvl(to_char(nc.first_seen, 'YYYY-MM-DD'), '?')
+                          || ', OS user ' || nc.osusers, 1, 400),
+                   'no client connecting without encryption'
+            from net_clients nc
+            where nc.db_name in ( select db_name from w_inst )
+            union all
+            select 'ORACLE_NETWORK_UNENCRYPTED_CLIENT', na.db_name, cast(null as varchar2(200 char)), '*', 1,
+                   'no unencrypted client in the 30 days before the snapshot',
+                   'no client connecting without encryption'
+            from net_audit na
+            where na.db_name in ( select db_name from w_inst )
+              and not exists ( select 1 from net_clients nc where nc.db_name = na.db_name )
+            union all
             -- ---------- residual SYS.USER$MIG (per database) ----------
             select 'ORACLE_NO_USERMIG_TABLE', wd.db_name, wd.pdb_name, '*',
                    case when um.db_name is null then 1 else 0 end,
@@ -686,6 +907,92 @@ create or replace package body pkg_dbinv_scoring as
          values ( s.rule_code, s.entity_type, s.entity_id, s.item_key, s.snapshot_date,
                   s.is_compliant, s.observed_value, s.expected_value );
    end load_findings_oracle_sec;
+
+
+   -- ===============================================================
+   -- Oracle licensing findings (option and pack usage, LMS)
+   -- ===============================================================
+   -- Read from v_oracle_lms_usage, which carries the scope (perimeter licence)
+   -- and the Multitenant recount; see the view header.
+   --
+   -- Shape: a non-compliant row per option in use (item_key = product), and a
+   -- compliant '*' row for every judged instance without one -- the dev_db
+   -- pattern of the security findings. The witness is the usage script itself:
+   -- an instance without any row in oracle_lms was not read, and gets no
+   -- verdict rather than a clean one.
+   --
+   -- A licence the CHL holds is not a rule exemption: it is a derogation on the
+   -- finding, with the contract as evidence. observed_value therefore carries no
+   -- date -- the last usage date moves with every weekly sample, and a
+   -- derogation pinned to the observed value would fall off on the next one.
+   procedure load_findings_licensing ( p_snapshot_date in date ) is
+   begin
+      merge into fact_control_finding f
+      using (
+         with
+         u as (
+            select *
+              from v_oracle_lms_usage
+             where in_scope = 1
+               and instance_id is not null
+         ),
+         rules as (
+            select r.*
+              from ( select 'ORACLE_LMS_OPTION_IN_USE' rule_code,
+                            'no option or pack in use without a licence' expected_value,
+                            'no option or pack in use' ok_value
+                       from dual
+                     union all
+                     select 'ORACLE_LMS_OPTION_PAST_USE',
+                            'no past usage of an option or pack without a licence',
+                            'no past usage of an option or pack'
+                       from dual ) r
+              join ref_control_rule rr on rr.rule_code = r.rule_code and rr.active = 1
+         ),
+         dev as (
+            select case when usage_status in ( 'CURRENT_USAGE', 'PAST_OR_CURRENT_USAGE' )
+                        then 'ORACLE_LMS_OPTION_IN_USE'
+                        else 'ORACLE_LMS_OPTION_PAST_USE'
+                   end rule_code,
+                   instance_id,
+                   product_name item_key,
+                   substr(
+                      case when upper(edition) like '%STANDARD%' and is_separate_product = 0
+                           then 'Standard Edition, cannot be licensed: ' end
+                      || product_label
+                      || case when is_separate_product = 1 then ' (separate product)' end
+                      || ': ' || usage_status
+                      || case when containers is not null then ' in ' || containers end,
+                      1, 400 ) observed_value
+              from u
+             where usage_status <> 'NO_USAGE'
+         ),
+         wit as ( select distinct instance_id from u )
+         select d.rule_code, d.instance_id, d.item_key, 0 is_compliant,
+                d.observed_value, r.expected_value
+           from dev d
+           join rules r on r.rule_code = d.rule_code
+         union all
+         select r.rule_code, w.instance_id, '*', 1, r.ok_value, r.expected_value
+           from wit w
+          cross join rules r
+          where not exists ( select 1 from dev d
+                              where d.rule_code = r.rule_code
+                                and d.instance_id = w.instance_id )
+      ) s
+      on ( f.rule_code = s.rule_code and f.entity_type = 'INSTANCE'
+           and f.entity_id = s.instance_id and f.item_key = s.item_key
+           and f.snapshot_date = p_snapshot_date )
+      when matched then update set
+         f.is_compliant = s.is_compliant,
+         f.observed_value = s.observed_value,
+         f.expected_value = s.expected_value
+      when not matched then
+         insert ( rule_code, entity_type, entity_id, item_key, snapshot_date,
+                  is_compliant, observed_value, expected_value )
+         values ( s.rule_code, 'INSTANCE', s.instance_id, s.item_key, p_snapshot_date,
+                  s.is_compliant, s.observed_value, s.expected_value );
+   end load_findings_licensing;
 
 
    -- ===============================================================
@@ -1277,6 +1584,7 @@ create or replace package body pkg_dbinv_scoring as
       load_findings_mssql_sec(p_snapshot_date);
       load_findings_oracle_sec(p_snapshot_date);
       load_findings_postgres_sec(p_snapshot_date);
+      load_findings_licensing(p_snapshot_date);
       load_findings_capacity(p_snapshot_date);
       load_findings_backup(p_snapshot_date);
       load_findings_lifecycle(p_snapshot_date);

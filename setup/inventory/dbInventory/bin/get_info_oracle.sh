@@ -59,7 +59,13 @@ SELECT '"${db_env}","${lic}","'||
        (SELECT database_role FROM v\$database)||'","'||
        (SELECT db_unique_name FROM v\$database)||'","'||
        (SELECT value FROM v\$nls_parameters WHERE parameter='NLS_CHARACTERSET')||'","'||
-       'Enterprise Edition","'||
+       (SELECT CASE WHEN banner LIKE '%Enterprise Edition%' THEN 'Enterprise Edition'
+                    WHEN banner LIKE '%Standard Edition 2%'  THEN 'Standard Edition 2'
+                    WHEN banner LIKE '%Standard Edition%'    THEN 'Standard Edition'
+                    WHEN banner LIKE '%Express Edition%'     THEN 'Express Edition'
+                    WHEN banner LIKE '%Free%'                THEN 'Free'
+                    ELSE 'Unknown' END
+          FROM v\$version WHERE banner LIKE 'Oracle%' AND ROWNUM=1)||'","'||
        (SELECT value FROM v\$parameter WHERE name='cluster_database')||'","'||
        (SELECT ROUND(SUM(value)/1024/1024/1024) FROM v\$sga WHERE con_id = 0)||'","'||
        (SELECT ROUND(value/1024/1024/1024) FROM v\$pgastat

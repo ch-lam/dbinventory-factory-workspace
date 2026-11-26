@@ -1,0 +1,519 @@
+page 22 (
+    name: DB Inv. - Oracle Licensing
+    alias: DB-INV-ORACLE-LICENSING
+    title: DB Inv. - Oracle Licensing
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+    comments {
+        comments: Oracle option and pack usage read from Oracle's own LMS usage script, through v_oracle_lms_usage - the view the licensing findings are computed from, so this page and the LICENSING score cannot disagree. Products never used are left out, except where the Multitenant recount changed the script's verdict, which is shown with its reason.
+    }
+
+    region page-title (
+        name: Oracle Licensing (LMS)
+        type: staticContent
+        layout {
+            sequence: 1
+            slot: body
+        }
+        appearance {
+            template: @/title-bar
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region oracle-lms-usage (
+        name: Option and Pack Usage
+        title: Option and Pack Usage
+        type: classicReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select u.instance_name,
+                       u.db_name,
+                       u.environment,
+                       u.license_type licence,
+                       u.edition,
+                       u.product_label product,
+                       u.usage_status usage,
+                       u.containers,
+                       to_char( u.first_usage_date, 'YYYY-MM-DD' ) first_usage,
+                       to_char( u.last_usage_date, 'YYYY-MM-DD' ) last_usage,
+                       case when u.in_scope = 0 then 'Out of scope, licence ' || u.license_type
+                            when u.usage_status = 'NO_USAGE' then 'No usage'
+                            when f.exception_id is not null then 'Granted derogation'
+                            when p.pend_status = 'DRAFT'     then 'Derogation draft'
+                            when p.pend_status = 'SUBMITTED' then 'Derogation awaiting approval'
+                            when p.pend_status = 'APPROVED'  then 'Derogation approved, not yet scored'
+                            when f.is_compliant = 0 then 'Open'
+                            else 'Not scored yet'
+                       end verdict,
+                       u.usage_note note,
+                       nvl( e.justification, p.pend_justification ) justification,
+                       -- Hidden columns, addressed by reportColumnQueryId: keep
+                       -- them at the end so the visible ones never renumber.
+                       u.instance_id,
+                       nvl( f.exception_id, p.pend_id ) exception_id,
+                       translate( rowidtochar(f.rowid), '+/', '-_' ) finding_rowid,
+                       case when f.is_compliant = 0 and f.exception_id is null and p.pend_id is null
+                            then 'Grant' end grant_label,
+                       f.rule_code,
+                       u.reported_usage
+                  from v_oracle_lms_usage u
+                  -- the latest LICENSING run, not the latest run of anything: a
+                  -- rescore of another domain must not empty this page. Joined
+                  -- as an inline view: an outer join cannot compare a column
+                  -- to a subquery (ORA-01799).
+                  cross join ( select max(f2.snapshot_date) snap
+                                 from fact_control_finding f2
+                                where f2.rule_code like 'ORACLE_LMS%' ) s
+                  left join fact_control_finding f
+                    on f.rule_code in ( 'ORACLE_LMS_OPTION_IN_USE', 'ORACLE_LMS_OPTION_PAST_USE' )
+                   and f.entity_type = 'INSTANCE'
+                   and f.entity_id = u.instance_id
+                   and f.item_key = u.product_name
+                   and f.snapshot_date = s.snap
+                  left join ref_exception e on e.exception_id = f.exception_id
+                  -- Same pending-derogation lookup as page 21.
+                  outer apply ( select e2.exception_id pend_id, e2.status pend_status, e2.justification pend_justification
+                                  from v_exception_finding_match m
+                                  join ref_exception e2 on e2.exception_id = m.exception_id
+                                 where m.finding_rowid = f.rowid
+                                   and f.is_compliant = 0
+                                   and e2.active = 1
+                                   and e2.status in ( 'DRAFT', 'SUBMITTED', 'APPROVED' )
+                                   and ( e2.end_date is null or e2.end_date >= trunc(sysdate) )
+                                 order by e2.exception_id desc
+                                 fetch first 1 row only ) p
+                 where u.usage_status <> 'NO_USAGE'
+                    or u.reported_usage <> 'NO_USAGE'
+                ```
+        }
+        layout {
+            sequence: 110
+            slot: body
+            startNewRow: false
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--removeHeader js-removeLandmark
+                t-Region--scrollBody
+            ]
+        }
+        reportLayout {
+            numberOfRows: 60
+        }
+        componentAppearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Report--stretch
+                t-Report--altRowsDefault
+                t-Report--rowHighlight
+            ]
+        }
+        pagination {
+            type: rowRangesXToYOfZWithPagination
+            displayPosition: topAndBottomRight
+        }
+        messages {
+            whenNoDataFound: No option or pack usage matches your criteria
+        }
+
+        column INSTANCE_NAME (
+            reportColumnQueryId: 1
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Instance Name
+            }
+            layout {
+                sequence: 10
+            }
+            link {
+                target: {
+                    page: 25
+                    items: {
+                        P25_INSTANCE_ID: #INSTANCE_ID#
+                    }
+                }
+                linkText: #INSTANCE_NAME#
+            }
+        )
+
+        column DB_NAME (
+            reportColumnQueryId: 2
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 200
+            }
+        )
+
+        column ENVIRONMENT (
+            reportColumnQueryId: 3
+            derivedColumn: N
+            heading {
+                heading: Environment
+            }
+            layout {
+                sequence: 20
+            }
+        )
+
+        column LICENCE (
+            reportColumnQueryId: 4
+            derivedColumn: N
+            heading {
+                heading: Licence
+            }
+            layout {
+                sequence: 30
+            }
+        )
+
+        column EDITION (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            heading {
+                heading: Edition
+            }
+            layout {
+                sequence: 40
+            }
+        )
+
+        column PRODUCT (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            heading {
+                heading: Option / Pack
+            }
+            layout {
+                sequence: 50
+            }
+        )
+
+        column USAGE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            heading {
+                heading: Usage
+            }
+            layout {
+                sequence: 60
+            }
+        )
+
+        column CONTAINERS (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            heading {
+                heading: Containers
+            }
+            layout {
+                sequence: 70
+            }
+        )
+
+        column FIRST_USAGE (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            heading {
+                heading: First Usage
+            }
+            layout {
+                sequence: 80
+            }
+        )
+
+        column LAST_USAGE (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            heading {
+                heading: Last Usage
+            }
+            layout {
+                sequence: 90
+            }
+        )
+
+        column VERDICT (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            heading {
+                heading: Verdict
+            }
+            layout {
+                sequence: 100
+            }
+        )
+
+        column NOTE (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            heading {
+                heading: Note
+            }
+            layout {
+                sequence: 110
+            }
+        )
+
+        column JUSTIFICATION (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Derogation Justification
+            }
+            layout {
+                sequence: 120
+            }
+            link {
+                target: {
+                    page: 71
+                    items: {
+                        P71_EXCEPTION_ID: #EXCEPTION_ID#
+                    }
+                    clearCache: 71
+                }
+                linkText: #JUSTIFICATION#
+            }
+        )
+
+        column INSTANCE_ID (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 210
+            }
+        )
+
+        column EXCEPTION_ID (
+            reportColumnQueryId: 15
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 220
+            }
+        )
+
+        column FINDING_ROWID (
+            reportColumnQueryId: 16
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 230
+            }
+        )
+
+        column GRANT_LABEL (
+            reportColumnQueryId: 17
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 240
+            }
+        )
+
+        column RULE_CODE (
+            reportColumnQueryId: 18
+            derivedColumn: N
+            type: link
+            heading {
+                heading: Derogation
+            }
+            layout {
+                sequence: 130
+            }
+            link {
+                target: {
+                    page: 71
+                    items: {
+                        P71_FINDING_ROWID: #FINDING_ROWID#
+                    }
+                    clearCache: 71
+                }
+                linkText: #GRANT_LABEL#
+            }
+            sorting {
+                sortable: false
+            }
+            comments {
+                comments: Opens the derogation dialog scoped to this finding. A licence the CHL holds is recorded there, with the contract attached as a LICENSE document.
+            }
+        )
+
+        column REPORTED_USAGE (
+            reportColumnQueryId: 19
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 250
+            }
+        )
+    )
+
+    region lms-criterias (
+        name: Licensing Criterias
+        title: Licensing Criterias
+        type: facetedSearch
+        source {
+            filteredRegion: @oracle-lms-usage
+        }
+        layout {
+            sequence: 100
+            slot: body
+            columnSpan: 2
+        }
+        appearance {
+            template: @/standard
+            templateOptions: [
+                #DEFAULT#
+                t-Region--scrollBody
+            ]
+        }
+        settings {
+            compactNosThreshold: 10000
+            displayChartForTopNValues: 10
+        }
+
+        facet P22_SEARCH (
+            type: search
+            label {
+                label: Search
+            }
+            layout {
+                sequence: 10
+            }
+        )
+
+        facet P22_VERDICT (
+            type: checkboxGroup
+            label {
+                label: Verdict
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 20
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: VERDICT
+            }
+        )
+
+        facet P22_USAGE (
+            type: checkboxGroup
+            label {
+                label: Usage
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 30
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: USAGE
+            }
+        )
+
+        facet P22_PRODUCT (
+            type: checkboxGroup
+            label {
+                label: Option / Pack
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 40
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: PRODUCT
+            }
+        )
+
+        facet P22_LICENCE (
+            type: checkboxGroup
+            label {
+                label: Licence
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 50
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: LICENCE
+            }
+        )
+
+        facet P22_ENVIRONMENT (
+            type: checkboxGroup
+            label {
+                label: Environment
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 60
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: ENVIRONMENT
+            }
+        )
+
+        facet P22_INSTANCE_NAME (
+            type: checkboxGroup
+            label {
+                label: Instance Name
+            }
+            lov {
+                type: distinctValues
+            }
+            layout {
+                sequence: 70
+            }
+            listEntries {
+                maxDisplayedEntries: 7
+            }
+            source {
+                databaseColumn: INSTANCE_NAME
+            }
+        )
+    )
+)

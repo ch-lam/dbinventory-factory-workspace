@@ -68,6 +68,72 @@ const SYS_PRIVS = ['SELECT ANY TABLE', 'ALTER SYSTEM', 'CREATE ANY PROCEDURE', '
 const HIGH_ROLES = ['DBA', 'GSMADMIN_ROLE', 'EXP_FULL_DATABASE'];
 const SENSITIVE_PKGS = ['UTL_FILE', 'UTL_HTTP', 'UTL_SMTP', 'DBMS_LOB'];
 
+// ----------------------------------------------------------------- LMS
+// Sortie du script d'Oracle sur l'usage des options et packs (oracle_lms.sql),
+// sous sa forme réelle :
+//   * non-CDB : une ligne par produit, grouping_id 0, con_id -1, sans conteneur ;
+//   * CDB     : une ligne par produit ET par conteneur (CDB$ROOT, puis chaque
+//               PDB), plus l'agrégat grouping_id 1 '--ALL--'.
+// Les valeurs d'usage sont celles que le script produit vraiment.
+//
+// Ce que le jeu doit exercer (T_003 exige les deux verdicts de chaque règle) :
+//   * des instances CPU avec une option en usage, d'autres avec un usage passé
+//     de Diagnostics/Tuning, d'autres sans rien ;
+//   * les bases SAP avec Advanced Compression et Partitioning en usage, hors
+//     contrôle par leur licence ;
+//   * Multitenant signalé sur CHAQUE CDB, comme le fait le script : l'ETL le
+//     recompte, et une CDB 19c+ à 3 PDB au plus doit en ressortir conforme ;
+//   * la base Standard Edition 2 avec Partitioning, qu'aucune licence ne couvre.
+const LMS_OPTIONS = ['Partitioning', 'Advanced Compression', 'Diagnostics Pack', 'Tuning Pack',
+                     'Real Application Testing', '.Database Gateway'];
+const LMS_USAGE = { 4: 'CURRENT_USAGE', 2: 'PAST_USAGE', 1: 'NO_USAGE' };
+
+function lmsRows ({ cid, estate, world, rngLms: rng }) {
+   const dbs = estate.oracle.databases;
+   const D = world.defects;
+   const pool = dbs.filter(db => db.license !== 'SAP');
+   const inUse = new Set(markShare(rng, pool, D.ORACLE_LMS_OPTION_IN_USE).filter(x => x.bad).map(x => x.item));
+   const past = new Set(markShare(rng, pool, D.ORACLE_LMS_OPTION_PAST_USE).filter(x => x.bad).map(x => x.item));
+
+   const rows = [];
+   for (const db of dbs) {
+      // Rang d'usage par produit pour la base : 4 actuel, 2 passé, 1 aucun.
+      const rank = new Map(LMS_OPTIONS.map(p => [p, 1]));
+      if (db.license === 'SAP') {
+         rank.set('Advanced Compression', 4);
+         rank.set('Partitioning', 4);
+      }
+      if (past.has(db)) {
+         for (const p of rng.sample(['Diagnostics Pack', 'Tuning Pack'], rng.int(1, 2))) rank.set(p, 2);
+      }
+      if (inUse.has(db)) rank.set(rng.pick(LMS_OPTIONS), 4);
+      if (db.edition === 'Standard Edition 2') rank.set('Partitioning', 4);
+      const products = db.isCdb ? [...LMS_OPTIONS, 'Multitenant'] : LMS_OPTIONS;
+      if (db.isCdb) rank.set('Multitenant', 4);
+
+      const row = (grouping, conId, container, p, r) => ({
+         collect_id: cid, grouping_id: grouping, con_id: conId, db_pdb_name: container,
+         product_name: p, usage_detected: LMS_USAGE[r], last_sample_date: '20260830',
+         first_usage_date: r > 1 ? '20250312' : null,
+         last_usage_date: r === 4 ? '20260830' : r === 2 ? '20251015' : null,
+         db_name: db.dbName, hostname: db.host.hostname
+      });
+
+      if (!db.isCdb) {
+         for (const p of products) rows.push(row(0, -1, null, p, rank.get(p)));
+         continue;
+      }
+      // CDB : Multitenant vit dans CDB$ROOT, les options dans la première PDB.
+      for (const p of products) {
+         rows.push(row(0, 1, 'CDB$ROOT', p, p === 'Multitenant' ? rank.get(p) : 1));
+         db.pdbs.forEach((pdb, k) =>
+            rows.push(row(0, 3 + k, pdb, p, p !== 'Multitenant' && k === 0 ? rank.get(p) : 1)));
+         rows.push(row(1, null, '--ALL--', p, rank.get(p)));
+      }
+   }
+   return rows;
+}
+
 export function emitOracle (ctx) {
    const { outDir, world, rng, estate, cid, snapshot } = ctx;
    const hosts = estate.oracle.hosts;
@@ -133,13 +199,12 @@ export function emitOracle (ctx) {
       psu_applied: db.version.split('.').slice(0, 2).join('.') + '.0.0.0'
    })));
 
-   writeCsv(outDir, 'oracle_lms', dbs.flatMap(db =>
-      ['Partitioning', 'Advanced Compression', 'Diagnostics Pack'].map((p, k) => ({
-         collect_id: cid, grouping_id: 0, con_id: k, db_pdb_name: db.dbName,
-         product_name: p, usage_detected: rng.chance(0.25) ? 'DETECTED' : 'NO_USAGE',
-         last_sample_date: '20260901', first_usage_date: null, last_usage_date: null,
-         db_name: db.dbName, hostname: db.host.hostname
-      }))));
+   // Les tirages de l'ancienne émission LMS sont consommés à l'identique : les
+   // retirer décalerait tout ce qui suit dans le flux Oracle (sauvegardes,
+   // capacité, sécurité) et réécrirait la référence pour rien. L'usage des
+   // options est désormais tiré dans son propre flux, rngLms.
+   for (let n = 0; n < dbs.length * 3; n++) rng.chance(0.25);
+   writeCsv(outDir, 'oracle_lms', lmsRows(ctx));
 
    writeCsv(outDir, 'oracle_client_version', dbs.filter(() => rng.chance(0.6)).map(db => ({
       collect_id: cid, db_name: db.dbName, db_version: db.version,
@@ -356,6 +421,46 @@ export function emitOracle (ctx) {
    writeCsv(outDir, 'oracle_sec_network_encryption', dbs.filter(db => !netBad.get(db)).map(db => ({
       collect_id: cid, db_name: db.dbName, sqlnet_encryption: 'AES256'
    })));
+
+   // ------------------------------------------------------------- clients non chiffrés
+   // La table de suivi n'existe que sur une base laissée en REQUESTED : le
+   // collecteur y est donc chiffré, d'où le tirage parmi les bases conformes
+   // ci-dessus. Quatre bases, quatre cas, pour exercer les deux polarités des
+   // deux règles ET la fenêtre de 30 jours :
+   //   0. des clients récents                       -> écarts clients
+   //   1. un client récent et un client ancien      -> l'ancien ne compte pas
+   //   2. des clients anciens seulement             -> conforme côté clients
+   //   3. table vide                                -> conforme côté clients
+   // Les quatre sont en écart sur le mode (REQUESTED). Tirage dans son propre
+   // flux (rngNetAudit) : venu après coup, il ne décale aucun autre fichier.
+   const na = ctx.rngNetAudit;
+   const DAY = 24 * HOURS;
+   const netAuditDbs = na.sample(dbs.filter(db => !netBad.get(db)), 4);
+   const NA_USERS = ['APP_DPI', 'APP_LABO', 'BATCH_FACT', 'REPORTING'];
+   const NA_PROGRAMS = ['JDBC Thin Client', 'w3wp.exe', 'sqlplus@srv-batch-01', 'Toad.exe'];
+   const NA_OSUSERS = ['svc_app', 'svc_batch', 'jdupont'];
+   const netAudit = [];
+   const client = (db, pdb, ageMin, ageMax) => {
+      const last = new Date(snapshot.getTime() - na.int(ageMin, ageMax) * DAY - na.int(1, 20) * HOURS);
+      return {
+         collect_id: cid, db_name: db.dbName, pdb_name: pdb, record_type: 'CLIENT',
+         username: na.pick(NA_USERS),
+         machine: `ws-${na.int(100, 999)}.${world.org.domain}`,
+         program: na.pick(NA_PROGRAMS),
+         osuser: na.pick(NA_OSUSERS),
+         first_seen: fmtDate(new Date(last.getTime() - na.int(30, 200) * DAY)),
+         last_seen: fmtDate(last),
+         logon_count: String(na.int(1, 5000))
+      };
+   };
+   netAuditDbs.forEach((db, i) => {
+      const pdb = db.dbEntities[0].pdbName;
+      netAudit.push({ collect_id: cid, db_name: db.dbName, pdb_name: pdb, record_type: 'AUDIT' });
+      if (i === 0) for (let k = 0; k < 3; k++) netAudit.push(client(db, pdb, 0, 25));
+      if (i === 1) { netAudit.push(client(db, pdb, 0, 25)); netAudit.push(client(db, pdb, 40, 80)); }
+      if (i === 2) for (let k = 0; k < 2; k++) netAudit.push(client(db, pdb, 40, 80));
+   });
+   writeCsv(outDir, 'oracle_sec_net_enc_audit', netAudit);
 
    // ------------------------------------------------------------- SYS.USER$MIG
    // DÉVIATIONS SEULES : la présence de la table est l'écart.

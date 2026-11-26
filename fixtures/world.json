@@ -370,6 +370,8 @@
     "ORACLE_HIGH_TAB_PRIVS_PUBLIC":     0.28,
     "ORACLE_STORAGE_PCT_USED":          0.09,
     "ORACLE_BACKUP_FRESHNESS_SLA":      0.12,
+    "ORACLE_LMS_OPTION_IN_USE":         0.30,
+    "ORACLE_LMS_OPTION_PAST_USE":       0.40,
 
     "PG_PRM_SSL_ON":                    0.40,
     "PG_PRM_PASSWORD_ENCRYPTION":       0.20,

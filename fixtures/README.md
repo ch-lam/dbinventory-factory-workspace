@@ -143,6 +143,16 @@ Chaque moteur a **son propre flux aléatoire** dérivé de la graine. Avec un fl
 ajouter une ligne dans l'émetteur Oracle décalait tous les tirages MSSQL en aval et
 réécrivait la totalité des fichiers : le diff devenait illisible.
 
+Le même principe vaut pour ce qui arrive après coup. La discovery (`seed + 404`), l'usage des options Oracle (`+ 505`) et le suivi des clients non chiffrés (`+ 606`) ont chacun leur flux. Un sujet ajouté ne décale ainsi aucun tirage des fichiers existants.
+
+Le suivi des clients non chiffrés (`oracle_sec_net_enc_audit`) n'est pas piloté par la matrice de défauts. Il pose quatre cas fixes sur quatre bases dont la session est chiffrée :
+- des clients récents ;
+- un client récent et un client de plus de 30 jours ;
+- des clients anciens seulement ;
+- une table vide.
+
+Ces quatre cas exercent les deux polarités des deux règles ainsi que la fenêtre de 30 jours. T_003 (assertions 32 et 33) le vérifie.
+
 ---
 
 ## La matrice de défauts

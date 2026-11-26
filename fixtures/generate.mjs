@@ -45,6 +45,12 @@ const rngPostgres = makeRng(world.seed + 303);
 // sauvage ne doit pas decaler un seul tirage des trois emetteurs de
 // collecte, sinon la reference se reecrit en entier pour rien.
 const rngDiscovery = makeRng(world.seed + 404);
+// L'usage des options Oracle (LMS) a le sien : il est venu après coup, et le
+// tirer dans le flux Oracle aurait réécrit toute la sécurité Oracle en aval.
+const rngLms = makeRng(world.seed + 505);
+// Le suivi des clients non chiffrés (bases en REQUESTED), venu après coup lui
+// aussi : son propre flux, pour la même raison.
+const rngNetAudit = makeRng(world.seed + 606);
 
 // Les dates sont lues en UTC : sans le 'T00:00:00Z', Node les interpréterait
 // dans le fuseau de la machine et le jeu produit ne serait plus le même selon
@@ -64,7 +70,7 @@ const base = { outDir, world, estate, cid, snapshot };
 if (existsSync(outDir)) rmSync(outDir, { recursive: true });
 mkdirSync(outDir, { recursive: true });
 
-emitOracle({ ...base, rng: rngOracle });
+emitOracle({ ...base, rng: rngOracle, rngLms, rngNetAudit });
 emitMssql({ ...base, rng: rngMssql });
 emitPostgres({ ...base, rng: rngPostgres });
 const discoveryCounts = emitDiscovery({ outDir, discovery });

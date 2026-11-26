@@ -2,6 +2,12 @@
 # =============================================================================
 # get_info_oracle — collecte inventaire Oracle (infra + capacité + segments)
 # Remplace aussi get_info_oracle_segs_size (fusionné ici).
+#
+# Licences : aucune vue d'un management pack ici (DBA_HIST_*, V$ACTIVE_SESSION_
+# HISTORY, V$SQL_MONITOR...). Le parc compte des Standard Edition 2, où aucun
+# pack ne peut être licencié, et le CHL n'a le Tuning Pack nulle part. Les deux
+# métriques CPU/mémoire tirées d'AWR ont été retirées pour cette raison : une
+# vue accessible n'est pas une vue licenciée.
 # =============================================================================
 set -euo pipefail
 
@@ -10,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/get_info_oracle_common.sh"
 
 init_temps hosts oracle_databases pdbs services users backup psu \
-           size_usage size_usage_seg cpu_mem cpu_by_service dataguard
+           size_usage size_usage_seg dataguard
 rm -f "${LIST_DIR}/error_db.lst"
 
 # ── Collecte par base ─────────────────────────────────────────────────────────
@@ -71,9 +77,9 @@ SELECT '"${db_env}","${lic}","'||
        (SELECT ROUND(value/1024/1024/1024) FROM v\$pgastat
          WHERE name='maximum PGA allocated' AND con_id = 0)||'","'||
        (SELECT ROUND(usable_file_mb/1024)
-          FROM v\$asm_diskgroup WHERE name LIKE '%DATA%' AND state='CONNECTED' AND ROWNUM=1)||'","'||
+          FROM v\$asm_diskgroup_stat WHERE name LIKE '%DATA%' AND state='CONNECTED' AND ROWNUM=1)||'","'||
        (SELECT CASE type WHEN 'HIGH' THEN ROUND(total_mb/3/1024) ELSE ROUND(total_mb/2/1024) END
-          FROM v\$asm_diskgroup WHERE name LIKE '%DATA%' AND state='CONNECTED' AND ROWNUM=1)||'","'||
+          FROM v\$asm_diskgroup_stat WHERE name LIKE '%DATA%' AND state='CONNECTED' AND ROWNUM=1)||'","'||
        '${db}","${IS_CONTAINER}"'
 FROM dual;
 SPOOL OFF
@@ -119,27 +125,7 @@ FROM   cdb_pdbs pdb, v\$database dbs, cdb_segments seg
 WHERE  pdb.pdb_id = seg.con_id AND pdb.pdb_name NOT LIKE '%SEED%'
 GROUP BY dbs.name, pdb.pdb_name, seg.tablespace_name;
 SPOOL OFF
-SPOOL ${LIST_DIR}/cpu_by_service_temp.csv APPEND
-SELECT '"'||pdb.pdb_name||'","'||REPLACE(hist.service_name,'"','')||'","'||ROUND(SUM(hist.value)/60000)||'"'
-FROM   dba_hist_service_stat hist, dba_pdbs pdb
-WHERE  hist.con_id = pdb.pdb_id AND hist.stat_name = 'DB CPU'
-  AND  hist.snap_id IN (SELECT snap_id FROM dba_hist_snapshot WHERE begin_interval_time > SYSDATE-1)
-GROUP BY pdb.pdb_name, hist.service_name;
-SPOOL OFF
 SQL
-        # cpu_mem : disponible seulement en 18c+
-        if [[ "${db_ver}" -ge 18 ]]; then
-            sql_run "${db}" <<SQL >> /dev/null
-SPOOL ${LIST_DIR}/cpu_mem_temp.csv APPEND
-SELECT '"'||p.pdb_name||'","'||ROUND(SUM(r.cpu_consumed_time)/60000)||'","'||
-       ROUND(AVG(r.sga_bytes)/1024/1024)||'","'||ROUND(AVG(r.pga_bytes)/1024/1024)||'","'||
-       ROUND(AVG(r.buffer_cache_bytes)/1024/1024)||'","'||ROUND(AVG(r.shared_pool_bytes)/1024/1024)||'"'
-FROM   dba_hist_rsrc_pdb_metric r, cdb_pdbs p
-WHERE  r.con_id = p.con_id AND r.end_time > SYSDATE-1 AND p.pdb_name NOT LIKE '%SEED%'
-GROUP BY p.pdb_name;
-SPOOL OFF
-SQL
-        fi
 
     # -- Primaire non-CDB -----------------------------------------------------
     else
@@ -240,8 +226,6 @@ finalize_lst "${LIST_DIR}/backup_temp.csv"            "${LIST_DIR}/oracle_backup
 finalize_lst "${LIST_DIR}/psu_temp.csv"               "${LIST_DIR}/oracle_psu.csv"
 finalize_lst "${LIST_DIR}/size_usage_temp.csv"        "${LIST_DIR}/oracle_size_usage.csv"
 finalize_lst "${LIST_DIR}/size_usage_seg_temp.csv"    "${LIST_DIR}/oracle_size_usage_seg.csv"
-finalize_lst "${LIST_DIR}/cpu_mem_temp.csv"           "${LIST_DIR}/oracle_metrics_cpu_memory.csv"
-finalize_lst "${LIST_DIR}/cpu_by_service_temp.csv"    "${LIST_DIR}/oracle_metrics_cpu_service.csv"
 finalize_lst "${LIST_DIR}/dataguard_temp.csv"         "${LIST_DIR}/oracle_dataguard.csv"
 
 # Services : pas de rafraîchissement le week-end

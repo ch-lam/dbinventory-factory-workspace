@@ -24,13 +24,14 @@
 --     the current perimeter, not the state of the run, so a host removed from or
 --     never promoted into the perimeter would silently lose its environment.
 -- Oracle join notes:
---   * Oracle storage/metrics/parameter link to a database through
+--   * Oracle storage/parameter link to a database through
 --     oracle_databases (db_name) -> (hostname, instance_name) -> database (pdb_name).
 --   * Coherent refuge value: the collection emits the db_name into the pdb_name
 --     field for non-CDB databases (real PDB name for CDB), so dd.db_name = pdb_name
 --     resolves uniformly. is_pdb=0 (ext_oracle_database) keeps the non-PDB distinction.
---   * oracle_metrics_cpu_memory only carries pdb_name; matched on
---     dim_database.db_name = pdb_name (unique per instance after the refuge fix).
+--   * No CPU/memory fact any more: the collect read them from AWR (Diagnostics
+--     Pack), which cannot be licensed on the Standard Edition 2 databases of
+--     the estate. V__017 drops the tables.
 --   * oracle_backup carries the container db_name (v$database.name), so it resolves
 --     to an instance through oracle_databases and lands in fact_instance_backup.
 -- ============================================================================
@@ -685,24 +686,6 @@ create or replace package body pkg_dbinv_inventory as
          values ( s.storage_unit_id, s.snapshot_date, s.size_mb, s.used_mb, s.free_mb, s.max_size_mb, s.pct_used );
    end load_fact_storage_capacity;
 
-   procedure load_fact_db_resource ( p_snapshot_date in date ) is
-   begin
-      -- Oracle per-PDB CPU/memory (ASSUMPTION: pdb_name uniquely maps to one database)
-      merge into fact_db_resource f
-      using ( select dd.database_id, p_snapshot_date snapshot_date,
-                     max(m.cpu_time_minutes) cpu_time_min, max(m.avg_sga_mb) sga_mb, max(m.avg_pga_mb) pga_mb,
-                     max(m.avg_buffer_cache_mb) buffer_cache_mb, max(m.avg_shared_pool_mb) shared_pool_mb
-                from oracle_metrics_cpu_memory m
-                join dim_database dd on dd.platform = 'ORACLE' and dd.db_name = m.pdb_name
-               group by dd.database_id ) s
-      on ( f.database_id = s.database_id and f.snapshot_date = s.snapshot_date )
-      when matched then update set f.cpu_time_min = s.cpu_time_min, f.sga_mb = s.sga_mb, f.pga_mb = s.pga_mb,
-         f.buffer_cache_mb = s.buffer_cache_mb, f.shared_pool_mb = s.shared_pool_mb
-      when not matched then
-         insert ( database_id, snapshot_date, cpu_time_min, sga_mb, pga_mb, buffer_cache_mb, shared_pool_mb )
-         values ( s.database_id, s.snapshot_date, s.cpu_time_min, s.sga_mb, s.pga_mb, s.buffer_cache_mb, s.shared_pool_mb );
-   end load_fact_db_resource;
-
    procedure load_fact_backup ( p_snapshot_date in date ) is
    begin
       -- MSSQL backup freshness from mssql_databases.last_backup_*. Oracle is NOT here:
@@ -897,7 +880,6 @@ create or replace package body pkg_dbinv_inventory as
    begin
       load_dim_date(p_snapshot_date);
       load_fact_storage_capacity(p_snapshot_date);
-      load_fact_db_resource(p_snapshot_date);
       load_fact_backup(p_snapshot_date);
       load_fact_instance_backup(p_snapshot_date);
       load_fact_config_parameter(p_snapshot_date);

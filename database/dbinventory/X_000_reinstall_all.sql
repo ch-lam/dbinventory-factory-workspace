@@ -14,6 +14,7 @@
 @V__014_oracle_licensing_lms.sql
 @V__016_oracle_network_encryption_audit.sql
 @V__015_create_transfer_api.sql
+@V__017_drop_awr_resource_metrics.sql
 
 -- Last, and not optional: a package body that fails to compile does not stop the
 -- run above -- SQLcl prints the errors and carries on to "Commit complete."

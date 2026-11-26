@@ -27,7 +27,6 @@
 --   oracle_databases / mssql_hosts (engine part)    -> dim_instance (+ ext_oracle_instance / ext_mssql_instance)
 --   oracle_pdbs / oracle_databases / mssql_databases-> dim_database (+ ext_oracle_database / ext_mssql_database)
 --   oracle_size_usage(+_seg) / mssql_files          -> dim_storage_unit + fact_storage_capacity
---   oracle_metrics_cpu_memory                       -> fact_db_resource
 --   mssql_databases.last_backup_* / mssql_backup    -> fact_backup
 --   oracle_backup (RMAN, container-wide)            -> fact_instance_backup
 --   oracle_security_parameter / mssql_security_configoptions / _registryinfo
@@ -425,32 +424,6 @@ comment on column fact_storage_capacity.used_mb is 'Used space within the storag
 comment on column fact_storage_capacity.free_mb is 'Free space within the storage unit, in megabytes.';
 comment on column fact_storage_capacity.max_size_mb is 'Maximum size the storage unit is allowed to grow to, in megabytes.';
 comment on column fact_storage_capacity.pct_used is 'Percentage of the storage unit that is used.';
-
-
--- ============================================================
--- fact_db_resource  (grain: database x day)
--- ============================================================
-create table fact_db_resource (
-   database_id      number not null,
-   snapshot_date    date not null,
-   cpu_time_min     number(14),
-   sga_mb           number(14),
-   pga_mb           number(14),
-   buffer_cache_mb  number(14),
-   shared_pool_mb   number(14),
-   constraint fact_db_resource_pk primary key ( database_id, snapshot_date ),
-   constraint fact_db_resource_db_fk foreign key ( database_id )
-      references dim_database ( database_id )
-);
-
-comment on table fact_db_resource is 'Dated CPU/memory resource measures per database (Oracle PDB); MSSQL columns remain null until per-database metrics are collected.';
-comment on column fact_db_resource.database_id is 'Database measured (FK to dim_database).';
-comment on column fact_db_resource.snapshot_date is 'Day the measure was collected.';
-comment on column fact_db_resource.cpu_time_min is 'CPU time consumed, in minutes.';
-comment on column fact_db_resource.sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
-comment on column fact_db_resource.pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
-comment on column fact_db_resource.buffer_cache_mb is 'Average buffer cache size, in megabytes.';
-comment on column fact_db_resource.shared_pool_mb is 'Average shared pool size, in megabytes.';
 
 
 -- ============================================================

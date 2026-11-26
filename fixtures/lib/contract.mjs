@@ -314,29 +314,6 @@ export const CONTRACT = {
     ],
     omitted: ["date_value"]
   },
-  oracle_metrics_cpu_memory: {
-    engine: "oracle", source: "collecte réelle",
-    fields: [
-      { name: "collect_id", type: "varchar2", len: 16 },
-      { name: "pdb_name", type: "varchar2", len: 200 },
-      { name: "cpu_time_minutes", type: "number", prec: 10, scale: 0 },
-      { name: "avg_sga_mb", type: "number", prec: 10, scale: 0 },
-      { name: "avg_pga_mb", type: "number", prec: 10, scale: 0 },
-      { name: "avg_buffer_cache_mb", type: "number", prec: 10, scale: 0 },
-      { name: "avg_shared_pool_mb", type: "number", prec: 10, scale: 0 },
-    ],
-    omitted: ["environment","date_value"]
-  },
-  oracle_metrics_cpu_service: {
-    engine: "oracle", source: "collecte réelle",
-    fields: [
-      { name: "collect_id", type: "varchar2", len: 16 },
-      { name: "pdb_name", type: "varchar2", len: 200 },
-      { name: "service_name", type: "varchar2", len: 400 },
-      { name: "dbcpu_time_minutes", type: "number", prec: 10, scale: 0 },
-    ],
-    omitted: ["date_value"]
-  },
   // ---------------------------------------------------------------- mssql
   mssql_hosts: {
     engine: "mssql", source: "collecte réelle",

@@ -115,6 +115,20 @@ while getopts :m:t:u:p:w:c:f:q:e: OPTION
          esac
 done
 
+# Licences Oracle : vrai seulement sur une Enterprise Edition dont le Diagnostics
+# Pack est activé (control_management_pack_access = DIAGNOSTIC[+TUNING]). Le CHL
+# détient ce pack sur toutes ses EE, et il n'existe pas en Standard Edition 2.
+# Toute vue DBA_HIST_* / CDB_HIST_* (hors DBA_HIST_SNAPSHOT) en relève : un check
+# qui en lit une doit passer par ici. Erreur ou réponse vide = faux.
+# Le Tuning Pack (V$SQL_MONITOR, SQL Tuning Advisor...) n'est licencié nulle
+# part : aucun check ne doit y toucher.
+fct_has_diag_pack(){
+DIAG=`echo "set feedback off;
+             set heading off;
+             SELECT 'DIAG_OK' FROM v\\$version v, v\\$parameter p WHERE v.banner LIKE '%Enterprise Edition%' AND p.name='control_management_pack_access' AND p.value LIKE 'DIAGNOSTIC%';" | sqlplus -s ${USR_DB}/${PWD_DB}@${CON_TNS} 2>/dev/null`
+[ `echo "${DIAG}" | grep -c "DIAG_OK"` -ge 1 ]
+}
+
 fct_main(){
 USAGE=`echo "set feedback off;
              set heading off;
@@ -278,6 +292,12 @@ STANDBY=`echo "set feedback off;
                                 echo "OK - Physical Standby database detected - No monitoring of query required"
                                 exit $STATE_OK
               fi
+
+# DBA_HIST_RSRC_PDB_METRIC relève du Diagnostics Pack.
+if ! fct_has_diag_pack; then
+      echo "OK - No Diagnostics Pack on this database (Standard Edition or pack access off), PDB SGA usage not monitored"
+      exit $STATE_OK
+fi
 
 CHECK_VERSION=`echo "set feedback off;
                      set heading off;
@@ -1460,6 +1480,8 @@ if [ `echo ${USAGE} | egrep -v "SCHEDULED|RUNNING|SUCCEEDED|COMPLETED" | wc -l` 
            exit $STATE_OK
 fi
 }
+# V$SESSION et non V$SQL_MONITOR : celle-ci relève du Tuning Pack, que le CHL
+# ne détient sur aucune base.
 fct_check_long_query(){
 USAGE=`echo "set feedback off;
              set heading off;
@@ -1472,7 +1494,7 @@ fi
 
 USAGE=`echo "set feedback off;
              set heading off;
-             select  'VALUE'||'Username:'||USERNAME||' Module:'||MODULE||' SID:'||SID||' SERIAL#:'||SESSION_SERIAL#||' SQLID:'||SQL_ID||' STARTUP_TIME:'||SQL_EXEC_START from V\\$SQL_MONITOR where status='EXECUTING' and SQL_EXEC_START < sysdate-${WARNING_THRESHOLD}/24 and lower(SQL_TEXT) not like '%server_dequeue%' and lower(SQL_TEXT) not like '%begin%main%';" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+             select  'VALUE'||'Username:'||s.USERNAME||' Module:'||s.MODULE||' SID:'||s.SID||' SERIAL#:'||s.SERIAL#||' SQLID:'||s.SQL_ID||' STARTUP_TIME:'||s.SQL_EXEC_START from V\\$SESSION s, V\\$SQLAREA q where s.status='ACTIVE' and s.type='USER' and q.sql_id=s.sql_id and q.con_id=s.con_id and s.SQL_EXEC_START < sysdate-${WARNING_THRESHOLD}/24 and lower(q.SQL_TEXT) not like '%server_dequeue%' and lower(q.SQL_TEXT) not like '%begin%main%';" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
 
 if [ `echo ${USAGE} | grep "Username:" | wc -l` -ne 0 ]; then
           echo "WARNING - Query running since more than ${WARNING_THRESHOLD} hours: ${USAGE}"
@@ -1789,6 +1811,8 @@ if [ ${STATE_CHECK} -eq 0 ]; then
 fi
 done
 }
+# Espace utilisé lu dans *_TABLESPACE_USAGE_METRICS, hors licence de pack, et
+# non plus dans *_HIST_TBSPC_SPACE_USAGE (Diagnostics Pack, absent des SE2).
 fct_check_database_grows(){
 ####CHECK STANDBY DATABASE
 USAGE=`echo "set feedback off;
@@ -1810,13 +1834,10 @@ if [ `echo ${CHECK_VERSION} | grep "OK" | wc -l` -eq 1 ]; then
                           set heading off;
                           select 'VALUE'||a.dbsize||':'||b.dbsize
 from (select round(sum(bytes/1024/1024/1024)) as dbsize from cdb_data_files) a,
-(select round(sum(TABLESPACE_USEDSIZE*tbs.BLOCK_SIZE)/1024/1024/1024)  as dbsize
-from CDB_HIST_TBSPC_SPACE_USAGE hist, CDB_tablespaces tbs, v\\$tablespace systbs
-where systbs.NAME = tbs.TABLESPACE_NAME
-AND hist.TABLESPACE_ID = systbs.TS#
-AND systbs.CON_ID = tbs.CON_ID
-and hist.CON_ID = systbs.CON_ID
-and hist.snap_id in (select max(SNAP_ID) from CDB_HIST_TBSPC_SPACE_USAGE)) b;
+(select round(sum(m.USED_SPACE*tbs.BLOCK_SIZE)/1024/1024/1024)  as dbsize
+from CDB_TABLESPACE_USAGE_METRICS m, CDB_tablespaces tbs
+where m.TABLESPACE_NAME = tbs.TABLESPACE_NAME
+AND m.CON_ID = tbs.CON_ID) b;
 " | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g' | sed 's/ //g'`
 
                         else
@@ -1824,11 +1845,9 @@ and hist.snap_id in (select max(SNAP_ID) from CDB_HIST_TBSPC_SPACE_USAGE)) b;
                           set heading off;
                           select 'VALUE'||a.dbsize||':'||b.dbsize
 from (select round(sum(bytes/1024/1024/1024)) as dbsize from dba_data_files) a,
-(select round(sum(TABLESPACE_USEDSIZE*tbs.BLOCK_SIZE)/1024/1024/1024)  as dbsize
-from DBA_HIST_TBSPC_SPACE_USAGE hist, dba_tablespaces tbs, v\\$tablespace systbs
-where systbs.NAME = tbs.TABLESPACE_NAME
-AND hist.TABLESPACE_ID = systbs.TS#
-and hist.snap_id in (select max(SNAP_ID) from DBA_HIST_TBSPC_SPACE_USAGE)) b;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g' | sed 's/ //g'`
+(select round(sum(m.USED_SPACE*tbs.BLOCK_SIZE)/1024/1024/1024)  as dbsize
+from DBA_TABLESPACE_USAGE_METRICS m, dba_tablespaces tbs
+where m.TABLESPACE_NAME = tbs.TABLESPACE_NAME) b;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g' | sed 's/ //g'`
 
 fi
 
@@ -2272,6 +2291,20 @@ USAGE=`echo "set feedback off;
                                 exit $STATE_OK
 fi
 
+# La moyenne de la dernière heure vient de DBA_HIST_EVENT_HISTOGRAM (Diagnostics
+# Pack) : sans le pack, elle n'est pas calculée et sort en n/a, sans perfdata.
+if fct_has_diag_pack; then
+DG_AVG_HOUR="(select sum(a.total_lantency)/sum(a.WAIT_COUNT) as avg_value from (
+select WAIT_TIME_MILLI,WAIT_COUNT,sum(WAIT_TIME_MILLI*WAIT_COUNT) as total_lantency
+from DBA_HIST_EVENT_HISTOGRAM
+where event_name = 'Redo Transport MISC'
+and snap_id = (select max(snap_id) from dba_hist_snapshot)
+group by WAIT_TIME_MILLI,WAIT_COUNT
+order by WAIT_TIME_MILLI,WAIT_COUNT) a) c"
+else
+DG_AVG_HOUR="(select 'n/a' as avg_value from dual) c"
+fi
+
 USAGE=`echo "set feedback off;
              set heading off;
              select 'VALUE'||a.max_value||':'||substr(b.avg_value,1,4)||':'||substr(c.avg_value,1,4) from
@@ -2283,18 +2316,18 @@ where event = 'Redo Transport MISC'
 and to_timestamp(substr(LAST_UPDATE_TIME,1,17)) > sysdate-8/(24*60)
 group by WAIT_TIME_MILLI,WAIT_COUNT
 order by WAIT_TIME_MILLI,WAIT_COUNT) a) b,
-(select sum(a.total_lantency)/sum(a.WAIT_COUNT) as avg_value from (
-select WAIT_TIME_MILLI,WAIT_COUNT,sum(WAIT_TIME_MILLI*WAIT_COUNT) as total_lantency
-from DBA_HIST_EVENT_HISTOGRAM
-where event_name = 'Redo Transport MISC'
-and snap_id = (select max(snap_id) from dba_hist_snapshot)
-group by WAIT_TIME_MILLI,WAIT_COUNT
-order by WAIT_TIME_MILLI,WAIT_COUNT) a) c;" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
+${DG_AVG_HOUR};" | sqlplus ${USR_DB}/${PWD_DB}@${CON_TNS}  | grep "VALUE" | sed 's/VALUE//g'`
 
                    MAX_VALUE=`echo ${USAGE} | cut -d ":" -f1`
                    AVG_STARTUP=`echo ${USAGE} | cut -d ":" -f2`
                    AVG_LAST_HOUR=`echo ${USAGE} | cut -d ":" -f3`
-           echo "OK - Dataguard Latency: Last 5 minutes: ${MAX_VALUE}ms AVG Since Startup: ${AVG_STARTUP}ms AVG Last Hour: ${AVG_LAST_HOUR}ms | 'max_last_5_min'=${MAX_VALUE}ms 'avg_since_startup'=${AVG_STARTUP}ms 'avg_last_hour'=${AVG_LAST_HOUR}ms"
+           if [ "${AVG_LAST_HOUR}" = "n/a" ]; then
+                   AVG_LAST_HOUR_PERF=""
+           else
+                   AVG_LAST_HOUR_PERF=" 'avg_last_hour'=${AVG_LAST_HOUR}ms"
+                   AVG_LAST_HOUR="${AVG_LAST_HOUR}ms"
+           fi
+           echo "OK - Dataguard Latency: Last 5 minutes: ${MAX_VALUE}ms AVG Since Startup: ${AVG_STARTUP}ms AVG Last Hour: ${AVG_LAST_HOUR} | 'max_last_5_min'=${MAX_VALUE}ms 'avg_since_startup'=${AVG_STARTUP}ms${AVG_LAST_HOUR_PERF}"
            exit $STATE_OK
 }
 

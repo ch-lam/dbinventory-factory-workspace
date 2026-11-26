@@ -280,17 +280,11 @@ export function emitOracle (ctx) {
    writeCsv(outDir, 'oracle_size_usage_seg', segRows);
 
    // ------------------------------------------------------------- métriques
-   writeCsv(outDir, 'oracle_metrics_cpu_memory', entities.map(e => ({
-      collect_id: cid, pdb_name: e.dimName,
-      cpu_time_minutes: rng.int(10, 5000),
-      avg_sga_mb: rng.int(2048, 32768), avg_pga_mb: rng.int(512, 8192),
-      avg_buffer_cache_mb: rng.int(1024, 16384), avg_shared_pool_mb: rng.int(512, 4096)
-   })));
-
-   writeCsv(outDir, 'oracle_metrics_cpu_service', entities.map(e => ({
-      collect_id: cid, pdb_name: e.dimName, service_name: e.dimName.toLowerCase(),
-      dbcpu_time_minutes: rng.int(5, 2000)
-   })));
+   // Plus de métriques CPU/mémoire : la collecte les tirait d'AWR (Diagnostics
+   // Pack), non licenciable en Standard Edition 2. Leurs tirages sont consommés
+   // à l'identique, comme ceux de l'ancienne émission LMS plus haut : les
+   // retirer décalerait toute la sécurité qui suit dans le flux Oracle.
+   for (let n = 0; n < entities.length * 6; n++) rng.next();
 
    // ============================================================== SÉCURITÉ
    // ------------------------------------------------------------- paramètres

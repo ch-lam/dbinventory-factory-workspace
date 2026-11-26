@@ -275,6 +275,23 @@ export const CONTRACT = {
     ],
     omitted: ["compliance_score","date_value"]
   },
+  oracle_sec_net_enc_audit: {
+    engine: "oracle", source: "déduit des scripts",
+    fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
+      { name: "db_name", type: "varchar2", len: 200 },
+      { name: "pdb_name", type: "varchar2", len: 512 },
+      { name: "record_type", type: "varchar2", len: 40 },
+      { name: "username", type: "varchar2", len: 512 },
+      { name: "machine", type: "varchar2", len: 1024 },
+      { name: "program", type: "varchar2", len: 512 },
+      { name: "osuser", type: "varchar2", len: 512 },
+      { name: "first_seen", type: "varchar2", len: 80 },
+      { name: "last_seen", type: "varchar2", len: 80 },
+      { name: "logon_count", type: "varchar2", len: 80 },
+    ],
+    omitted: []
+  },
   oracle_size_usage: {
     engine: "oracle", source: "collecte réelle",
     fields: [

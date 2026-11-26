@@ -415,6 +415,17 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_NETWORK_ENCRYPTION_ON', 'ORACLE_NETWORK_ENCRYPTION', 'INSTANCE', '*',
             'SQL*Net traffic must be encrypted', 'The collect only emits a row when the session reports an encryption service adapter; a collected instance with no such row is non-compliant.', 'MEDIUM' );
+-- The two rules below read SYSTEM.HIST_SESSION_ENCRYPTION, which the DBA team
+-- installs only on a database that cannot go to REQUIRED (setup/targets/oracle/
+-- ORACLE_network_encryption_audit.sql). Same control, so the category weight is
+-- unchanged: the instance is compliant on network encryption only if all three
+-- rules are.
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_NETWORK_ENCRYPTION_REQUIRED', 'ORACLE_NETWORK_ENCRYPTION', 'INSTANCE', '*',
+            'SQL*Net encryption must be REQUIRED, not REQUESTED', 'The CHL target is SQLNET.ENCRYPTION_SERVER=REQUIRED. A database left in REQUESTED is declared by the presence of the unencrypted-client audit table, and is a deviation unless covered by an approved derogation, even when no client is recorded. SQL cannot read sqlnet.ora: a database in REQUESTED without the audit table is not detected by this rule.', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'ORACLE_NETWORK_UNENCRYPTED_CLIENT', 'ORACLE_NETWORK_ENCRYPTION', 'INSTANCE', 'container: user@machine (program)',
+            'No client may connect without network encryption', 'One deviation per client (user, machine, program) recorded connecting over TCP without an encryption service adapter in the 30 days before the snapshot. Evaluated only where the audit table exists.', 'HIGH' );
 
 
 -- Oracle option and pack usage (LMS). One finding per option in use, read from
@@ -732,6 +743,7 @@ update ref_control_rule set nis2_domain_code = 'CRYPTO'
  where rule_code in (
    'MSSQL_REG_FORCE_ENCRYPTION', 'MSSQL_ENC_STRONG_ALGORITHM',
    'ORACLE_TABLESPACE_ENCRYPTED', 'ORACLE_NETWORK_ENCRYPTION_ON',
+   'ORACLE_NETWORK_ENCRYPTION_REQUIRED', 'ORACLE_NETWORK_UNENCRYPTED_CLIENT',
    'PG_PRM_SSL_ON', 'PG_PRM_SSL_MIN_PROTOCOL' );
 
 update ref_control_rule set nis2_domain_code = 'LOGGING'

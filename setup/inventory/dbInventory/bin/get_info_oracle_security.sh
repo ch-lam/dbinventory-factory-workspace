@@ -11,7 +11,7 @@ source "${SCRIPT_DIR}/get_info_oracle_common.sh"
 init_temps sec_parameter sec_network_enc sec_profile sec_default_profile \
            sec_admin_high_privs sec_high_role_privs sec_high_sys_privs    \
            sec_high_tab_privs sec_default_user_pwd sec_usermig            \
-           sec_tablespace sec_audit
+           sec_tablespace sec_audit sec_net_enc_audit
 rm -f "${LIST_DIR}/error_db.lst"
 
 # ── Collecte par base ─────────────────────────────────────────────────────────
@@ -64,6 +64,48 @@ WHERE  sess.SID = SYS_CONTEXT('USERENV','SID')
   AND  LOWER(sess.NETWORK_SERVICE_BANNER) LIKE '%encryption%service%adapter%';
 SPOOL OFF
 SQL
+
+    # ── Clients non chiffrés (bases restées en REQUESTED) ─────────────────────
+    # SYSTEM.HIST_SESSION_ENCRYPTION n'existe que sur une base laissée en
+    # SQLNET.ENCRYPTION_SERVER=REQUESTED, posée par
+    # setup/targets/oracle/ORACLE_network_encryption_audit.sql dans chaque
+    # conteneur où arrivent les applications. Sa présence est relevée à part
+    # (ligne AUDIT) : c'est elle qui déclare la base en REQUESTED, même vide.
+    # Les clients (lignes CLIENT) sont relevés sur 90 jours ; l'ETL n'en juge
+    # que 30, comptés depuis la date du snapshot.
+    if [[ "${IS_CDB}" == "YES" ]]; then
+        enc_audit_cons=$(sql_run "${db}" <<'SQL' | grep '^CON:' | cut -c5- || true
+SELECT 'CON:'||c.name
+FROM   cdb_tables t, v$containers c
+WHERE  c.con_id = t.con_id
+  AND  t.owner = 'SYSTEM' AND t.table_name = 'HIST_SESSION_ENCRYPTION';
+SQL
+)
+    else
+        enc_audit_cons=$(sql_run "${db}" <<'SQL' | grep '^CON:' | cut -c5- || true
+SELECT 'CON:NON CONTAINER' FROM dba_tables
+WHERE  owner = 'SYSTEM' AND table_name = 'HIST_SESSION_ENCRYPTION';
+SQL
+)
+    fi
+    while IFS= read -r con; do
+        [[ -z "${con}" ]] && continue
+        log "  suivi des clients non chiffrés : ${con}"
+        set_con=""
+        [[ "${con}" != "NON CONTAINER" ]] && set_con="ALTER SESSION SET CONTAINER = \"${con}\";"
+        sql_run "${db}" <<SQL >> /dev/null
+${set_con}
+SPOOL ${LIST_DIR}/sec_net_enc_audit_temp.csv APPEND
+SELECT '"'||dbs.NAME||'","${con}","AUDIT","","","","","","",""' FROM v\$database dbs;
+SELECT '"'||dbs.NAME||'","${con}","CLIENT","'||REPLACE(h.username,'"','')||'","'||
+       REPLACE(h.machine,'"','')||'","'||REPLACE(h.program,'"','')||'","'||
+       REPLACE(h.osuser,'"','')||'","'||TO_CHAR(h.first_seen,'YYYY-MM-DD HH24:MI:SS')||'","'||
+       TO_CHAR(h.last_seen,'YYYY-MM-DD HH24:MI:SS')||'","'||h.logon_count||'"'
+FROM   v\$database dbs, system.hist_session_encryption h
+WHERE  h.last_seen >= SYSDATE - 90;
+SPOOL OFF
+SQL
+    done <<< "${enc_audit_cons}"
 
     # ── Profils ───────────────────────────────────────────────────────────────
     if [[ "${IS_CDB}" == "YES" ]]; then
@@ -269,6 +311,7 @@ done < <(grep -v '^\s*#' "${LIST_FILE}" | grep -v '^\s*$' | sort -u)
 log "Finalisation..."
 finalize_lst "${LIST_DIR}/sec_parameter_temp.csv"        "${LIST_DIR}/oracle_security_parameter.csv"
 finalize_lst "${LIST_DIR}/sec_network_enc_temp.csv"      "${LIST_DIR}/oracle_sec_network_encryption.csv"
+finalize_lst "${LIST_DIR}/sec_net_enc_audit_temp.csv"    "${LIST_DIR}/oracle_sec_net_enc_audit.csv"
 finalize_lst "${LIST_DIR}/sec_profile_temp.csv"          "${LIST_DIR}/oracle_security_profile.csv"
 finalize_lst "${LIST_DIR}/sec_default_profile_temp.csv"  "${LIST_DIR}/oracle_sec_default_profile.csv"
 finalize_lst "${LIST_DIR}/sec_usermig_temp.csv"          "${LIST_DIR}/oracle_sec_usermig_tbl_exist.csv"

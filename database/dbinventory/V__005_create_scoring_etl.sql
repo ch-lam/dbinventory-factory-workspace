@@ -504,6 +504,40 @@ create or replace package body pkg_dbinv_scoring as
          -- Collected-entity witnesses (see header).
          w_inst as ( select distinct db_name from oracle_security_parameter ),
          w_db   as ( select distinct db_name, pdb_name from oracle_security_profile ),
+         -- Databases left in REQUESTED network encryption: the unencrypted-client
+         -- audit table exists in at least one of their containers.
+         net_audit as (
+            select db_name,
+                   listagg(distinct pdb_name, ', ') within group ( order by pdb_name ) containers
+              from oracle_sec_net_enc_audit
+             where record_type = 'AUDIT'
+             group by db_name
+         ),
+         -- Their unencrypted clients seen in the 30 days before the snapshot --
+         -- counted from the snapshot date, not from today, so a replayed snapshot
+         -- keeps its verdicts. The audit table also keys on the OS user; it is
+         -- folded here so the item_key (container, user, machine, program) stays
+         -- unique.
+         net_clients as (
+            select db_name, pdb_name, username, machine, program,
+                   listagg(distinct osuser, ', ') within group ( order by osuser ) osusers,
+                   min(first_seen) first_seen,
+                   max(last_seen) last_seen,
+                   sum(logons) logons
+              from ( select a.db_name, a.pdb_name,
+                            nvl(a.username, '-') username, nvl(a.machine, '-') machine,
+                            nvl(a.program, '-') program, nvl(a.osuser, '-') osuser,
+                            case when validate_conversion(a.first_seen as date, 'YYYY-MM-DD HH24:MI:SS') = 1
+                                 then to_date(a.first_seen, 'YYYY-MM-DD HH24:MI:SS') end first_seen,
+                            case when validate_conversion(a.last_seen as date, 'YYYY-MM-DD HH24:MI:SS') = 1
+                                 then to_date(a.last_seen, 'YYYY-MM-DD HH24:MI:SS') end last_seen,
+                            case when validate_conversion(a.logon_count as number) = 1
+                                 then to_number(a.logon_count) end logons
+                       from oracle_sec_net_enc_audit a
+                      where a.record_type = 'CLIENT' )
+             where last_seen >= p_snapshot_date - 30
+             group by db_name, pdb_name, username, machine, program
+         ),
          -- Accounts Oracle ships and maintains itself: out of scope of the
          -- privilege and profile rules. This is the norm's own scope, not a
          -- derogation, so it must never reach the RSSI review list.
@@ -772,6 +806,41 @@ create or replace package body pkg_dbinv_scoring as
             left join oracle_sec_network_encryption ne
                    on ne.db_name = wi.db_name
                   and upper(nvl(trim(ne.sqlnet_encryption), 'EMPTY')) <> 'EMPTY'
+            union all
+            -- ---------- SQL*Net encryption mode (per instance) ----------
+            -- The audit table only exists on a database left in REQUESTED: its
+            -- presence is the deviation, whatever it holds. A derogation is
+            -- what documents why the database cannot go to REQUIRED.
+            select 'ORACLE_NETWORK_ENCRYPTION_REQUIRED', wi.db_name, cast(null as varchar2(200 char)), '*',
+                   case when na.db_name is null then 1 else 0 end,
+                   case when na.db_name is null then 'no unencrypted-client audit table'
+                        else substr('REQUESTED (audit table in ' || na.containers || ')', 1, 400) end,
+                   'REQUIRED: no unencrypted-client audit table'
+            from w_inst wi
+            left join net_audit na on na.db_name = wi.db_name
+            union all
+            -- ---------- unencrypted clients (per instance, REQUESTED only) ----------
+            -- One deviation per client; a database whose audit table holds no
+            -- recent client gets one compliant row. Without the audit table the
+            -- rule does not apply and emits nothing.
+            select 'ORACLE_NETWORK_UNENCRYPTED_CLIENT', nc.db_name, cast(null as varchar2(200 char)),
+                   substr(case when nc.pdb_name <> 'NON CONTAINER' then nc.pdb_name || ': ' end
+                          || nc.username || '@' || nc.machine || ' (' || nc.program || ')', 1, 200),
+                   0,
+                   substr('last seen ' || to_char(nc.last_seen, 'YYYY-MM-DD HH24:MI')
+                          || ', ' || nvl(to_char(nc.logons), '?') || ' logon(s) since '
+                          || nvl(to_char(nc.first_seen, 'YYYY-MM-DD'), '?')
+                          || ', OS user ' || nc.osusers, 1, 400),
+                   'no client connecting without encryption'
+            from net_clients nc
+            where nc.db_name in ( select db_name from w_inst )
+            union all
+            select 'ORACLE_NETWORK_UNENCRYPTED_CLIENT', na.db_name, cast(null as varchar2(200 char)), '*', 1,
+                   'no unencrypted client in the 30 days before the snapshot',
+                   'no client connecting without encryption'
+            from net_audit na
+            where na.db_name in ( select db_name from w_inst )
+              and not exists ( select 1 from net_clients nc where nc.db_name = na.db_name )
             union all
             -- ---------- residual SYS.USER$MIG (per database) ----------
             select 'ORACLE_NO_USERMIG_TABLE', wd.db_name, wd.pdb_name, '*',

@@ -1558,6 +1558,44 @@ comment on column oracle_sec_network_encryption.compliance_score is 'Compliance 
 comment on column oracle_sec_network_encryption.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
+-- oracle_sec_net_enc_audit
+-- ------------------------------------------------------------
+-- Read from SYSTEM.HIST_SESSION_ENCRYPTION, which only exists on a database
+-- left in SQLNET.ENCRYPTION_SERVER=REQUESTED (setup/targets/oracle/
+-- ORACLE_network_encryption_audit.sql). One AUDIT row per container holding the
+-- table -- its presence is what declares the database REQUESTED, even when no
+-- client is recorded -- plus one CLIENT row per client seen in the last 90 days.
+-- Dates and counter stay text, converted by the ETL: a malformed value must
+-- cost one finding, not the whole LOAD.
+-- ============================================================
+create table oracle_sec_net_enc_audit (
+   collect_id  varchar2(16),
+   db_name     varchar2(50 char) not null,
+   pdb_name    varchar2(128 char) not null,
+   record_type varchar2(10 char) not null,
+   username    varchar2(128 char),
+   machine     varchar2(256 char),
+   program     varchar2(128 char),
+   osuser      varchar2(128 char),
+   first_seen  varchar2(20 char),
+   last_seen   varchar2(20 char),
+   logon_count varchar2(20 char)
+);
+
+comment on table oracle_sec_net_enc_audit is 'Unencrypted-client audit of Oracle databases left in REQUESTED network encryption mode (SYSTEM.HIST_SESSION_ENCRYPTION).';
+comment on column oracle_sec_net_enc_audit.collect_id is 'Identifier for the collect run that produced this row';
+comment on column oracle_sec_net_enc_audit.db_name is 'Name of the database (v$database.name).';
+comment on column oracle_sec_net_enc_audit.pdb_name is 'Container holding the audit table, or NON CONTAINER.';
+comment on column oracle_sec_net_enc_audit.record_type is 'AUDIT: the audit table exists in this container; CLIENT: one unencrypted client.';
+comment on column oracle_sec_net_enc_audit.username is 'Database user of the unencrypted client.';
+comment on column oracle_sec_net_enc_audit.machine is 'Client machine.';
+comment on column oracle_sec_net_enc_audit.program is 'Client program.';
+comment on column oracle_sec_net_enc_audit.osuser is 'Client operating system user.';
+comment on column oracle_sec_net_enc_audit.first_seen is 'First unencrypted logon, YYYY-MM-DD HH24:MI:SS.';
+comment on column oracle_sec_net_enc_audit.last_seen is 'Last unencrypted logon, YYYY-MM-DD HH24:MI:SS.';
+comment on column oracle_sec_net_enc_audit.logon_count is 'Number of unencrypted logons recorded.';
+
+-- ============================================================
 -- oracle_security_parameter
 -- ============================================================
 create table oracle_security_parameter (

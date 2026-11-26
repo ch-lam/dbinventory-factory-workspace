@@ -422,6 +422,46 @@ export function emitOracle (ctx) {
       collect_id: cid, db_name: db.dbName, sqlnet_encryption: 'AES256'
    })));
 
+   // ------------------------------------------------------------- clients non chiffrés
+   // La table de suivi n'existe que sur une base laissée en REQUESTED : le
+   // collecteur y est donc chiffré, d'où le tirage parmi les bases conformes
+   // ci-dessus. Quatre bases, quatre cas, pour exercer les deux polarités des
+   // deux règles ET la fenêtre de 30 jours :
+   //   0. des clients récents                       -> écarts clients
+   //   1. un client récent et un client ancien      -> l'ancien ne compte pas
+   //   2. des clients anciens seulement             -> conforme côté clients
+   //   3. table vide                                -> conforme côté clients
+   // Les quatre sont en écart sur le mode (REQUESTED). Tirage dans son propre
+   // flux (rngNetAudit) : venu après coup, il ne décale aucun autre fichier.
+   const na = ctx.rngNetAudit;
+   const DAY = 24 * HOURS;
+   const netAuditDbs = na.sample(dbs.filter(db => !netBad.get(db)), 4);
+   const NA_USERS = ['APP_DPI', 'APP_LABO', 'BATCH_FACT', 'REPORTING'];
+   const NA_PROGRAMS = ['JDBC Thin Client', 'w3wp.exe', 'sqlplus@srv-batch-01', 'Toad.exe'];
+   const NA_OSUSERS = ['svc_app', 'svc_batch', 'jdupont'];
+   const netAudit = [];
+   const client = (db, pdb, ageMin, ageMax) => {
+      const last = new Date(snapshot.getTime() - na.int(ageMin, ageMax) * DAY - na.int(1, 20) * HOURS);
+      return {
+         collect_id: cid, db_name: db.dbName, pdb_name: pdb, record_type: 'CLIENT',
+         username: na.pick(NA_USERS),
+         machine: `ws-${na.int(100, 999)}.${world.org.domain}`,
+         program: na.pick(NA_PROGRAMS),
+         osuser: na.pick(NA_OSUSERS),
+         first_seen: fmtDate(new Date(last.getTime() - na.int(30, 200) * DAY)),
+         last_seen: fmtDate(last),
+         logon_count: String(na.int(1, 5000))
+      };
+   };
+   netAuditDbs.forEach((db, i) => {
+      const pdb = db.dbEntities[0].pdbName;
+      netAudit.push({ collect_id: cid, db_name: db.dbName, pdb_name: pdb, record_type: 'AUDIT' });
+      if (i === 0) for (let k = 0; k < 3; k++) netAudit.push(client(db, pdb, 0, 25));
+      if (i === 1) { netAudit.push(client(db, pdb, 0, 25)); netAudit.push(client(db, pdb, 40, 80)); }
+      if (i === 2) for (let k = 0; k < 2; k++) netAudit.push(client(db, pdb, 40, 80));
+   });
+   writeCsv(outDir, 'oracle_sec_net_enc_audit', netAudit);
+
    // ------------------------------------------------------------- SYS.USER$MIG
    // DÉVIATIONS SEULES : la présence de la table est l'écart.
    const migBad = flag(entities, 'ORACLE_NO_USERMIG_TABLE');

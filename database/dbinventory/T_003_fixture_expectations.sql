@@ -681,6 +681,56 @@ begin
       fail('LMS : recompte Multitenant exerce', 'aucune CDB recomptee');
    end if;
 
+   -- 32. Chiffrement réseau : la présence de la table de suivi vaut REQUESTED.
+   --     Chaque base qui la porte est en écart sur le mode, même vide, et
+   --     aucune autre (décision du 2026-11-11 : REQUESTED = écart sauf dérogation).
+   declare
+      l_snap   date;
+      l_audit  pls_integer;
+      l_recent pls_integer;
+      l_old    pls_integer;
+   begin
+      select max(snapshot_date) into l_snap
+        from fact_control_finding where rule_code like 'ORACLE_NETWORK%';
+      select count(distinct db_name) into l_audit
+        from oracle_sec_net_enc_audit where record_type = 'AUDIT';
+      select count(*) into l_n
+        from fact_control_finding
+       where rule_code = 'ORACLE_NETWORK_ENCRYPTION_REQUIRED'
+         and is_compliant = 0 and snapshot_date = l_snap;
+      if l_audit > 0 and l_n = l_audit then
+         ok('chiffrement reseau : ' || l_audit || ' base(s) en REQUESTED, toutes en ecart');
+      else
+         fail('chiffrement reseau : table de suivi = ecart sur le mode',
+              l_n || ' ecart(s) pour ' || l_audit || ' base(s) portant la table');
+      end if;
+
+      -- 33. Chiffrement réseau : seuls les clients des 30 jours avant le
+      --     snapshot sont des écarts. Le jeu porte aussi des clients plus
+      --     anciens : sans eux, la fenêtre ne serait pas exercée.
+      select count(*) into l_recent
+        from ( select distinct db_name, pdb_name, username, machine, program
+                 from oracle_sec_net_enc_audit
+                where record_type = 'CLIENT'
+                  and to_date(last_seen, 'YYYY-MM-DD HH24:MI:SS') >= l_snap - 30 );
+      select count(*) into l_old
+        from oracle_sec_net_enc_audit
+       where record_type = 'CLIENT'
+         and to_date(last_seen, 'YYYY-MM-DD HH24:MI:SS') < l_snap - 30;
+      select count(*) into l_n
+        from fact_control_finding
+       where rule_code = 'ORACLE_NETWORK_UNENCRYPTED_CLIENT'
+         and is_compliant = 0 and snapshot_date = l_snap;
+      if l_old > 0 and l_recent > 0 and l_n = l_recent then
+         ok('chiffrement reseau : ' || l_recent || ' client(s) recent(s) en ecart, '
+            || l_old || ' ancien(s) ignore(s)');
+      else
+         fail('chiffrement reseau : fenetre de 30 jours',
+              l_n || ' ecart(s) pour ' || l_recent || ' client(s) recent(s), '
+              || l_old || ' client(s) ancien(s) dans le jeu');
+      end if;
+   end;
+
    dbms_output.put_line('T_003 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s), '
       || l_warned || ' avertissement(s).');
    if l_failed > 0 then

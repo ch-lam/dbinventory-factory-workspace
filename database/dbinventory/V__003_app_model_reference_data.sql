@@ -30,7 +30,7 @@ insert into ref_control ( control_code, platform, score_domain, category, entity
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_SQLSERVERAUDIT', 'MSSQL', 'SECURITY', 'sqlserveraudit', 'INSTANCE', 'SQL Server Audit specifications', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
-   values ( 'MSSQL_DBPROPERTIES', 'MSSQL', 'SECURITY', 'dbproperties', 'INSTANCE', 'Database properties (AUTO_CLOSE, TRUSTWORTHY)', 'MEDIUM' );
+   values ( 'MSSQL_DBPROPERTIES', 'MSSQL', 'SECURITY', 'dbproperties', 'INSTANCE', 'Database properties (AUTO_CLOSE, TRUSTWORTHY, Query Store)', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
    values ( 'MSSQL_AUDITLEVEL', 'MSSQL', 'SECURITY', 'auditlevel', 'INSTANCE', 'Server audit level', 'MEDIUM' );
 insert into ref_control ( control_code, platform, score_domain, category, entity_type, title, severity )
@@ -214,7 +214,10 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
             'AUTO_CLOSE must be off', 'is_auto_close_on must be 0.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_DBPROP_TRUSTWORTHY_OFF', 'MSSQL_DBPROPERTIES', 'DATABASE', '*',
-            'TRUSTWORTHY must be off', 'is_trustworthy_on must be 0. Scope: msdb is exempt, it requires TRUSTWORTHY for Database Mail and SQL Agent.', 'MEDIUM' );
+            'TRUSTWORTHY must be off', 'is_trustworthy_on must be 0 on every database but msdb. Scope: msdb ships with TRUSTWORTHY on and Microsoft requires it (SQL Agent, Database Mail), so it is compliant at 1, and at 0 too (unusual, not a security risk).', 'MEDIUM' );
+insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
+   values ( 'MSSQL_DBPROP_QUERY_STORE_ON', 'MSSQL_DBPROPERTIES', 'DATABASE', '*',
+            'Query Store must be on (READ_WRITE)', 'From SQL Server 2016, Query Store must be READ_WRITE on every user database: READ_ONLY means it is full and no longer captures, OFF and ERROR record nothing. Scope: system databases, offline or non READ_WRITE databases (AG secondaries, read-only) and engines before 2016 are not judged.', 'LOW' );
 
 -- MSSQL logins. The two rules partition the population on is_sysadmin so that
 -- together they reproduce the legacy ordered CASE exactly: a sysadmin login is
@@ -243,7 +246,7 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 -- SECURITY weights, which are transcribed verbatim from the legacy script.
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_AUTH_WINDOWS_ONLY', 'MSSQL_LOGINS', 'INSTANCE', '*',
-            'The instance must accept Windows authentication only', 'SERVERPROPERTY(''IsIntegratedSecurityOnly'') must be 1. Mixed mode exposes SQL logins, whose passwords live in the engine and escape Active Directory policy.', 'HIGH' );
+            'Authentication mode recorded (mixed mode accepted)', 'SERVERPROPERTY(''IsIntegratedSecurityOnly'') is recorded for every instance. The CHL norm accepts mixed mode, so the rule is always compliant: it keeps the proof the mode was checked. CIS asks for Windows authentication only.', 'HIGH' );
 
 -- MSSQL audit level / SQL Server Audit.
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
@@ -261,7 +264,7 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 -- MSSQL local Windows groups, guest access, orphaned users, public role.
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_GROUP_NO_LOCAL_PERMISSION', 'MSSQL_GROUPS', 'INSTANCE', 'local group name',
-            'No local Windows group must hold server permissions', 'Compliant only when the collect reports the ''nogroup'' sentinel, i.e. no local group holds a permission.', 'MEDIUM' );
+            'No local Windows group must hold server permissions', 'Compliant only when the collect reports the NoGroup sentinel (compared case-insensitively), i.e. no local group holds a permission.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'MSSQL_GUEST_NO_CONNECT', 'MSSQL_GUESTCONNECT', 'DATABASE', 'permission name',
             'Guest must not hold CONNECT', 'Compliant only when the collect reports the ''no_permission'' sentinel for both permission and state.', 'MEDIUM' );
@@ -309,10 +312,10 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
             'OS_ROLES must be FALSE', 'Delegates role management to the operating system.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRM_AUDIT_TRAIL', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
-            'AUDIT_TRAIL must not be NONE', 'Any destination (DB, DB,EXTENDED, OS, XML) is accepted; NONE disables traditional auditing entirely. Not judged on a database in pure Unified Auditing, where the engine ignores it.', 'MEDIUM' );
+            'AUDIT_TRAIL must not be NONE', 'Any destination (DB, DB,EXTENDED, OS, XML) is accepted; NONE disables traditional auditing entirely. On a database in pure Unified Auditing the engine ignores it: recorded as compliant, not applicable.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRM_AUDIT_SYS_OPERATIONS', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
-            'AUDIT_SYS_OPERATIONS must be TRUE', 'Without it, actions performed as SYSDBA are not audited. Deprecated from 21c; not judged on a database in pure Unified Auditing, where the engine ignores it.', 'MEDIUM' );
+            'AUDIT_SYS_OPERATIONS must be TRUE', 'Without it, actions performed as SYSDBA are not audited. Deprecated from 21c. On a database in pure Unified Auditing the engine ignores it: recorded as compliant, not applicable.', 'MEDIUM' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_PRM_UNIFIED_AUDITING', 'ORACLE_SECURITY_PARAMETER', 'INSTANCE', '*',
             'Unified Auditing must be enabled', 'v$option ''Unified Auditing'' must be TRUE; it is the prerequisite for the ORA_CIS_RECOMMENDATIONS policy.', 'MEDIUM' );
@@ -380,10 +383,10 @@ insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_la
 -- precise as a per-privilege rule would make it, without a 60-row catalog.
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_HIGH_SYS_PRIVS_GRANT', 'ORACLE_HIGH_SYS_PRIVS', 'DATABASE', 'grantee / privilege',
-            'No account may hold a high-privilege system privilege', 'Covers the CIS list collected by get_info_oracle_security.sh (SELECT ANY DICTIONARY, BECOME USER, GRANT ANY ROLE, CREATE EXTERNAL JOB and the rest). Scope: Oracle-maintained accounts are exempt, and so are the roles Oracle ships with these privileges (DBA, OGG*CAPTURE, AVTUNE_PKG_ROLE, *IMP_FULL_DATABASE, EXP_FULL_DATABASE, AUDIT_ADMIN, AUDIT_SYSTEM, SCHEDULER_ADMIN, EM_EXPRESS_ALL, EM_EXPRESS_BASIC, SYSUMF_ROLE, OEM_MONITOR, GSMUSER_ROLE, GSMADMIN_ROLE): the norm judges the accounts.', 'HIGH' );
+            'No account may hold a high-privilege system privilege', 'Covers the CIS list collected by get_info_oracle_security.sh (SELECT ANY DICTIONARY, BECOME USER, GRANT ANY ROLE, CREATE EXTERNAL JOB and the rest). Scope: Oracle-maintained accounts are exempt, and so are the roles Oracle ships with these privileges (DBA, OGG*CAPTURE, AVTUNE_PKG_ROLE, *IMP_FULL_DATABASE, *EXP_FULL_DATABASE, AUDIT_ADMIN, AUDIT_SYSTEM, SCHEDULER_ADMIN, EM_EXPRESS_ALL, EM_EXPRESS_BASIC, SYSUMF_ROLE, OEM_MONITOR, GSMUSER_ROLE, GSMADMIN_ROLE): the norm judges the accounts.', 'HIGH' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_HIGH_ROLE_PRIVS_GRANT', 'ORACLE_HIGH_ROLE_PRIVS', 'DATABASE', 'grantee / role',
-            'No account may hold DBA, a catalog role or a GSM role', 'Covers DBA, DELETE_CATALOG_ROLE, EXECUTE_CATALOG_ROLE, GSMUSER_ROLE and GSMADMIN_ROLE. SELECT_CATALOG_ROLE is collected but outside the CHL norm. Scope: Oracle-maintained accounts and the roles Oracle ships (same list as ORACLE_HIGH_SYS_PRIVS_GRANT) are exempt.', 'HIGH' );
+            'No account may hold DBA, a catalog role or a GSM role', 'Covers DBA, DELETE_CATALOG_ROLE, EXECUTE_CATALOG_ROLE, GSMUSER_ROLE and GSMADMIN_ROLE. SELECT_CATALOG_ROLE is accepted by the CHL norm: each grant is recorded as compliant, naming its holder. Scope: Oracle-maintained accounts and the roles Oracle ships (same list as ORACLE_HIGH_SYS_PRIVS_GRANT) are exempt; a custom role holding a GSM role is not.', 'HIGH' );
 insert into ref_control_rule ( rule_code, control_code, entity_type, item_key_label, title, description, severity )
    values ( 'ORACLE_HIGH_TAB_PRIVS_PUBLIC', 'ORACLE_HIGH_TAB_PRIVS', 'DATABASE', 'grantee / package',
             'PUBLIC must not hold EXECUTE on sensitive packages', 'Covers the CIS package list (UTL_FILE, UTL_SMTP, UTL_HTTP, DBMS_SYS_SQL, DBMS_FILE_TRANSFER and the rest) plus INHERIT PRIVILEGES granted to PUBLIC. No account exemption applies: the grantee is PUBLIC by construction.', 'MEDIUM' );
@@ -613,7 +616,7 @@ update ref_control_rule set origin = 'BENCHMARK', benchmark_code = 'CIS_MSSQL'
    'MSSQL_ENC_STRONG_ALGORITHM', 'MSSQL_GROUP_NO_LOCAL_PERMISSION', 'MSSQL_GUEST_NO_CONNECT',
    'MSSQL_NO_ORPHANED_USER', 'MSSQL_PUBLIC_DEFAULT_PERMISSION',
    'MSSQL_LOGIN_POLICY_CHECKED', 'MSSQL_LOGIN_SYSADMIN_EXPIRATION',
-   'MSSQL_SA_RENAMED', 'MSSQL_SA_DISABLED', 'MSSQL_AUTH_WINDOWS_ONLY',
+   'MSSQL_SA_RENAMED', 'MSSQL_SA_DISABLED',
    'MSSQL_ENGINE_PATCH_CURRENT' );
 
 update ref_control_rule set origin = 'BENCHMARK', benchmark_code = 'CIS_ORACLE_DB'
@@ -646,8 +649,9 @@ update ref_control_rule set origin = 'BENCHMARK', benchmark_code = 'CIS_POSTGRES
    'PG_HBA_NO_TRUST', 'PG_HBA_NO_WEAK_METHOD',
    'PG_PUBLIC_NO_CREATE' );
 
-update ref_control_rule set origin = 'HOUSE_CONFLICT', benchmark_code = 'CIS_MSSQL'
- where rule_code = 'MSSQL_REG_TCP_PORT';
+-- Mixed mode authentication: CIS asks for Windows only, the CHL norm accepts
+-- mixed mode. Same standing as the TCP port. ref_control_rule set origin = 'HOUSE_CONFLICT', benchmark_code = 'CIS_MSSQL'
+ where rule_code in ( 'MSSQL_REG_TCP_PORT', 'MSSQL_AUTH_WINDOWS_ONLY' );
 
 -- Left as HOUSE, and worth re-examining during the mapping review:
 --   *_ENGINE_SUPPORTED, *_BACKUP_FRESHNESS_SLA, *_STORAGE_PCT_USED
@@ -759,7 +763,7 @@ update ref_control_rule set nis2_domain_code = 'LOGGING'
 update ref_control_rule set nis2_domain_code = 'CONTINUITY'
  where rule_code in (
    'MSSQL_BACKUP_FRESHNESS_SLA', 'MSSQL_STORAGE_PCT_USED',
-   'MSSQL_DBPROP_AUTO_CLOSE_OFF',
+   'MSSQL_DBPROP_AUTO_CLOSE_OFF', 'MSSQL_DBPROP_QUERY_STORE_ON',
    'ORACLE_BACKUP_FRESHNESS_SLA', 'ORACLE_STORAGE_PCT_USED',
    'PG_ARCHIVE_MODE_ON', 'PG_BACKUP_FRESHNESS_SLA', 'PG_XID_WRAPAROUND' );
 

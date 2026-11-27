@@ -364,11 +364,19 @@ export function emitOracle (ctx) {
       }))));
 
    const rolePrivBad = flag(entities, 'ORACLE_HIGH_ROLE_PRIVS_GRANT');
-   writeCsv(outDir, 'oracle_sec_high_role_privs', entities.filter(e => rolePrivBad.get(e))
+   // SELECT_CATALOG_ROLE est collecté mais accepté par la norme CHL : une entité
+   // sur cinq le donne au compte de reporting, pour que l'ETL écrive sa ligne
+   // conforme, avec ou sans autre écart sur la même base. Choisi par rang et non
+   // par tirage : aucun nombre aléatoire consommé, le reste du parc ne bouge pas.
+   const catalogGrants = entities.filter((_, k) => k % 5 === 0).map(e => ({
+      collect_id: cid, db_name: e.db.dbName, pdb_name: e.pdbName,
+      username: 'APP_REPORTING', privilege: 'SELECT_CATALOG_ROLE'
+   }));
+   writeCsv(outDir, 'oracle_sec_high_role_privs', [...entities.filter(e => rolePrivBad.get(e))
       .flatMap(e => rng.sample(HIGH_ROLES, rng.int(1, 2)).map(r => ({
          collect_id: cid, db_name: e.db.dbName, pdb_name: e.pdbName,
          username: rng.pick(APP_USERS), privilege: r
-      }))));
+      }))), ...catalogGrants]);
 
    const tabPrivBad = flag(entities, 'ORACLE_HIGH_TAB_PRIVS_PUBLIC');
    writeCsv(outDir, 'oracle_sec_high_tab_privs', entities.filter(e => tabPrivBad.get(e))

@@ -301,17 +301,19 @@ create table mssql_security_dbproperties (
    db_name           varchar2(50 char) not null,
    is_auto_close_on  number(10) not null,
    is_trustworthy_on number(10) not null,
+   query_store_state varchar2(30 char),
    compliance_score  number(2) default 0,
    date_value        timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_dbproperties is 'MSSQL database property compliance check results (AUTO_CLOSE, TRUSTWORTHY).';
+comment on table mssql_security_dbproperties is 'MSSQL database property compliance check results (AUTO_CLOSE, TRUSTWORTHY, Query Store).';
 comment on column mssql_security_dbproperties.collect_id is 'Identifier for the collect run that produced this row';
 comment on column mssql_security_dbproperties.collect_target is 'Target of the collection.';
 comment on column mssql_security_dbproperties.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_dbproperties.db_name is 'Name of the database.';
 comment on column mssql_security_dbproperties.is_auto_close_on is 'Indicates whether the AUTO_CLOSE database option is enabled.';
 comment on column mssql_security_dbproperties.is_trustworthy_on is 'Indicates whether the TRUSTWORTHY database option is enabled.';
+comment on column mssql_security_dbproperties.query_store_state is 'Query Store actual state (OFF, READ_ONLY, READ_WRITE, ERROR); empty before SQL Server 2016, on system, offline or non READ_WRITE databases.';
 comment on column mssql_security_dbproperties.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_dbproperties.date_value is 'Timestamp at which this row was collected or computed.';
 

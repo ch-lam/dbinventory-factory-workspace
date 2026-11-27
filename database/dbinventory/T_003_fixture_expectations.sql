@@ -311,13 +311,17 @@ begin
    --    jamais été mise à l'épreuve -- c'était le cas de la saturation, verte
    --    sur 1034 constats parce qu'elle ne pouvait structurellement pas rougir.
    --
-   --    Exclues : les règles inactives, et les contrôles catalogués sans règle
-   --    (MSSQL_LICENSING, dont la norme n'est pas arrêtée).
+   --    Exclues : les règles inactives, les contrôles catalogués sans règle
+   --    (MSSQL_LICENSING, dont la norme n'est pas arrêtée), et les règles que
+   --    la norme CHL rend conformes par construction, qui ne servent qu'à
+   --    tracer le test (MSSQL_AUTH_WINDOWS_ONLY : mode mixte accepté). Une
+   --    exclusion se nomme ici, une à une : elle ne s'infère pas.
    select count(*), listagg(rule_code, ', ') within group ( order by rule_code )
      into l_n, l_txt
      from ( select f.rule_code
               from fact_control_finding f
               join ref_control_rule r on r.rule_code = f.rule_code and r.active = 1
+             where f.rule_code not in ( 'MSSQL_AUTH_WINDOWS_ONLY' )
              group by f.rule_code
             having count(distinct f.is_compliant) < 2 );
    if l_n = 0 then
@@ -729,6 +733,38 @@ begin
               l_n || ' ecart(s) pour ' || l_recent || ' client(s) recent(s), '
               || l_old || ' client(s) ancien(s) dans le jeu');
       end if;
+   end;
+
+   -- 34 à 37. Ce que la norme CHL accepte est tracé en CONFORME, jamais filtré :
+   --     la ligne doit exister (le test a eu lieu) et ne jamais être un écart.
+   declare
+      procedure accepted ( p_what varchar2, p_rule varchar2, p_like varchar2, p_col varchar2 ) is
+         l_rows pls_integer;
+         l_bad  pls_integer;
+      begin
+         execute immediate
+            'select count(*), nvl(sum(1 - is_compliant), 0) from fact_control_finding'
+            || ' where rule_code = :r and ' || p_col || ' like :l'
+            into l_rows, l_bad using p_rule, p_like;
+         if l_rows > 0 and l_bad = 0 then
+            ok(p_what || ' : ' || l_rows || ' ligne(s), toutes conformes');
+         else
+            fail(p_what, l_rows || ' ligne(s), dont ' || l_bad || ' en ecart');
+         end if;
+      end accepted;
+   begin
+      -- 34. SELECT_CATALOG_ROLE accepté, chaque octroi nommé.
+      accepted('SELECT_CATALOG_ROLE trace en conforme', 'ORACLE_HIGH_ROLE_PRIVS_GRANT',
+               '%/SELECT_CATALOG_ROLE', 'item_key');
+      -- 35. Paramètres d'audit hérités sans objet en Unified Auditing pur.
+      accepted('audit_trail sans objet en unifie pur', 'ORACLE_PRM_AUDIT_TRAIL',
+               '%pure Unified Auditing%', 'observed_value');
+      -- 36. La sentinelle NoGroup de la collecte est reconnue.
+      accepted('sentinelle NoGroup conforme', 'MSSQL_GROUP_NO_LOCAL_PERMISSION',
+               'NoGroup', 'item_key');
+      -- 37. msdb conforme sur TRUSTWORTHY, avec la raison dans la valeur attendue.
+      accepted('msdb conforme sur TRUSTWORTHY', 'MSSQL_DBPROP_TRUSTWORTHY_OFF',
+               'msdb:%', 'expected_value');
    end;
 
    dbms_output.put_line('T_003 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s), '

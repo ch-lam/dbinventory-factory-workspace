@@ -510,6 +510,7 @@ export const CONTRACT = {
       { name: "db_name", type: "varchar2", len: 200 },
       { name: "is_auto_close_on", type: "number", prec: 10, scale: 0 },
       { name: "is_trustworthy_on", type: "number", prec: 10, scale: 0 },
+      { name: "query_store_state", type: "varchar2", len: 120 },
     ],
     omitted: ["compliance_score","date_value"]
   },

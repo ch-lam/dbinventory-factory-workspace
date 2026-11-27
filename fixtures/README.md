@@ -108,7 +108,9 @@ saine. Les verdicts conformes sont produits par anti-jointure contre deux **tém
 collecte réussie : `oracle_security_parameter` par instance, `oracle_security_profile` par
 base. Une base absente de son témoin ne produit **aucun** constat — voulu : une collecte
 ratée ne doit pas être notée conforme. MSSQL fait l'inverse et émet des lignes sentinelles
-(`NoOrphanedUser`, `nogroup`, `no_permission`).
+(`NoOrphanedUser`, `NoGroup`, `no_permission`), dans la casse exacte de la collecte : une
+fixture qui les écrit autrement masque un ETL qui ne les reconnaît pas (c'est arrivé à
+`NoGroup`).
 
 **`pdb_name` n'a pas la même valeur selon la table.** Les tables de sécurité portent
 `NON CONTAINER` pour une base non-CDB, que l'ETL retraduit en `db_name` ; `oracle_size_usage`
@@ -162,10 +164,16 @@ Ces quatre cas exercent les deux polarités des deux règles ainsi que la fenêt
 marque un nombre **exact** d'éléments plutôt qu'un tirage indépendant : un test qui compare
 des comptes ne tolère pas « à peu près 30 % ».
 
-67 des 69 règles actives y figurent. Les deux autres, `MSSQL_ENGINE_SUPPORTED` et
-`MSSQL_ENGINE_PATCH_CURRENT`, sont pilotées par le mélange de versions, calé sur les dates
-de `product_support` pour produire les trois états : sous support, sous support étendu
-(`is_norm_exception = 1`) et hors support.
+89 des 95 règles actives y figurent. Les quatre règles de cycle de vie
+(`*_ENGINE_SUPPORTED` des trois moteurs, `MSSQL_ENGINE_PATCH_CURRENT`) sont pilotées par le
+mélange de versions, calé sur les dates de `product_support` pour produire les trois états :
+sous support, sous support étendu (`is_norm_exception = 1`) et hors support. Les deux
+règles de chiffrement réseau (`ORACLE_NETWORK_*`) suivent le flux de la table de suivi
+(voir plus bas).
+
+Une règle nouvelle prend son propre flux aléatoire (`makeRng(world.seed + N)`, comme le
+Query Store avec 707) ou une sélection par rang : un `flag()` de plus sur le flux d'un
+moteur décale tous les tirages qui le suivent, donc toute la référence.
 
 ---
 

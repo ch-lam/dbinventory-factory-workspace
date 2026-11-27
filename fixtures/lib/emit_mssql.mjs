@@ -1,7 +1,7 @@
 // Émission des 20 CSV MSSQL.
 //
 // Les collectes MSSQL émettent une ligne SENTINELLE par entité même quand tout
-// va bien ('NoOrphanedUser', 'nogroup', 'no_permission'). C'est ce qui permet à
+// va bien ('NoOrphanedUser', 'NoGroup', 'no_permission'). C'est ce qui permet à
 // pkg_dbinv_scoring d'en tirer un verdict conforme par simple merge, sans
 // anti-jointure. Reproduire ces sentinelles n'est donc pas cosmétique : sans
 // elles, une instance saine ne produirait aucun constat et serait notée sur
@@ -9,6 +9,7 @@
 
 import { writeCsv, fmtDate } from './csv.mjs';
 import { markShare } from './estate.mjs';
+import { makeRng } from './rng.mjs';
 
 const HOURS = 3600 * 1000;
 const DAYS = 24 * HOURS;
@@ -33,6 +34,7 @@ const AUDIT_GROUPS = ['AUDIT_CHANGE_GROUP', 'FAILED_LOGIN_GROUP', 'SUCCESSFUL_LO
 
 export function emitMssql (ctx) {
    const { outDir, world, rng, estate, cid, snapshot } = ctx;
+   const rngQueryStore = makeRng(world.seed + 707);
    const instances = estate.mssql.instances;
    const allDbs = instances.flatMap(i => i.databases);
    const D = world.defects;
@@ -201,13 +203,26 @@ export function emitMssql (ctx) {
    // ------------------------------------------------------------- dbproperties
    const autoCloseBad = flag(allDbs, 'MSSQL_DBPROP_AUTO_CLOSE_OFF');
    const trustBad = flag(allDbs.filter(d => d.name !== 'msdb'), 'MSSQL_DBPROP_TRUSTWORTHY_OFF');
+   // Query Store : la collecte ne lit l'état que sur les bases utilisateur des
+   // moteurs 2016+ (version majeure 13), et laisse le champ vide ailleurs. Tiré
+   // sur son propre flux : un flag() de plus sur `rng` décalerait tous les
+   // tirages MSSQL qui suivent, donc toute la référence.
+   const major = d => Number(String(d.instance.build).split('.')[0]);
+   const qsCandidates = allDbs.filter(d => !d.isSystem && major(d) >= 13);
+   const qsBad = new Map();
+   for (const { item, bad } of markShare(rngQueryStore, qsCandidates, D.MSSQL_DBPROP_QUERY_STORE_ON)) {
+      qsBad.set(item, bad);
+   }
    writeCsv(outDir, 'mssql_security_dbproperties', allDbs.map(d => ({
       collect_id: cid, collect_target: d.instance.host.fqdn, servername: d.instance.serverName,
       db_name: d.name,
       is_auto_close_on: autoCloseBad.get(d) ? 1 : 0,
       // msdb a besoin de TRUSTWORTHY pour Database Mail et l'Agent : la règle
       // l'exempte elle-même, donc la valeur réelle y est 1 sans être un écart.
-      is_trustworthy_on: d.name === 'msdb' ? 1 : (trustBad.get(d) ? 1 : 0)
+      is_trustworthy_on: d.name === 'msdb' ? 1 : (trustBad.get(d) ? 1 : 0),
+      // Les écarts alternent OFF et READ_ONLY (plein) : les deux états réels.
+      query_store_state: !qsBad.has(d) ? ''
+         : qsBad.get(d) ? (qsCandidates.indexOf(d) % 2 ? 'READ_ONLY' : 'OFF') : 'READ_WRITE'
    })));
 
    // ------------------------------------------------------------- auditlevel
@@ -236,9 +251,11 @@ export function emitMssql (ctx) {
          ? { collect_id: cid, collect_target: i.host.fqdn, servername: i.serverName,
              localgroupname: `${i.host.short.toUpperCase()}/SQLAdmins`,
              permission_name: 'CONTROL SERVER', state_desc: 'GRANT' }
-         // sentinelle : aucun groupe local ne porte de permission
+         // sentinelle : aucun groupe local ne porte de permission. Casse exacte
+         // de mssql_getgroups.sql : la fixture en minuscules masquait un ETL
+         // qui ne reconnaissait pas la vraie sentinelle.
          : { collect_id: cid, collect_target: i.host.fqdn, servername: i.serverName,
-             localgroupname: 'nogroup', permission_name: 'nogroup', state_desc: 'nogroup' }
+             localgroupname: 'NoGroup', permission_name: 'NoPerm', state_desc: 'NoState' }
    )));
 
    // ------------------------------------------------------------- guestconnect

@@ -36,29 +36,6 @@ alter session set current_schema=dbinventory;
 
 
 -- ============================================================
--- Retire the previous attempt.
--- ------------------------------------------------------------
--- oracle_capplan_hist_applink mapped PDBs to an app_code for cost allocation.
--- Verified before removing it: empty, written by nothing, read by nothing, and
--- referenced in this repository only by its own DDL in V__001. Two competing
--- application registries is one too many.
---
--- Dropped here as well as removed from V__001, because X_000 does not purge: a
--- database installed before this change keeps the table unless something says
--- otherwise. Guarded, so a fresh install where it never existed is not an error.
--- ============================================================
-declare
-   l_n pls_integer;
-begin
-   select count(*) into l_n from user_tables where table_name = 'ORACLE_CAPPLAN_HIST_APPLINK';
-   if l_n > 0 then
-      execute immediate 'drop table oracle_capplan_hist_applink purge';
-   end if;
-end;
-/
-
-
--- ============================================================
 -- ============================================================
 -- Who did it: never `user`, always the APEX session user.
 -- ------------------------------------------------------------

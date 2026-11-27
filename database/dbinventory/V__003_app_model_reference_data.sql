@@ -7,7 +7,7 @@
 --   ref_threshold        - warning/critical thresholds for metric-based controls
 --
 -- MSSQL SECURITY weights are transcribed verbatim from the legacy scoring script
--- (setup/inventory/dbInventory/bin/sql/mssql_scoring_data.sql): configoptions=35,
+-- (mssql_scoring_data.sql, removed in 2.0.0, see git history): configoptions=35,
 -- logins/registryinfo/sqlserveraudit=10, the other seven categories=5 (sum=100).
 --
 -- ORACLE SECURITY weights are INITIAL PROPOSALS (no authoritative weighting

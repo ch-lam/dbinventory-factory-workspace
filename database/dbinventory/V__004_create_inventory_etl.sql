@@ -31,7 +31,7 @@
 --     resolves uniformly. is_pdb=0 (ext_oracle_database) keeps the non-PDB distinction.
 --   * No CPU/memory fact any more: the collect read them from AWR (Diagnostics
 --     Pack), which cannot be licensed on the Standard Edition 2 databases of
---     the estate. V__017 drops the tables.
+--     the estate.
 --   * oracle_backup carries the container db_name (v$database.name), so it resolves
 --     to an instance through oracle_databases and lands in fact_instance_backup.
 -- ============================================================================
@@ -121,12 +121,7 @@ create or replace package body pkg_dbinv_inventory as
       on ( d.platform = s.platform and d.hostname = s.hostname )
       when matched then update set
          d.os_type = s.os_type, d.num_cpus = s.num_cpus, d.memory_gb = s.memory_gb,
-         -- nvl guard: environment/license are new staging columns, so a CSV produced
-         -- by an older get_info_mssql.sh carries them empty. Keeping the known value
-         -- rather than overwriting it with null means a legacy or partial collect
-         -- degrades to "no news" instead of silently erasing the perimeter data.
-         d.environment = nvl(s.environment, d.environment),
-         d.license_type = nvl(s.license_type, d.license_type)
+         d.environment = s.environment, d.license_type = s.license_type
       when not matched then
          insert ( platform, hostname, os_type, num_cpus, memory_gb, environment, license_type )
          values ( s.platform, s.hostname, s.os_type, s.num_cpus, s.memory_gb, s.environment, s.license_type );
@@ -203,7 +198,7 @@ create or replace package body pkg_dbinv_inventory as
       on ( di.host_id = s.host_id and di.instance_name = s.instance_name )
       when matched then update set
          di.engine_version = s.engine_version, di.edition = s.edition, di.collation = s.collation,
-         di.port = nvl(s.port, di.port),   -- nvl guard: see load_dim_host
+         di.port = s.port,
          di.install_date = s.install_date
       when not matched then
          insert ( host_id, platform, instance_name, engine_version, edition, collation, port, install_date )
@@ -214,12 +209,8 @@ create or replace package body pkg_dbinv_inventory as
       using ( select di.instance_id,
                      max(od.db_role) db_role, max(od.rac_state) rac_state, max(od.db_unique_name) db_unique_name,
                      max(od.database_type) database_type,
-                     -- Derive, jamais lu depuis od.count_pdb : cette colonne de staging
-                     -- n'est alimentee par personne (voir le merge non-CDB plus bas), donc
-                     -- l'attribut restait NULL sur toutes les instances -- et il est
-                     -- AFFICHE en colonne « PDBs » sur les pages 20 et 25, vides depuis
-                     -- toujours. La donnee existe deja dans oracle_pdbs : un compte se
-                     -- calcule, il ne se collecte pas.
+                     -- Derive de oracle_pdbs (affiche en colonne « PDBs » sur les pages
+                     -- 20 et 25) : un compte se calcule, il ne se collecte pas.
                      --
                      -- Enveloppe dans max() comme protection_mode juste en dessous : la
                      -- requete groupe par di.instance_id, donc od.hostname n'est pas une
@@ -324,14 +315,9 @@ create or replace package body pkg_dbinv_inventory as
       -- resource measure of its own, the collect being keyed by pdb_name.
       --
       -- Filtered on database_type, which is `not null` and which the collect actually
-      -- writes. It used to filter on `nvl(od.count_pdb, 0) = 0`, and that could never
-      -- work: count_pdb is emitted by NOBODY -- not by get_info_oracle.sh, and the
-      -- fixture contract lists it under `omitted`. It is the last column of a
-      -- twenty-column table with `default 0`, so the positional load never reaches it.
-      -- Measured on the demonstration database: NULL on all 25 rows. The predicate was
-      -- therefore true for every row, and every CDB received a spurious database-grained
-      -- row beside its PDBs -- 7 of 41 on the demo, and as many on the real estate.
-      -- Whether the column held NULL or its default 0, it could not tell a CDB apart.
+      -- writes. A staging PDB count once used for this was emitted by nobody, so every
+      -- CDB received a spurious database-grained row beside its PDBs; the column is
+      -- gone, the PDB count of ext_oracle_instance is derived from oracle_pdbs.
       merge into dim_database dd
       using ( select di.instance_id, 'ORACLE' platform, od.db_name,
                      max(od.environment) environment
@@ -358,7 +344,7 @@ create or replace package body pkg_dbinv_inventory as
       on ( dd.instance_id = s.instance_id and dd.db_name = s.db_name )
       when matched then update set dd.db_state = s.db_state, dd.create_date = s.create_date,
          dd.owner = s.owner,
-         dd.environment = nvl(s.environment, dd.environment)   -- nvl guard: see load_dim_host
+         dd.environment = s.environment
       when not matched then
          insert ( instance_id, platform, db_name, db_state, create_date, owner, environment )
          values ( s.instance_id, s.platform, s.db_name, s.db_state, s.create_date, s.owner, s.environment );
@@ -592,15 +578,9 @@ create or replace package body pkg_dbinv_inventory as
    begin
       -- Oracle tablespaces: allocated size vs sum of segments
       --
-      -- Les segments viennent de oracle_size_usage_seg, PAS de
-      -- oracle_size_usage.sum_segment_mb : cette colonne existe dans la table
-      -- mais n'est dans aucun CSV -- elle suit les colonnes que le collecteur
-      -- s'arrête d'écrire, et le chargement positionnel ne la remplit jamais.
-      -- Elle valait donc NULL sur 100 % des lignes, used_mb tombait à 0, et
-      -- pct_used avec lui : le contrôle de saturation ne pouvait pas rougir,
-      -- quel que soit le remplissage réel. Vérifié sur la base de dev, où les
-      -- 524 lignes de fact_storage_capacity Oracle portaient pct_used = 0
-      -- alors que oracle_size_usage_seg contenait bien 231 sommes de segments.
+      -- Les segments viennent de oracle_size_usage_seg. oracle_size_usage portait
+      -- une colonne de somme qu'aucun CSV ne remplissait : used_mb tombait à 0 et
+      -- le contrôle de saturation ne pouvait pas rougir. Elle a été retirée.
       merge into fact_storage_capacity f
       using ( select su.storage_unit_id, p_snapshot_date snapshot_date,
                      max(z.size_mb) size_mb,

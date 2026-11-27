@@ -98,9 +98,9 @@ marqué `source: "déduit des scripts"`.
 ## Les pièges qui font échouer une génération naïve
 
 **Les colonnes à DEFAULT en fin de table ne sont pas dans le CSV**, et leur nombre varie :
-0 pour `mssql_hosts`, 1 pour `oracle_databases` (`count_pdb`), 2 pour la plupart des tables
-de sécurité (`compliance_score`, `date_value`), 3 pour `oracle_security_tablespace` et
-`oracle_size_usage`. Un champ de trop met un nom d'hôte dans `date_value` et la ligne est
+0 pour `mssql_hosts` et `oracle_databases`, 1 pour `oracle_size_usage` (`date_value`), 2 pour
+la plupart des tables de sécurité (`compliance_score`, `date_value`), 3 pour
+`oracle_security_tablespace`. Un champ de trop met un nom d'hôte dans `date_value` et la ligne est
 rejetée. `csv.mjs` refuse d'écrire un champ hors contrat.
 
 **Oracle n'émet que les déviations.** `oracle_sec_high_sys_privs` est vide sur une base

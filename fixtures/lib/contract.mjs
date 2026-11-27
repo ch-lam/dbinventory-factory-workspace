@@ -74,7 +74,7 @@ export const CONTRACT = {
       { name: "easy_connect_tns", type: "varchar2", len: 400 },
       { name: "database_type", type: "varchar2", len: 200 },
     ],
-    omitted: ["count_pdb"]
+    omitted: []
   },
   oracle_dataguard: {
     engine: "oracle", source: "déduit des scripts",
@@ -301,7 +301,7 @@ export const CONTRACT = {
       { name: "tablespace_name", type: "varchar2", len: 800 },
       { name: "size_mb", type: "number", prec: 10, scale: 0 },
     ],
-    omitted: ["environment","sum_segment_mb","date_value"]
+    omitted: ["date_value"]
   },
   oracle_size_usage_seg: {
     engine: "oracle", source: "collecte réelle",

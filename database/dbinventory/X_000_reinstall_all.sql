@@ -9,12 +9,15 @@
 @V__009_initial_data.sql
 @V__010_create_application_model.sql
 @V__011_create_application_api.sql
-@V__012_fix_audit_user_defaults.sql
-@V__013_journal_document_replacement.sql
-@V__014_oracle_licensing_lms.sql
-@V__016_oracle_network_encryption_audit.sql
-@V__015_create_transfer_api.sql
-@V__017_drop_awr_resource_metrics.sql
+@V__012_create_transfer_api.sql
+
+-- Objects created before what they reference (views and triggers of V__010 /
+-- V__011 on a later package, for instance) are left INVALID until first use.
+-- Recompile them now, so that T_002 only reports what really does not compile.
+begin
+   dbms_utility.compile_schema(schema => user, compile_all => false);
+end;
+/
 
 -- Last, and not optional: a package body that fails to compile does not stop the
 -- run above -- SQLcl prints the errors and carries on to "Commit complete."

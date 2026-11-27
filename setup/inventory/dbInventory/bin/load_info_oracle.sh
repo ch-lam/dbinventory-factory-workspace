@@ -79,17 +79,6 @@ parse_load_log() {
 log "Chargement des fichiers .csv Oracle dans Oracle..."
 log "Log : ${LOG_FILE}"
 
-# oracle_sec_net_enc_audit.csv n'est produit que depuis le 2026-11-11. Une
-# collecte plus ancienne (archive de data/, ou serveur pas encore à jour) ne le
-# porte pas, et le LOAD manquant arrêterait tout le chargement. Le fichier
-# absent vaut « aucune base en REQUESTED » : on le crée vide, en le disant.
-# Ce garde-fou ne vaut que pour ce fichier : l'absence de tout autre CSV reste
-# une collecte cassée.
-if [[ ! -f ../collect/oracle_sec_net_enc_audit.csv ]]; then
-    log "  oracle_sec_net_enc_audit.csv absent (collecte antérieure au 2026-11-11) : chargé vide"
-    : > ../collect/oracle_sec_net_enc_audit.csv
-fi
-
 SQLCL_EXIT=0
 sql "${SQLCL_ARGS[@]}" <<'SQLCL_SESSION' 2>&1 | tee "${LOG_FILE}" || SQLCL_EXIT="${PIPESTATUS[0]}"
 WHENEVER SQLERROR EXIT FAILURE ROLLBACK

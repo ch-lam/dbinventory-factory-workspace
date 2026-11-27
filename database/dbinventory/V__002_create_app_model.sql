@@ -1026,7 +1026,7 @@ create table ref_exception_document (
    constraint ref_exc_doc_exc_fk foreign key ( exception_id )
       references ref_exception ( exception_id ),
    constraint ref_exc_doc_kind_ck check ( doc_kind in ( 'LICENSE', 'VENDOR_MANUAL', 'APPROVAL', 'OTHER' ) )
-) lob ( content ) store as securefile ( compress );
+) lob ( content ) store as securefile;
 
 comment on table ref_exception_document is 'Files attached to a derogation as evidence (licence, vendor manual, signed approval); fingerprinted so an auditor can verify they were not swapped.';
 comment on column ref_exception_document.document_id is 'Technical primary key of the attachment.';

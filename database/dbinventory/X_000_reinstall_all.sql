@@ -20,3 +20,6 @@
 -- run above -- SQLcl prints the errors and carries on to "Commit complete."
 -- This turns that into an exit code.
 @T_002_no_invalid_objects.sql
+
+-- Same reason: Oracle does not refuse an unlicensed option, it records the usage.
+@T_006_no_licensed_options.sql

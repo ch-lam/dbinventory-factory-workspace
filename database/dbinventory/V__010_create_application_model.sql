@@ -371,7 +371,7 @@ create table ref_application_document (
    constraint ref_app_doc_body_ck check ( content is not null or external_url is not null ),
    -- A stored file with no name cannot be handed back to anyone.
    constraint ref_app_doc_name_ck check ( content is null or file_name is not null )
-) lob ( content ) store as securefile ( compress );
+) lob ( content ) store as securefile;
 
 comment on table ref_application_document is 'Documentation attached to an application: the file itself, a link to it, or both. An entry that is neither is refused.';
 comment on column ref_application_document.document_id is 'Technical primary key.';

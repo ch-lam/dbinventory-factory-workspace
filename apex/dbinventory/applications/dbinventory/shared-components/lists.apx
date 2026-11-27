@@ -721,6 +721,134 @@ list navigation-menu (
         }
     )
 
+    entry oracle-data-models (
+        label: Data Models
+        icon {
+            imageIconCssClasses: fa-table
+        }
+        layout {
+            sequence: 26
+            parentEntry: @oracle
+        }
+        link {
+            target: {
+                page: 20
+            }
+        }
+    )
+
+    entry oracle-consumers (
+        label: Consumers
+        icon {
+            imageIconCssClasses: fa-users
+        }
+        layout {
+            sequence: 28
+            parentEntry: @oracle
+        }
+        link {
+            target: {
+                page: 20
+            }
+        }
+    )
+
+    entry ms-data-models (
+        label: Data Models
+        icon {
+            imageIconCssClasses: fa-table
+        }
+        layout {
+            sequence: 34
+            parentEntry: @ms-sql
+        }
+        link {
+            target: {
+                page: 30
+            }
+        }
+    )
+
+    entry ms-consumers (
+        label: Consumers
+        icon {
+            imageIconCssClasses: fa-users
+        }
+        layout {
+            sequence: 38
+            parentEntry: @ms-sql
+        }
+        link {
+            target: {
+                page: 30
+            }
+        }
+    )
+
+    entry pg-data-models (
+        label: Data Models
+        icon {
+            imageIconCssClasses: fa-table
+        }
+        layout {
+            sequence: 44
+            parentEntry: @postgres
+        }
+        link {
+            target: {
+                page: 40
+            }
+        }
+    )
+
+    entry pg-consumers (
+        label: Consumers
+        icon {
+            imageIconCssClasses: fa-users
+        }
+        layout {
+            sequence: 48
+            parentEntry: @postgres
+        }
+        link {
+            target: {
+                page: 40
+            }
+        }
+    )
+
+    entry mysql-data-models (
+        label: Data Models
+        icon {
+            imageIconCssClasses: fa-table
+        }
+        layout {
+            sequence: 54
+            parentEntry: @mysql
+        }
+        link {
+            target: {
+                page: 50
+            }
+        }
+    )
+
+    entry mysql-consumers (
+        label: Consumers
+        icon {
+            imageIconCssClasses: fa-users
+        }
+        layout {
+            sequence: 58
+            parentEntry: @mysql
+        }
+        link {
+            target: {
+                page: 50
+            }
+        }
+    )
+
     entry services (
         label: Services
         icon {

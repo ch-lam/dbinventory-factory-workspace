@@ -1,6 +1,4 @@
 -- Oracle Database Schema for DBInventory
-alter session set current_schema=dbinventory;
-
 -- ============================================================
 -- mssql_backup
 -- ============================================================

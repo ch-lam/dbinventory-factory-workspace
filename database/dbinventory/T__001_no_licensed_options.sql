@@ -1,5 +1,5 @@
 -- ============================================================================
--- T_006_no_licensed_options.sql
+-- T__001_no_licensed_options.sql
 -- ----------------------------------------------------------------------------
 -- Fails when the schema uses a separately licensed Oracle option.
 --
@@ -25,8 +25,8 @@
 --   decision, made and licensed outside this schema.
 --
 -- USAGE
---   Run it at the end of every install. X_000 does.
---     sql -S -name <conn> @T_006_no_licensed_options.sql
+--   Run it at the end of every install: migrate.sh and X_000 both do.
+--     sql -S -name <conn> @T__001_no_licensed_options.sql
 --
 --   Exits non-zero when anything is found, so it gates a deployment script.
 -- ============================================================================

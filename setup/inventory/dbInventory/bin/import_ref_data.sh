@@ -3,7 +3,7 @@
 # import_ref_data.sh  –  Importe dans une base dbInventory un fichier produit
 #   par export_ref_data.sh.
 #
-# Prérequis : SQLcl 22+, base64 ; pkg_dbinv_transfer installé (V__012).
+# Prérequis : SQLcl 22+, base64 ; pkg_dbinv_transfer installé (pkg_dbinv_transfer).
 #
 # Usage : import_ref_data.sh [-t test|prod] [--apply] fichier.json
 #   -t       base cible (défaut : DBINVENTORY_TARGET, donc prod) ; ignoré si
@@ -11,7 +11,7 @@
 #   --apply  importe réellement. Sans lui : SIMULATION. Tout est exécuté puis
 #            annulé, le rapport est donc exactement celui d'un import réel.
 #
-# Règles (détail en tête de database/dbinventory/V__012_create_transfer_api.sql) :
+# Règles (détail en tête de database/dbinventory/R__pkg_dbinv_transfer.sql) :
 #   - une application est reconnue par son code (app_code), jamais par son nom
 #     ni par un identifiant technique ;
 #   - ce que le fichier porte est créé ou mis à jour ; rien n'est retiré de la

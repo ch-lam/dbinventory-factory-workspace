@@ -38,4 +38,3 @@ insert into licence_types ( license_type, description, scoring_impact ) values (
 insert into licence_types ( license_type, description, scoring_impact ) values ( 'CHL', 'Licence acquise et portee par le CHL', 100 );
 insert into licence_types ( license_type, description, scoring_impact ) values ( 'INCCI', 'Licence fournie dans le cadre INCCI', 0 );
 commit;
-

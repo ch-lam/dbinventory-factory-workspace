@@ -72,7 +72,7 @@ function entitiesFor (estate, token, level) {
          out.push({ type: 'HOST', platform: 'POSTGRES', host: h.hostname });
       } else if (level === 'INSTANCE') {
          // Côté PostgreSQL l'instance porte le nom de l'hôte : la collecte ne
-         // distingue pas les deux (voir V__004).
+         // distingue pas les deux (voir pkg_dbinv_inventory).
          out.push({ type: 'INSTANCE', platform: 'POSTGRES', host: h.hostname, instance: h.hostname });
       } else {
          out.push({ type: 'DATABASE', platform: 'POSTGRES', host: h.hostname,
@@ -262,7 +262,7 @@ export function emitApplications ({ outDir, world, estate }) {
       "         || ' application(s) de demonstration). Rien fait.');",
       "      dbms_output.put_line('  Le registre se saisit et ne se collecte pas : un rechargement');",
       "      dbms_output.put_line('  des fixtures n''ecrase pas une saisie. Pour le regenerer,');",
-      "      dbms_output.put_line('  reinstaller le schema (X_001_cleanup_and_reinstall_all.sql).');",
+      "      dbms_output.put_line('  reinstaller le schema (migrate.sh sur un schema vide, ou X_001 hors factory).');",
       '   else'];
 
    let created = 0, links = 0, groups = 0, contacts = 0, docs = 0, repos = 0;

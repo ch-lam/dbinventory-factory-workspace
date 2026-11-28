@@ -1,9 +1,9 @@
 -- =============================================================================
--- T_005 — export / import des données saisies (pkg_dbinv_transfer, V__012)
+-- T_005 — export / import des données saisies (pkg_dbinv_transfer)
 -- =============================================================================
 -- Se joue sur la base de démonstration, APRÈS fixtures/load_fixtures.sh :
 --
---   sql -S -name DEMO_DBINVENTORY_dbinventory @T_005_ref_data_transfer.sql
+--   sql -S -name DEMO_DBINVENTORY_dbinventory @fixtures/checks/T_005_ref_data_transfer.sql
 --
 -- Ce script **annule sa transaction** : il ne laisse rien derrière lui, ni dans
 -- le registre ni dans son journal, et ne déplace aucune mesure de la référence.

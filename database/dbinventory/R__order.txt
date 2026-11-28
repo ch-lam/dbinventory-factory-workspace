@@ -1,22 +1,7 @@
-# R__ files of schema DBINVENTORY, in the order migrate.sh replays them:
+# R__ files of schema DBINVENTORY, in the order migrate.sh and X_000 replay them:
 # a file comes after everything it depends on. One file name per line;
-# '#' starts a comment. Every R__*.sql of this folder must be listed.
-#
-
-# ---- Views
-R__v_benchmark_mapping_gap.sql
-R__v_entity_ancestry.sql
-R__v_exception_finding_match.sql
-R__v_exception_review.sql
-R__v_nis2_posture.sql
-R__v_entity_collect_date.sql
-R__v_environment_identity.sql
-R__v_discovery_status.sql
-R__v_application_database.sql
-R__v_database_without_application.sql
-R__v_application_document_review.sql
-R__v_application_overview.sql
-R__v_entity_application.sql
+# '#' starts a comment. Every R__*.sql of this folder must be listed, and
+# X_000_reinstall_all.sql must list the same files in the same order.
 
 # ---- Package specifications
 R__pkg_dbinv_inventory.sql
@@ -26,7 +11,24 @@ R__pkg_dbinv_exception.sql
 R__pkg_dbinv_application.sql
 R__pkg_dbinv_transfer.sql
 
-# ---- Package bodies
+# ---- Views
+R__v_benchmark_mapping_gap.sql
+R__v_entity_ancestry.sql
+R__v_exception_finding_match.sql
+R__v_exception_review.sql
+R__v_nis2_posture.sql
+R__v_entity_collect_date.sql
+R__v_database_census.sql
+R__v_environment_identity.sql
+R__v_oracle_lms_usage.sql
+R__v_discovery_status.sql
+R__v_application_database.sql
+R__v_database_without_application.sql
+R__v_application_document_review.sql
+R__v_application_overview.sql
+R__v_entity_application.sql
+
+# ---- Package and type bodies
 R__pkg_dbinv_inventory_BODY.sql
 R__pkg_dbinv_scoring_BODY.sql
 R__pkg_dbinv_discovery_BODY.sql

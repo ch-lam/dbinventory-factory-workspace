@@ -186,8 +186,12 @@ create or replace view v_discovery_status as
                    regexp_substr(cl.easy_connect_tns, '^[^:/]+'),
                    cast(regexp_substr(regexp_substr(cl.easy_connect_tns, '[^/]+$'), '^[^.]+')
                         as varchar2(128 char)),
-                   to_number(regexp_substr(cl.easy_connect_tns, ':([0-9]+)', 1, 1, null, 1)
-                             default null on conversion error)
+                   -- validate_conversion, not to_number(... default null on
+                   -- conversion error): see v_oracle_lms_usage (pkg_dbinv_scoring), where
+                   -- that form broke a faceted search with ORA-43907 on 23.26.
+                   case when validate_conversion(regexp_substr(cl.easy_connect_tns, ':([0-9]+)', 1, 1, null, 1) as number) = 1
+                        then to_number(regexp_substr(cl.easy_connect_tns, ':([0-9]+)', 1, 1, null, 1))
+                   end
               from oracle_collect_list cl
              where cl.active = 1
             union all

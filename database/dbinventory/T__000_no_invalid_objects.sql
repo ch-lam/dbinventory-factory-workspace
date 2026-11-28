@@ -21,7 +21,7 @@
 --   need to. It asks the database whether anything is broken.
 --
 -- USAGE
---   migrate.sh runs it last, on every run.
+--   Run it at the end of every install: migrate.sh and X_000 both do.
 --     sql -S -name <conn> @T__000_no_invalid_objects.sql
 --
 --   Exits non-zero when anything is invalid, so it gates a deployment script.

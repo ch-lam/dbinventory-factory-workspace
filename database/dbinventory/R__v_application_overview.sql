@@ -52,4 +52,5 @@ create or replace view v_application_overview as
           end review_state
      from ref_application a
     where a.active = 1;
+
 comment on table v_application_overview is 'One row per active application with its resolved database count, its satellites and its review state; the source of the application list screen.';

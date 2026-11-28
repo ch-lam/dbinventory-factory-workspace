@@ -83,4 +83,5 @@ union all
 select 4, 'Volume', 40, 'Active rules', to_char(( select count(*) from ref_control_rule where active = 1 )) from dual
 union all
 select 4, 'Volume', 50, 'Derogations', to_char(( select count(*) from ref_exception )) from dual;
+
 comment on table v_environment_identity is 'Name/value description of the environment: identity, release, data freshness and volume. Read by the About page, by SQLcl and by deployment pipelines to confirm which database they are talking to.';

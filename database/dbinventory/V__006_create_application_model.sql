@@ -1,5 +1,5 @@
 -- ============================================================================
--- V__010_create_application_model.sql
+-- V__006_create_application_model.sql
 -- ----------------------------------------------------------------------------
 -- The application registry: which application a database serves, who to contact
 -- about it, where its documentation is, and where its sources are.
@@ -31,29 +31,6 @@
 -- Groups are expected to map to directory groups, so ldap_dn and external_ref are
 -- carried from the start -- adding them later means backfilling by hand.
 -- ============================================================================
-
-
--- ============================================================
--- Retire the previous attempt.
--- ------------------------------------------------------------
--- oracle_capplan_hist_applink mapped PDBs to an app_code for cost allocation.
--- Verified before removing it: empty, written by nothing, read by nothing, and
--- referenced in this repository only by its own DDL in V__001. Two competing
--- application registries is one too many.
---
--- Dropped here as well as removed from V__001, because X_000 does not purge: a
--- database installed before this change keeps the table unless something says
--- otherwise. Guarded, so a fresh install where it never existed is not an error.
--- ============================================================
-declare
-   l_n pls_integer;
-begin
-   select count(*) into l_n from user_tables where table_name = 'ORACLE_CAPPLAN_HIST_APPLINK';
-   if l_n > 0 then
-      execute immediate 'drop table oracle_capplan_hist_applink purge';
-   end if;
-end;
-/
 
 
 -- ============================================================
@@ -369,7 +346,7 @@ create table ref_application_document (
    constraint ref_app_doc_body_ck check ( content is not null or external_url is not null ),
    -- A stored file with no name cannot be handed back to anyone.
    constraint ref_app_doc_name_ck check ( content is null or file_name is not null )
-) lob ( content ) store as securefile ( compress );
+) lob ( content ) store as securefile;
 
 comment on table ref_application_document is 'Documentation attached to an application: the file itself, a link to it, or both. An entry that is neither is refused.';
 comment on column ref_application_document.document_id is 'Technical primary key.';
@@ -478,8 +455,8 @@ create index ref_app_evt_app_ix on ref_application_event ( application_id, event
 -- ============================================================
 -- Reference data: the group catalogue.
 -- ------------------------------------------------------------
--- Seeded here rather than in V__009_initial_data.sql because X_000 runs the V__
--- scripts in order: V__009 executes before this file, when the table does not
+-- Seeded here rather than in V__005_initial_data.sql because X_000 runs the V__
+-- scripts in order: V__005 executes before this file, when the table does not
 -- exist yet. Reference data intrinsic to a model belongs with the model.
 --
 -- MERGE rather than DELETE + INSERT: ref_application_group references these
@@ -498,4 +475,3 @@ when matched then update set t.label = s.label, t.description = s.descr, t.sort_
 when not matched then insert ( group_type_code, label, description, sort_order )
                       values ( s.code, s.label, s.descr, s.ord );
 commit;
-

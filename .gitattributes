@@ -17,6 +17,13 @@
 fixtures/out/** text eol=lf
 fixtures/expected/*.csv text eol=lf
 
+# The schema files are checksummed by migrate.sh, on Linux and on Windows.
+# The checksum ignores CR, but keeping them LF everywhere means a diff never
+# shows a line-ending change and the factory host and a workstation hold the
+# same bytes.
+database/dbinventory/*.sql text eol=lf
+database/dbinventory/R__order.txt text eol=lf
+
 # The collect scripts source their .env with bash: a CRLF copy of this template
 # would leave a carriage return at the end of every password.
 setup/inventory/dbInventory/.env.example text eol=lf

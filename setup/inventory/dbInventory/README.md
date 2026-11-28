@@ -51,7 +51,7 @@ Pour un lancement manuel d'une seule étape en test, il existe `load_info_{oracl
 
 ## Transférer les données saisies (test → prod)
 
-La collecte se recharge chaque nuit, mais ce qui est saisi dans l'application ne se recharge pas. Pour l'instant, cela concerne le registre applicatif. `export_ref_data.sh` et `import_ref_data.sh` font passer ces saisies d'une base à l'autre au moyen d'un fichier JSON. Le package `pkg_dbinv_transfer` (`V__015`) doit être installé dans les deux bases.
+La collecte se recharge chaque nuit, mais ce qui est saisi dans l'application ne se recharge pas. Pour l'instant, cela concerne le registre applicatif. `export_ref_data.sh` et `import_ref_data.sh` font passer ces saisies d'une base à l'autre au moyen d'un fichier JSON. Le package `pkg_dbinv_transfer` (`pkg_dbinv_transfer`) doit être installé dans les deux bases.
 
 ```bash
 cd bin

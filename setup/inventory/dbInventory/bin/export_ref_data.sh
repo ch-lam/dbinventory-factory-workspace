@@ -4,7 +4,7 @@
 #   collecté) vers un fichier JSON, réimportable par import_ref_data.sh dans
 #   une autre base : test -> prod, ou avant une réinstallation.
 #
-# Prérequis : SQLcl 22+, base64 ; pkg_dbinv_transfer installé (V__015).
+# Prérequis : SQLcl 22+, base64 ; pkg_dbinv_transfer installé (pkg_dbinv_transfer).
 #
 # Usage : export_ref_data.sh [-t test|prod] [-a CODE1,CODE2] [-o fichier.json]
 #   -t  base source (défaut : DBINVENTORY_TARGET, donc prod) ; ignoré si
@@ -22,7 +22,7 @@
 # rattachements, documents fichier compris, sources). Aucun identifiant
 # technique : les rattachements partent sous forme de noms (plateforme, hôte,
 # instance, base) et sont résolus à nouveau dans la base cible. Le détail est en
-# tête de database/dbinventory/V__015_create_transfer_api.sql.
+# tête de database/dbinventory/R__pkg_dbinv_transfer.sql.
 #
 # Le fichier contient des noms, des adresses et des documents : à traiter comme
 # une donnée interne, à ne pas laisser traîner, à ne jamais versionner.

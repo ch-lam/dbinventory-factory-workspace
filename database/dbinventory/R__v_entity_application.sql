@@ -59,4 +59,5 @@ create or replace view v_entity_application as
      from v_application_database ad
      join ref_application a
        on a.application_id = ad.application_id;
+
 comment on table v_entity_application is 'Applications claiming a given inventory entity, at host, instance or database level; the registry read from the inventory rather than from the application.';

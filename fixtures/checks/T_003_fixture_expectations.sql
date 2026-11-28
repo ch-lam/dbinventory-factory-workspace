@@ -311,13 +311,17 @@ begin
    --    jamais été mise à l'épreuve -- c'était le cas de la saturation, verte
    --    sur 1034 constats parce qu'elle ne pouvait structurellement pas rougir.
    --
-   --    Exclues : les règles inactives, et les contrôles catalogués sans règle
-   --    (les deux *_LICENSING, dont la logique LMS est différée).
+   --    Exclues : les règles inactives, les contrôles catalogués sans règle
+   --    (MSSQL_LICENSING, dont la norme n'est pas arrêtée), et les règles que
+   --    la norme CHL rend conformes par construction, qui ne servent qu'à
+   --    tracer le test (MSSQL_AUTH_WINDOWS_ONLY : mode mixte accepté). Une
+   --    exclusion se nomme ici, une à une : elle ne s'infère pas.
    select count(*), listagg(rule_code, ', ') within group ( order by rule_code )
      into l_n, l_txt
      from ( select f.rule_code
               from fact_control_finding f
               join ref_control_rule r on r.rule_code = f.rule_code and r.active = 1
+             where f.rule_code not in ( 'MSSQL_AUTH_WINDOWS_ONLY' )
              group by f.rule_code
             having count(distinct f.is_compliant) < 2 );
    if l_n = 0 then
@@ -476,11 +480,16 @@ begin
    --     quelque chose n'est pas classé, cette assertion dit QUOI. Une règle
    --     non classée ne casse rien -- elle disparaît simplement de la bande,
    --     et un écart réel cesse d'être compté sans que rien ne rougisse.
-   select count(*), listagg(rule_code, ', ') within group ( order by rule_code )
+   --     Exclu : le domaine LICENSING. Une option utilisée sans licence est une
+   --     exposition contractuelle, pas une des mesures de l'article 21(2) ; la
+   --     classer quelque part ferait rougir la posture NIS2 pour une facture.
+   select count(*), listagg(r.rule_code, ', ') within group ( order by r.rule_code )
      into l_n, l_txt
-     from ref_control_rule
-    where active = 1
-      and nis2_domain_code is null;
+     from ref_control_rule r
+     join ref_control c on c.control_code = r.control_code
+    where r.active = 1
+      and c.score_domain <> 'LICENSING'
+      and r.nis2_domain_code is null;
    if l_n = 0 then
       ok('toute regle active porte un domaine NIS2');
    else
@@ -640,6 +649,123 @@ begin
                         where a.entity_type = e.entity_type
                           and a.entity_id = e.entity_id );
    expect_zero('chaque rattachement vise une entite qui existe', l_n, 'rattachement(s) orphelin(s)');
+
+   -- 29. LMS : une instance hors périmètre de licence n'a aucun constat.
+   --     Les bases SAP portent leurs options dans la licence runtime SAP : un
+   --     constat sur elles noierait les vrais écarts sous des dizaines de faux.
+   select count(*) into l_n
+     from fact_control_finding f
+    where f.rule_code like 'ORACLE_LMS%'
+      and f.entity_type = 'INSTANCE'
+      and f.entity_id in ( select instance_id from v_oracle_lms_usage where in_scope = 0 );
+   expect_zero('LMS : aucun constat hors perimetre de licence', l_n, 'constat(s) sur une instance SAP/FREE/PROVIDER/INCCI');
+
+   -- 30. LMS : aucun écart sur un produit que la vue dit non utilisé.
+   --     C'est le recompte Multitenant qui est visé : le script d'Oracle le
+   --     signale sur toute CDB, et une CDB 19c à 3 PDB au plus n'en doit rien.
+   select count(*) into l_n
+     from fact_control_finding f
+     join v_oracle_lms_usage u
+       on u.instance_id = f.entity_id and u.product_name = f.item_key
+    where f.rule_code like 'ORACLE_LMS%'
+      and f.is_compliant = 0
+      and u.usage_status = 'NO_USAGE';
+   expect_zero('LMS : aucun ecart sur un produit non utilise', l_n, 'ecart(s) sur un produit recompte NO_USAGE');
+
+   -- 31. LMS : le recompte Multitenant a bien servi au moins une fois.
+   --     Sans cela, l'assertion 30 passerait sur un jeu sans aucune CDB.
+   select count(*) into l_n
+     from v_oracle_lms_usage
+    where product_name = 'Multitenant'
+      and reported_usage = 'CURRENT_USAGE'
+      and usage_status = 'NO_USAGE';
+   if l_n > 0 then
+      ok('LMS : recompte Multitenant exerce');
+   else
+      fail('LMS : recompte Multitenant exerce', 'aucune CDB recomptee');
+   end if;
+
+   -- 32. Chiffrement réseau : la présence de la table de suivi vaut REQUESTED.
+   --     Chaque base qui la porte est en écart sur le mode, même vide, et
+   --     aucune autre (décision du 2026-11-11 : REQUESTED = écart sauf dérogation).
+   declare
+      l_snap   date;
+      l_audit  pls_integer;
+      l_recent pls_integer;
+      l_old    pls_integer;
+   begin
+      select max(snapshot_date) into l_snap
+        from fact_control_finding where rule_code like 'ORACLE_NETWORK%';
+      select count(distinct db_name) into l_audit
+        from oracle_sec_net_enc_audit where record_type = 'AUDIT';
+      select count(*) into l_n
+        from fact_control_finding
+       where rule_code = 'ORACLE_NETWORK_ENCRYPTION_REQUIRED'
+         and is_compliant = 0 and snapshot_date = l_snap;
+      if l_audit > 0 and l_n = l_audit then
+         ok('chiffrement reseau : ' || l_audit || ' base(s) en REQUESTED, toutes en ecart');
+      else
+         fail('chiffrement reseau : table de suivi = ecart sur le mode',
+              l_n || ' ecart(s) pour ' || l_audit || ' base(s) portant la table');
+      end if;
+
+      -- 33. Chiffrement réseau : seuls les clients des 30 jours avant le
+      --     snapshot sont des écarts. Le jeu porte aussi des clients plus
+      --     anciens : sans eux, la fenêtre ne serait pas exercée.
+      select count(*) into l_recent
+        from ( select distinct db_name, pdb_name, username, machine, program
+                 from oracle_sec_net_enc_audit
+                where record_type = 'CLIENT'
+                  and to_date(last_seen, 'YYYY-MM-DD HH24:MI:SS') >= l_snap - 30 );
+      select count(*) into l_old
+        from oracle_sec_net_enc_audit
+       where record_type = 'CLIENT'
+         and to_date(last_seen, 'YYYY-MM-DD HH24:MI:SS') < l_snap - 30;
+      select count(*) into l_n
+        from fact_control_finding
+       where rule_code = 'ORACLE_NETWORK_UNENCRYPTED_CLIENT'
+         and is_compliant = 0 and snapshot_date = l_snap;
+      if l_old > 0 and l_recent > 0 and l_n = l_recent then
+         ok('chiffrement reseau : ' || l_recent || ' client(s) recent(s) en ecart, '
+            || l_old || ' ancien(s) ignore(s)');
+      else
+         fail('chiffrement reseau : fenetre de 30 jours',
+              l_n || ' ecart(s) pour ' || l_recent || ' client(s) recent(s), '
+              || l_old || ' client(s) ancien(s) dans le jeu');
+      end if;
+   end;
+
+   -- 34 à 37. Ce que la norme CHL accepte est tracé en CONFORME, jamais filtré :
+   --     la ligne doit exister (le test a eu lieu) et ne jamais être un écart.
+   declare
+      procedure accepted ( p_what varchar2, p_rule varchar2, p_like varchar2, p_col varchar2 ) is
+         l_rows pls_integer;
+         l_bad  pls_integer;
+      begin
+         execute immediate
+            'select count(*), nvl(sum(1 - is_compliant), 0) from fact_control_finding'
+            || ' where rule_code = :r and ' || p_col || ' like :l'
+            into l_rows, l_bad using p_rule, p_like;
+         if l_rows > 0 and l_bad = 0 then
+            ok(p_what || ' : ' || l_rows || ' ligne(s), toutes conformes');
+         else
+            fail(p_what, l_rows || ' ligne(s), dont ' || l_bad || ' en ecart');
+         end if;
+      end accepted;
+   begin
+      -- 34. SELECT_CATALOG_ROLE accepté, chaque octroi nommé.
+      accepted('SELECT_CATALOG_ROLE trace en conforme', 'ORACLE_HIGH_ROLE_PRIVS_GRANT',
+               '%/SELECT_CATALOG_ROLE', 'item_key');
+      -- 35. Paramètres d'audit hérités sans objet en Unified Auditing pur.
+      accepted('audit_trail sans objet en unifie pur', 'ORACLE_PRM_AUDIT_TRAIL',
+               '%pure Unified Auditing%', 'observed_value');
+      -- 36. La sentinelle NoGroup de la collecte est reconnue.
+      accepted('sentinelle NoGroup conforme', 'MSSQL_GROUP_NO_LOCAL_PERMISSION',
+               'NoGroup', 'item_key');
+      -- 37. msdb conforme sur TRUSTWORTHY, avec la raison dans la valeur attendue.
+      accepted('msdb conforme sur TRUSTWORTHY', 'MSSQL_DBPROP_TRUSTWORTHY_OFF',
+               'msdb:%', 'expected_value');
+   end;
 
    dbms_output.put_line('T_003 : ' || l_checked || ' verification(s), ' || l_failed || ' echec(s), '
       || l_warned || ' avertissement(s).');

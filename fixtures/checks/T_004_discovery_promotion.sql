@@ -3,7 +3,7 @@
 -- =============================================================================
 -- Se joue sur la base de démonstration, APRÈS fixtures/load_fixtures.sh.
 --
---   sql -S -name DEMO_DBINVENTORY_dbinventory @T_004_discovery_promotion.sql
+--   sql -S -name DEMO_DBINVENTORY_dbinventory @fixtures/checks/T_004_discovery_promotion.sql
 --
 -- Ce script **annule sa transaction**. Il ne laisse donc rien derrière lui, et
 -- peut se jouer avant ou après check_baseline.sh sans en déplacer une mesure.

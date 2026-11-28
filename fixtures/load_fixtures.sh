@@ -76,7 +76,7 @@ SERVICE="$(echo "${SERVICE}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
 
 if [[ -z "${SERVICE}" ]]; then
     echo "ERREUR: impossible de lire v_environment_identity sur « ${DB_CONN} »." >&2
-    echo "  Le modèle est-il installé ? (database/dbinventory/migrate.sh <conn>)" >&2
+    echo "  Le modèle est-il installé ? (database/dbinventory/migrate.sh <conn>, ou X_000 hors factory)" >&2
     exit 1
 fi
 log "Base cible : ${SERVICE}"

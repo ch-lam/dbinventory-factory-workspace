@@ -1,3 +1,26 @@
+-- ============================================================================
+-- R__pkg_dbinv_discovery.sql
+-- ----------------------------------------------------------------------------
+-- ETL package pkg_dbinv_discovery: populates the discovery area (V__004) from
+-- the discovery staging tables, and promotes a discovered instance into the
+-- collection perimeter.
+--
+-- Design, aligned on pkg_dbinv_inventory (pkg_dbinv_inventory):
+--   * A run is MERGEd on (source, run_date), so loading the same day twice
+--     reuses the same run instead of duplicating it.
+--   * Findings are deleted then re-inserted for that run: the whole load is
+--     idempotent per day.
+--   * Current state (disc_host, disc_instance) is MERGEd on its natural key.
+--     first_seen_date is set on insert and never rewritten; last_seen_date
+--     follows the run. Nothing is ever deleted - an entity that stops being
+--     discovered simply stops having its last_seen_date moved forward.
+--   * Hosts are merged before instances: an instance-level finding implies its
+--     host, so disc_host is fed from findings of both levels.
+--
+-- No verdict is produced anywhere in this package. Ageing is a fact, not a
+-- status: reading it as a decommission is a human call.
+-- ============================================================================
+
 create or replace package pkg_dbinv_discovery as
 
    -- Creates (or reuses) the run for a source and a day, and returns its id.

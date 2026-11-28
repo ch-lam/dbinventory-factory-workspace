@@ -74,7 +74,7 @@ export const CONTRACT = {
       { name: "easy_connect_tns", type: "varchar2", len: 400 },
       { name: "database_type", type: "varchar2", len: 200 },
     ],
-    omitted: ["count_pdb"]
+    omitted: []
   },
   oracle_dataguard: {
     engine: "oracle", source: "déduit des scripts",
@@ -275,6 +275,23 @@ export const CONTRACT = {
     ],
     omitted: ["compliance_score","date_value"]
   },
+  oracle_sec_net_enc_audit: {
+    engine: "oracle", source: "déduit des scripts",
+    fields: [
+      { name: "collect_id", type: "varchar2", len: 16 },
+      { name: "db_name", type: "varchar2", len: 200 },
+      { name: "pdb_name", type: "varchar2", len: 512 },
+      { name: "record_type", type: "varchar2", len: 40 },
+      { name: "username", type: "varchar2", len: 512 },
+      { name: "machine", type: "varchar2", len: 1024 },
+      { name: "program", type: "varchar2", len: 512 },
+      { name: "osuser", type: "varchar2", len: 512 },
+      { name: "first_seen", type: "varchar2", len: 80 },
+      { name: "last_seen", type: "varchar2", len: 80 },
+      { name: "logon_count", type: "varchar2", len: 80 },
+    ],
+    omitted: []
+  },
   oracle_size_usage: {
     engine: "oracle", source: "collecte réelle",
     fields: [
@@ -284,7 +301,7 @@ export const CONTRACT = {
       { name: "tablespace_name", type: "varchar2", len: 800 },
       { name: "size_mb", type: "number", prec: 10, scale: 0 },
     ],
-    omitted: ["environment","sum_segment_mb","date_value"]
+    omitted: ["date_value"]
   },
   oracle_size_usage_seg: {
     engine: "oracle", source: "collecte réelle",
@@ -294,29 +311,6 @@ export const CONTRACT = {
       { name: "pdb_name", type: "varchar2", len: 200 },
       { name: "tablespace_name", type: "varchar2", len: 800 },
       { name: "sum_segment_mb", type: "number", prec: 10, scale: 0 },
-    ],
-    omitted: ["date_value"]
-  },
-  oracle_metrics_cpu_memory: {
-    engine: "oracle", source: "collecte réelle",
-    fields: [
-      { name: "collect_id", type: "varchar2", len: 16 },
-      { name: "pdb_name", type: "varchar2", len: 200 },
-      { name: "cpu_time_minutes", type: "number", prec: 10, scale: 0 },
-      { name: "avg_sga_mb", type: "number", prec: 10, scale: 0 },
-      { name: "avg_pga_mb", type: "number", prec: 10, scale: 0 },
-      { name: "avg_buffer_cache_mb", type: "number", prec: 10, scale: 0 },
-      { name: "avg_shared_pool_mb", type: "number", prec: 10, scale: 0 },
-    ],
-    omitted: ["environment","date_value"]
-  },
-  oracle_metrics_cpu_service: {
-    engine: "oracle", source: "collecte réelle",
-    fields: [
-      { name: "collect_id", type: "varchar2", len: 16 },
-      { name: "pdb_name", type: "varchar2", len: 200 },
-      { name: "service_name", type: "varchar2", len: 400 },
-      { name: "dbcpu_time_minutes", type: "number", prec: 10, scale: 0 },
     ],
     omitted: ["date_value"]
   },
@@ -516,6 +510,7 @@ export const CONTRACT = {
       { name: "db_name", type: "varchar2", len: 200 },
       { name: "is_auto_close_on", type: "number", prec: 10, scale: 0 },
       { name: "is_trustworthy_on", type: "number", prec: 10, scale: 0 },
+      { name: "query_store_state", type: "varchar2", len: 120 },
     ],
     omitted: ["compliance_score","date_value"]
   },

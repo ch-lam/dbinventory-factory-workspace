@@ -40,4 +40,5 @@ create or replace view v_application_document_review as
        on a.application_id = d.application_id
     where d.active = 1
       and a.active = 1;
+
 comment on table v_application_document_review is 'Review worklist for application documentation, ordered from the most blocking state to the most benign.';

@@ -1,9 +1,9 @@
 -- =============================================================================
--- T_005 — export / import des données saisies (pkg_dbinv_transfer, V__015)
+-- T_005 — export / import des données saisies (pkg_dbinv_transfer)
 -- =============================================================================
 -- Se joue sur la base de démonstration, APRÈS fixtures/load_fixtures.sh :
 --
---   sql -S -name DEMO_DBINVENTORY_dbinventory @T_005_ref_data_transfer.sql
+--   sql -S -name DEMO_DBINVENTORY_dbinventory @fixtures/checks/T_005_ref_data_transfer.sql
 --
 -- Ce script **annule sa transaction** : il ne laisse rien derrière lui, ni dans
 -- le registre ni dans son journal, et ne déplace aucune mesure de la référence.
@@ -42,6 +42,7 @@ declare
    l_n       pls_integer;
    l_groups  pls_integer;
    l_id      number;
+   l_evt     pls_integer;
 
    procedure note ( p_line varchar2 ) is
    begin
@@ -118,6 +119,9 @@ begin
    expect('l''export porte toutes les applications actives', 'APPLICATION', 'EXPORTED', l_n);
    check_that('aucun identifiant technique dans le fichier', instr(l_doc, '_id"') = 0,
               'une cle en _id est presente');
+   -- Journal measured by identity, not by time: the fixtures or T_001 may have
+   -- written events a few seconds earlier, and those are not the import's.
+   select nvl(max(event_id), 0) into l_id from ref_application_event;
    quiet_import(l_doc);
    expect('aller-retour : aucune application creee',    'APPLICATION', 'CREATED',   0);
    expect('aller-retour : aucune application modifiee', 'APPLICATION', 'UPDATED',   0);
@@ -125,8 +129,8 @@ begin
    expect('aller-retour : aucun rattachement cree',     'ENTITY',      'CREATED',   0);
    expect('aller-retour : aucun rattachement ignore',   'ENTITY',      'SKIPPED',   0);
    expect('aller-retour : aucun document modifie',      'DOCUMENT',    'UPDATED',   0);
-   select count(*) into l_id from ref_application_event where event_date > sysdate - 1/1440;
-   check_that('aller-retour : rien au journal', l_id = 0, l_id || ' evenement(s)');
+   select count(*) into l_evt from ref_application_event where event_id > l_id;
+   check_that('aller-retour : rien au journal', l_evt = 0, l_evt || ' evenement(s)');
 
    -- 2. Creation, under other codes.
    quiet_import(replace(l_doc, '"app_code" : "', '"app_code" : "ZZ_'));

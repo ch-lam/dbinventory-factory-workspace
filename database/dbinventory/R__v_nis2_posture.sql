@@ -135,4 +135,5 @@ select e.entity_type,
     on a.entity_type = e.entity_type
    and a.entity_id = e.entity_id
    and a.nis2_domain_code = d.nis2_domain_code;
+
 comment on table v_nis2_posture is 'NIS2 article 21(2) posture of every instance and database, one row per domain including those with nothing evaluated; feeds the posture band of the six card pages and nothing else.';

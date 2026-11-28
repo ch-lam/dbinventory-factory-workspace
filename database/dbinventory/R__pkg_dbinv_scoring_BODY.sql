@@ -94,13 +94,34 @@ create or replace package body pkg_dbinv_scoring as
                    'is_auto_close_on=0'
             from mssql_security_dbproperties d
             union all
-            -- msdb needs TRUSTWORTHY for Database Mail and SQL Agent: scope of
-            -- the norm, not a derogation.
+            -- msdb ships with TRUSTWORTHY ON and Microsoft requires it (SQL Agent,
+            -- Database Mail): scope of the norm, not a derogation. msdb at 0 is
+            -- unusual but not a security risk, so it is compliant too. The
+            -- expected value says so, instead of contradicting the verdict.
             select 'MSSQL_DBPROP_TRUSTWORTHY_OFF', d.servername, d.db_name, '*',
                    case when d.is_trustworthy_on = 0 or d.db_name = 'msdb' then 1 else 0 end,
-                   d.db_name || ' (trustworthy=' || d.is_trustworthy_on || ')',
-                   'is_trustworthy_on=0'
+                   d.db_name || ' (trustworthy=' || d.is_trustworthy_on || ')'
+                   || case when d.db_name = 'msdb' and d.is_trustworthy_on = 0
+                           then ' - non standard, SQL Agent / Database Mail may fail' end,
+                   case when d.db_name = 'msdb'
+                        then 'msdb: is_trustworthy_on=1 required by Microsoft (SQL Agent, Database Mail)'
+                        else 'is_trustworthy_on=0' end
             from mssql_security_dbproperties d
+            union all
+            -- Query Store must be READ_WRITE on user databases from SQL Server
+            -- 2016 (major version 13). READ_ONLY means it is full and captures
+            -- nothing any more. The collect leaves the state empty where it means
+            -- nothing (older engine, system, offline or read-only database): no row.
+            select 'MSSQL_DBPROP_QUERY_STORE_ON', d.servername, d.db_name, '*',
+                   case when upper(d.query_store_state) = 'READ_WRITE' then 1 else 0 end,
+                   d.db_name || ' (query_store=' || d.query_store_state || ')',
+                   'query_store=READ_WRITE (SQL Server 2016+)'
+            from mssql_security_dbproperties d
+            where d.query_store_state is not null
+              and d.db_name not in ( 'master', 'model', 'msdb', 'tempdb' )
+              and exists ( select 1 from mssql_hosts h
+                            where h.hostname = d.servername
+                              and to_number(regexp_substr(h.mssql_product_version, '^[0-9]+')) >= 13 )
             union all
             -- ---------- auditlevel ----------
             select 'MSSQL_AUDIT_LEVEL_LOGIN_FAILURES', a.servername, cast(null as varchar2(50 char)), '*',
@@ -126,9 +147,13 @@ create or replace package body pkg_dbinv_scoring as
             from mssql_security_encryption e
             union all
             -- ---------- groups ----------
+            -- The collect writes the sentinel NoGroup / NoPerm / NoState when no
+            -- local group holds a server permission. Compared case-insensitively:
+            -- matching 'nogroup' exactly made every clean server non-compliant.
             select 'MSSQL_GROUP_NO_LOCAL_PERMISSION', g.servername, cast(null as varchar2(50 char)), g.localgroupname,
-                   case when g.localgroupname = 'nogroup' then 1 else 0 end,
-                   g.localgroupname || ' (' || g.permission_name || ')',
+                   case when upper(g.localgroupname) = 'NOGROUP' then 1 else 0 end,
+                   case when upper(g.localgroupname) = 'NOGROUP' then 'no local group holds a server permission'
+                        else g.localgroupname || ' (' || g.permission_name || ')' end,
                    'no local group holding a permission'
             from mssql_security_groups g
             union all
@@ -170,11 +195,13 @@ create or replace package body pkg_dbinv_scoring as
             -- the collect already asks for it. An instance collected before the
             -- property was added reads NULL and is left unjudged rather than
             -- counted as mixed mode.
+            -- Mixed mode is accepted by the CHL norm: always compliant, but the
+            -- row is kept so the mode of every instance stays on record.
             select 'MSSQL_AUTH_WINDOWS_ONLY', h.hostname, cast(null as varchar2(50 char)), '*',
-                   case when h.is_integrated_security_only = 1 then 1 else 0 end,
+                   1,
                    case when h.is_integrated_security_only = 1 then 'Windows authentication only'
-                        else 'mixed mode (SQL logins accepted)' end,
-                   'Windows authentication only'
+                        else 'mixed mode (accepted by the CHL norm)' end,
+                   'Windows only or mixed mode (both accepted)'
             from mssql_hosts h
             where h.is_integrated_security_only is not null
             union all
@@ -247,7 +274,7 @@ create or replace package body pkg_dbinv_scoring as
    -- Same shape as the MSSQL procedure, with one structural difference that
    -- drives most of the code below.
    --
-   -- The MSSQL collects emit SENTINEL rows ('NoOrphanedUser', 'nogroup',
+   -- The MSSQL collects emit SENTINEL rows ('NoOrphanedUser', 'NoGroup',
    -- 'no_permission'), so every instance yields a row and a compliant verdict
    -- falls out of the merge. The Oracle collects emit ONLY THE DEVIATIONS:
    -- oracle_sec_high_sys_privs & co. are empty on a clean database. Merging them
@@ -277,6 +304,40 @@ create or replace package body pkg_dbinv_scoring as
          -- Collected-entity witnesses (see header).
          w_inst as ( select distinct db_name from oracle_security_parameter ),
          w_db   as ( select distinct db_name, pdb_name from oracle_security_profile ),
+         -- Databases left in REQUESTED network encryption: the unencrypted-client
+         -- audit table exists in at least one of their containers.
+         net_audit as (
+            select db_name,
+                   listagg(distinct pdb_name, ', ') within group ( order by pdb_name ) containers
+              from oracle_sec_net_enc_audit
+             where record_type = 'AUDIT'
+             group by db_name
+         ),
+         -- Their unencrypted clients seen in the 30 days before the snapshot --
+         -- counted from the snapshot date, not from today, so a replayed snapshot
+         -- keeps its verdicts. The audit table also keys on the OS user; it is
+         -- folded here so the item_key (container, user, machine, program) stays
+         -- unique.
+         net_clients as (
+            select db_name, pdb_name, username, machine, program,
+                   listagg(distinct osuser, ', ') within group ( order by osuser ) osusers,
+                   min(first_seen) first_seen,
+                   max(last_seen) last_seen,
+                   sum(logons) logons
+              from ( select a.db_name, a.pdb_name,
+                            nvl(a.username, '-') username, nvl(a.machine, '-') machine,
+                            nvl(a.program, '-') program, nvl(a.osuser, '-') osuser,
+                            case when validate_conversion(a.first_seen as date, 'YYYY-MM-DD HH24:MI:SS') = 1
+                                 then to_date(a.first_seen, 'YYYY-MM-DD HH24:MI:SS') end first_seen,
+                            case when validate_conversion(a.last_seen as date, 'YYYY-MM-DD HH24:MI:SS') = 1
+                                 then to_date(a.last_seen, 'YYYY-MM-DD HH24:MI:SS') end last_seen,
+                            case when validate_conversion(a.logon_count as number) = 1
+                                 then to_number(a.logon_count) end logons
+                       from oracle_sec_net_enc_audit a
+                      where a.record_type = 'CLIENT' )
+             where last_seen >= p_snapshot_date - 30
+             group by db_name, pdb_name, username, machine, program
+         ),
          -- Accounts Oracle ships and maintains itself: out of scope of the
          -- privilege and profile rules. This is the norm's own scope, not a
          -- derogation, so it must never reach the RSSI review list.
@@ -289,17 +350,18 @@ create or replace package body pkg_dbinv_scoring as
          -- grantees: the CHL norm judges the accounts, not these roles. Same
          -- standing as ora_managed: scope of the norm, never a derogation.
          ora_role as (
-            select '^(DBA|OGG.*CAPTURE|AVTUNE_PKG_ROLE|.*IMP_FULL_DATABASE|EXP_FULL_DATABASE'
+            select '^(DBA|OGG.*CAPTURE|AVTUNE_PKG_ROLE|.*IMP_FULL_DATABASE|.*EXP_FULL_DATABASE'
                 || '|AUDIT_ADMIN|AUDIT_SYSTEM|SCHEDULER_ADMIN|EM_EXPRESS_ALL|EM_EXPRESS_BASIC'
                 || '|SYSUMF_ROLE|OEM_MONITOR|GSMUSER_ROLE|GSMADMIN_ROLE)$' pattern
               from dual
          ),
          -- Databases in pure Unified Auditing (v$option = TRUE): the traditional
          -- audit parameters (audit_trail, audit_sys_operations -- the latter
-         -- deprecated from 21c) are ignored by the engine, so judging them
-         -- would report a setting that has no effect.
+         -- deprecated from 21c) are ignored by the engine. They are written as
+         -- compliant, saying why, rather than dropped: the trace shows the
+         -- parameter was looked at. Mixed mode keeps them judged.
          unified_pure as (
-            select db_name
+            select distinct db_name
               from oracle_security_parameter
              where lower(parameter_name) = 'unified auditing'
                and upper(trim(parameter_value)) = 'TRUE'
@@ -317,8 +379,9 @@ create or replace package body pkg_dbinv_scoring as
                                    and m.username = sp.username )
                and not exists ( select 1 from ora_role r where regexp_like(sp.username, r.pattern) )
             union all
-            -- SELECT_CATALOG_ROLE is still collected but out of the CHL norm:
-            -- read access to the dictionary, not a privilege escalation.
+            -- SELECT_CATALOG_ROLE is accepted by the CHL norm (read access to the
+            -- dictionary, not a privilege escalation): not a deviation here, and
+            -- traced as a compliant row of its own (accepted-grants branch below).
             select 'ORACLE_HIGH_ROLE_PRIVS_GRANT', rp.db_name, rp.pdb_name,
                    rp.username || '/' || rp.privilege,
                    rp.username || ' holds ' || rp.privilege
@@ -352,7 +415,8 @@ create or replace package body pkg_dbinv_scoring as
                    'no high-privilege system privilege' expected_value from dual
             union all
             select 'ORACLE_HIGH_ROLE_PRIVS_GRANT',
-                   'no DBA, catalog or GSM role granted', 'no DBA, catalog or GSM role' from dual
+                   'no DBA, DELETE/EXECUTE_CATALOG or GSM role granted',
+                   'no DBA, DELETE/EXECUTE_CATALOG or GSM role' from dual
             union all
             select 'ORACLE_HIGH_TAB_PRIVS_PUBLIC',
                    'no sensitive package granted to PUBLIC', 'no EXECUTE to PUBLIC on sensitive packages' from dual
@@ -391,6 +455,9 @@ create or replace package body pkg_dbinv_scoring as
                    p.db_name,
                    cast(null as varchar2(200 char)) pdb_name,
                    '*' item_key,
+                   case when up.db_name is not null
+                         and lower(p.parameter_name) in ( 'audit_trail', 'audit_sys_operations' ) then 1
+                   else
                    case lower(p.parameter_name)
                       when 'utl_file_dir'
                          then case when trim(p.parameter_value) is null then 1 else 0 end
@@ -414,8 +481,16 @@ create or replace package body pkg_dbinv_scoring as
                                    then case when upper(nvl(trim(p.parameter_value), 'FALSE')) = 'TRUE' then 1 else 0 end
                               else case when upper(nvl(trim(p.parameter_value), 'FALSE')) = 'FALSE' then 1 else 0 end
                          end
+                   end
                    end is_ok,
-                   p.parameter_name || '=' || nvl(trim(p.parameter_value), '<empty>') observed_value,
+                   p.parameter_name || '=' || nvl(trim(p.parameter_value), '<empty>')
+                   || case when up.db_name is not null
+                            and lower(p.parameter_name) in ( 'audit_trail', 'audit_sys_operations' )
+                           then ' (ignored: pure Unified Auditing)' end observed_value,
+                   case when up.db_name is not null
+                         and lower(p.parameter_name) in ( 'audit_trail', 'audit_sys_operations' )
+                        then 'not applicable under pure Unified Auditing'
+                   else
                    case lower(p.parameter_name)
                       when 'utl_file_dir'                      then 'empty'
                       when 'audit_trail'                       then 'any value but NONE'
@@ -428,10 +503,10 @@ create or replace package body pkg_dbinv_scoring as
                       when 'sec_case_sensitive_logon'          then 'TRUE'
                       when 'unified auditing'                  then 'TRUE'
                       else 'FALSE'
+                   end
                    end expected_value
             from oracle_security_parameter p
-            where not ( lower(p.parameter_name) in ( 'audit_trail', 'audit_sys_operations' )
-                        and p.db_name in ( select db_name from unified_pure ) )
+            left join unified_pure up on up.db_name = p.db_name
             union all
             -- ---------- profile resource limits (per database) ----------
             -- A limit collected as DEFAULT is inherited from the DEFAULT profile,
@@ -546,6 +621,41 @@ create or replace package body pkg_dbinv_scoring as
                    on ne.db_name = wi.db_name
                   and upper(nvl(trim(ne.sqlnet_encryption), 'EMPTY')) <> 'EMPTY'
             union all
+            -- ---------- SQL*Net encryption mode (per instance) ----------
+            -- The audit table only exists on a database left in REQUESTED: its
+            -- presence is the deviation, whatever it holds. A derogation is
+            -- what documents why the database cannot go to REQUIRED.
+            select 'ORACLE_NETWORK_ENCRYPTION_REQUIRED', wi.db_name, cast(null as varchar2(200 char)), '*',
+                   case when na.db_name is null then 1 else 0 end,
+                   case when na.db_name is null then 'no unencrypted-client audit table'
+                        else substr('REQUESTED (audit table in ' || na.containers || ')', 1, 400) end,
+                   'REQUIRED: no unencrypted-client audit table'
+            from w_inst wi
+            left join net_audit na on na.db_name = wi.db_name
+            union all
+            -- ---------- unencrypted clients (per instance, REQUESTED only) ----------
+            -- One deviation per client; a database whose audit table holds no
+            -- recent client gets one compliant row. Without the audit table the
+            -- rule does not apply and emits nothing.
+            select 'ORACLE_NETWORK_UNENCRYPTED_CLIENT', nc.db_name, cast(null as varchar2(200 char)),
+                   substr(case when nc.pdb_name <> 'NON CONTAINER' then nc.pdb_name || ': ' end
+                          || nc.username || '@' || nc.machine || ' (' || nc.program || ')', 1, 200),
+                   0,
+                   substr('last seen ' || to_char(nc.last_seen, 'YYYY-MM-DD HH24:MI')
+                          || ', ' || nvl(to_char(nc.logons), '?') || ' logon(s) since '
+                          || nvl(to_char(nc.first_seen, 'YYYY-MM-DD'), '?')
+                          || ', OS user ' || nc.osusers, 1, 400),
+                   'no client connecting without encryption'
+            from net_clients nc
+            where nc.db_name in ( select db_name from w_inst )
+            union all
+            select 'ORACLE_NETWORK_UNENCRYPTED_CLIENT', na.db_name, cast(null as varchar2(200 char)), '*', 1,
+                   'no unencrypted client in the 30 days before the snapshot',
+                   'no client connecting without encryption'
+            from net_audit na
+            where na.db_name in ( select db_name from w_inst )
+              and not exists ( select 1 from net_clients nc where nc.db_name = na.db_name )
+            union all
             -- ---------- residual SYS.USER$MIG (per database) ----------
             select 'ORACLE_NO_USERMIG_TABLE', wd.db_name, wd.pdb_name, '*',
                    case when um.db_name is null then 1 else 0 end,
@@ -570,6 +680,21 @@ create or replace package body pkg_dbinv_scoring as
                                 where d.rule_code = r.rule_code
                                   and d.db_name = wd.db_name
                                   and d.pdb_name = wd.pdb_name )
+            union all
+            -- ... and the accepted grants: SELECT_CATALOG_ROLE is within the CHL
+            -- norm, so each grant is a compliant row naming its holder. Kept as a
+            -- trace that the grant was seen and judged, not as a deviation.
+            select distinct 'ORACLE_HIGH_ROLE_PRIVS_GRANT', rp.db_name, rp.pdb_name,
+                   rp.username || '/' || rp.privilege, 1,
+                   rp.username || ' holds SELECT_CATALOG_ROLE (accepted by the CHL norm)',
+                   r.expected_value
+            from oracle_sec_high_role_privs rp
+            join abs_db_rule r on r.rule_code = 'ORACLE_HIGH_ROLE_PRIVS_GRANT'
+            where rp.privilege = 'SELECT_CATALOG_ROLE'
+              and not exists ( select 1 from ora_managed m
+                                where m.db_name = rp.db_name and m.pdb_name = rp.pdb_name
+                                  and m.username = rp.username )
+              and not exists ( select 1 from ora_role r2 where regexp_like(rp.username, r2.pattern) )
             union all
             -- ---------- deviation-only rule, per instance ----------
             select d.rule_code, d.db_name, cast(null as varchar2(200 char)), d.item_key, 0,
@@ -611,6 +736,92 @@ create or replace package body pkg_dbinv_scoring as
          values ( s.rule_code, s.entity_type, s.entity_id, s.item_key, s.snapshot_date,
                   s.is_compliant, s.observed_value, s.expected_value );
    end load_findings_oracle_sec;
+
+
+   -- ===============================================================
+   -- Oracle licensing findings (option and pack usage, LMS)
+   -- ===============================================================
+   -- Read from v_oracle_lms_usage, which carries the scope (perimeter licence)
+   -- and the Multitenant recount; see the view header.
+   --
+   -- Shape: a non-compliant row per option in use (item_key = product), and a
+   -- compliant '*' row for every judged instance without one -- the dev_db
+   -- pattern of the security findings. The witness is the usage script itself:
+   -- an instance without any row in oracle_lms was not read, and gets no
+   -- verdict rather than a clean one.
+   --
+   -- A licence the CHL holds is not a rule exemption: it is a derogation on the
+   -- finding, with the contract as evidence. observed_value therefore carries no
+   -- date -- the last usage date moves with every weekly sample, and a
+   -- derogation pinned to the observed value would fall off on the next one.
+   procedure load_findings_licensing ( p_snapshot_date in date ) is
+   begin
+      merge into fact_control_finding f
+      using (
+         with
+         u as (
+            select *
+              from v_oracle_lms_usage
+             where in_scope = 1
+               and instance_id is not null
+         ),
+         rules as (
+            select r.*
+              from ( select 'ORACLE_LMS_OPTION_IN_USE' rule_code,
+                            'no option or pack in use without a licence' expected_value,
+                            'no option or pack in use' ok_value
+                       from dual
+                     union all
+                     select 'ORACLE_LMS_OPTION_PAST_USE',
+                            'no past usage of an option or pack without a licence',
+                            'no past usage of an option or pack'
+                       from dual ) r
+              join ref_control_rule rr on rr.rule_code = r.rule_code and rr.active = 1
+         ),
+         dev as (
+            select case when usage_status in ( 'CURRENT_USAGE', 'PAST_OR_CURRENT_USAGE' )
+                        then 'ORACLE_LMS_OPTION_IN_USE'
+                        else 'ORACLE_LMS_OPTION_PAST_USE'
+                   end rule_code,
+                   instance_id,
+                   product_name item_key,
+                   substr(
+                      case when upper(edition) like '%STANDARD%' and is_separate_product = 0
+                           then 'Standard Edition, cannot be licensed: ' end
+                      || product_label
+                      || case when is_separate_product = 1 then ' (separate product)' end
+                      || ': ' || usage_status
+                      || case when containers is not null then ' in ' || containers end,
+                      1, 400 ) observed_value
+              from u
+             where usage_status <> 'NO_USAGE'
+         ),
+         wit as ( select distinct instance_id from u )
+         select d.rule_code, d.instance_id, d.item_key, 0 is_compliant,
+                d.observed_value, r.expected_value
+           from dev d
+           join rules r on r.rule_code = d.rule_code
+         union all
+         select r.rule_code, w.instance_id, '*', 1, r.ok_value, r.expected_value
+           from wit w
+          cross join rules r
+          where not exists ( select 1 from dev d
+                              where d.rule_code = r.rule_code
+                                and d.instance_id = w.instance_id )
+      ) s
+      on ( f.rule_code = s.rule_code and f.entity_type = 'INSTANCE'
+           and f.entity_id = s.instance_id and f.item_key = s.item_key
+           and f.snapshot_date = p_snapshot_date )
+      when matched then update set
+         f.is_compliant = s.is_compliant,
+         f.observed_value = s.observed_value,
+         f.expected_value = s.expected_value
+      when not matched then
+         insert ( rule_code, entity_type, entity_id, item_key, snapshot_date,
+                  is_compliant, observed_value, expected_value )
+         values ( s.rule_code, 'INSTANCE', s.instance_id, s.item_key, p_snapshot_date,
+                  s.is_compliant, s.observed_value, s.expected_value );
+   end load_findings_licensing;
 
 
    -- ===============================================================
@@ -1202,6 +1413,7 @@ create or replace package body pkg_dbinv_scoring as
       load_findings_mssql_sec(p_snapshot_date);
       load_findings_oracle_sec(p_snapshot_date);
       load_findings_postgres_sec(p_snapshot_date);
+      load_findings_licensing(p_snapshot_date);
       load_findings_capacity(p_snapshot_date);
       load_findings_backup(p_snapshot_date);
       load_findings_lifecycle(p_snapshot_date);

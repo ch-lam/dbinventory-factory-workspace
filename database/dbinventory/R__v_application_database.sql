@@ -29,4 +29,5 @@ create or replace view v_application_database as
          or ( ae.entity_type = 'HOST' and d.host_id = ae.entity_id ) )
     where ae.active = 1
       and a.active = 1;
+
 comment on table v_application_database is 'Databases covered by each application, resolving host and instance attachments down to the database level.';

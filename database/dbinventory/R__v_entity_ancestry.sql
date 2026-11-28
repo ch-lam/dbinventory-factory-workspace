@@ -29,4 +29,5 @@ create or replace view v_entity_ancestry as
      from dim_storage_unit s
      join dim_database d on d.database_id = s.database_id
      join dim_instance i on i.instance_id = d.instance_id;
+
 comment on table v_entity_ancestry is 'Host/instance/database/storage chain of any polymorphic entity reference; used to cascade exceptions downwards and to roll findings up to their control grain.';

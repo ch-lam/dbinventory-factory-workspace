@@ -3,17 +3,15 @@
 -- ----------------------------------------------------------------------------
 -- Application data model for dbInventory (dimensional layer).
 --
--- This model is an ADDITIONAL layer on top of the collection tables created in
--- V__001_create_schema.sql. Those 89 tables are kept UNCHANGED and are now
--- treated as STAGING (TRUNCATE+LOAD, current state only). The tables below hold
--- the durable application state: stable entities (dimensions), dated measures
--- (facts, the time dimension for capacity planning) and a data-driven scoring
--- reference. They are populated later by PL/SQL INSERT ... SELECT from staging
--- (ETL out of scope for this iteration), so they are NOT subject to the SQLcl
--- LOAD 30-character table-name limitation.
+-- This model is a layer on top of the collection tables created in
+-- V__001_create_schema.sql, which are STAGING (TRUNCATE+LOAD, current state
+-- only). The tables below hold the durable application state: stable entities
+-- (dimensions), dated measures (facts, the time dimension for capacity
+-- planning) and a data-driven scoring reference. They are populated by PL/SQL
+-- INSERT ... SELECT from staging (pkg_dbinv_inventory, pkg_dbinv_scoring), so they are NOT subject to
+-- the SQLcl LOAD 30-character table-name limitation.
 --
--- Scope of this iteration: MSSQL + Oracle. MySQL/Postgres are declined later on
--- the same pattern.
+-- Platforms: Oracle, MSSQL, PostgreSQL (MySQL is a roadmap entry).
 --
 -- Naming conventions (technical tool, no data-warehouse jargon):
 --   * Dimension PK column      : <entity>_id  (IDENTITY)
@@ -27,17 +25,14 @@
 --   oracle_databases / mssql_hosts (engine part)    -> dim_instance (+ ext_oracle_instance / ext_mssql_instance)
 --   oracle_pdbs / oracle_databases / mssql_databases-> dim_database (+ ext_oracle_database / ext_mssql_database)
 --   oracle_size_usage(+_seg) / mssql_files          -> dim_storage_unit + fact_storage_capacity
---   oracle_metrics_cpu_memory                       -> fact_db_resource
 --   mssql_databases.last_backup_* / mssql_backup    -> fact_backup
 --   oracle_backup (RMAN, container-wide)            -> fact_instance_backup
 --   oracle_security_parameter / mssql_security_configoptions / _registryinfo
 --                                                   -> dim_parameter + fact_config_parameter
 --   oracle_users / mssql_logins / mssql_users       -> dim_account
---   all *_security_* / *_sec_* / *_exc              -> ref_control + fact_compliance
---   oracle_security_scoring / mssql_security_scoring (+ *_history)
---                                                   -> ref_scoring_weight + fact_scoring
--- Reused as-is (V__001): product_support, environments, licence_types,
---   scoring_activity_list (dashboard presentation, re-populated from fact_scoring later).
+--   all *_security_* / *_sec_* / *_exc              -> fact_control_finding + fact_compliance
+--   fact_compliance x ref_scoring_weight            -> fact_scoring
+-- Reused as-is (V__001): product_support, environments, licence_types.
 -- ============================================================================
 
 
@@ -425,32 +420,6 @@ comment on column fact_storage_capacity.used_mb is 'Used space within the storag
 comment on column fact_storage_capacity.free_mb is 'Free space within the storage unit, in megabytes.';
 comment on column fact_storage_capacity.max_size_mb is 'Maximum size the storage unit is allowed to grow to, in megabytes.';
 comment on column fact_storage_capacity.pct_used is 'Percentage of the storage unit that is used.';
-
-
--- ============================================================
--- fact_db_resource  (grain: database x day)
--- ============================================================
-create table fact_db_resource (
-   database_id      number not null,
-   snapshot_date    date not null,
-   cpu_time_min     number(14),
-   sga_mb           number(14),
-   pga_mb           number(14),
-   buffer_cache_mb  number(14),
-   shared_pool_mb   number(14),
-   constraint fact_db_resource_pk primary key ( database_id, snapshot_date ),
-   constraint fact_db_resource_db_fk foreign key ( database_id )
-      references dim_database ( database_id )
-);
-
-comment on table fact_db_resource is 'Dated CPU/memory resource measures per database (Oracle PDB); MSSQL columns remain null until per-database metrics are collected.';
-comment on column fact_db_resource.database_id is 'Database measured (FK to dim_database).';
-comment on column fact_db_resource.snapshot_date is 'Day the measure was collected.';
-comment on column fact_db_resource.cpu_time_min is 'CPU time consumed, in minutes.';
-comment on column fact_db_resource.sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
-comment on column fact_db_resource.pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
-comment on column fact_db_resource.buffer_cache_mb is 'Average buffer cache size, in megabytes.';
-comment on column fact_db_resource.shared_pool_mb is 'Average shared pool size, in megabytes.';
 
 
 -- ============================================================
@@ -1028,7 +997,7 @@ create table ref_exception_document (
    constraint ref_exc_doc_exc_fk foreign key ( exception_id )
       references ref_exception ( exception_id ),
    constraint ref_exc_doc_kind_ck check ( doc_kind in ( 'LICENSE', 'VENDOR_MANUAL', 'APPROVAL', 'OTHER' ) )
-) lob ( content ) store as securefile ( compress );
+) lob ( content ) store as securefile;
 
 comment on table ref_exception_document is 'Files attached to a derogation as evidence (licence, vendor manual, signed approval); fingerprinted so an auditor can verify they were not swapped.';
 comment on column ref_exception_document.document_id is 'Technical primary key of the attachment.';
@@ -1153,12 +1122,13 @@ alter table fact_control_finding
 -- ref_app_release  (what was installed here, and when)
 -- ------------------------------------------------------------
 -- Append-only history, one row per installation, written by
--- V__009_initial_data.sql. The date of the last deployment falls out of it for
+-- V__005_initial_data.sql. The date of the last deployment falls out of it for
 -- free, and the sequence stays readable -- which is what tells you HOW two
 -- environments diverged, not merely that they did.
 --
--- Nothing is ever deleted here, including by a reinstall: the point of the table
--- is to survive one.
+-- Nothing deletes from it, and a rerun of X_000 keeps it (the create fails on the
+-- existing table, the rows stay). X_001 drops the whole schema, history included:
+-- a full cleanup starts the history over, on purpose.
 -- ============================================================
 create table ref_app_release (
    release_id     number generated by default on null as identity,
@@ -1175,4 +1145,3 @@ comment on column ref_app_release.version is 'Schema version installed, as carri
 comment on column ref_app_release.installed_date is 'When this installation ran.';
 comment on column ref_app_release.installed_by is 'Database user that ran it.';
 comment on column ref_app_release.note is 'Free text: what this release carries, or why it was rerun.';
-

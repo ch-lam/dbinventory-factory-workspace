@@ -27,8 +27,7 @@ begin
       -- fingerprint vanished with the old content and the new one was never
       -- written, so the journal could not say which file had been filed when.
       -- Covers a file added to a link-only document as well. Needs
-      -- DOCUMENT_REPLACED in ref_app_evt_type_ck (V__010, or V__013 on a schema
-      -- installed before it).
+      -- DOCUMENT_REPLACED in ref_app_evt_type_ck (V__006).
       insert into ref_application_event (
          application_id, event_type, subject_ref, note, old_value, new_value )
       values (

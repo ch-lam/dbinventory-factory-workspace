@@ -10,7 +10,7 @@ Ces archives ne contiennent **que des CSV de collecte** (`collect/*.csv`), jamai
 
 Le périmètre de cette collecte, c'est-à-dire les trois `.lst` du serveur à la même date, est versionné en clair dans `../collect/CHL/`.
 
-## Charger un extrait dans la base de démonstration (DEMO)
+## Charger un extrait dans la base de développement
 
 Le chargement commence par un `TRUNCATE` de tout le staging de la base visée.
 
@@ -19,7 +19,7 @@ cd setup/inventory/dbInventory
 tar -xzf data/chl_collect_20261110.tgz      # écrit collect/*.csv, ignorés par git
 
 cd bin
-export DBINVENTORY_CONN_NAME=DEMO_DBINVENTORY_dbinventory
+export DBINVENTORY_CONN_NAME=DEV_DBINVENTORY_dbinventory
 export DBINVENTORY_ARCHIVE=0                # pas d'archive datée des CSV
 ./load_info_all.sh && ./compute_info_all.sh
 ```

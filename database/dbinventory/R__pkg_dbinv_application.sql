@@ -1,3 +1,39 @@
+-- ============================================================================
+-- R__pkg_dbinv_application.sql
+-- ----------------------------------------------------------------------------
+-- Write API for the application registry: pkg_dbinv_application, plus the
+-- triggers that journal every change to it.
+--
+-- WHERE THE GUARANTEE LIVES, AND WHY IT MOVED
+--   The derogation model puts its journal calls inside pkg_dbinv_exception and
+--   relies on every screen going through the package. That works because page 71
+--   was written that way -- 1050 lines of APEXlang doing its DML through
+--   processes.
+--
+--   This registry does not make that bet. An ordinary APEX form or interactive
+--   grid writes the table with its own DML and will never call a package, so a
+--   journal that lives in the package is a journal that silently stops the first
+--   time somebody builds a screen the normal way. The journal therefore lives in
+--   AFTER triggers: it holds for the package, for a form, for an interactive
+--   grid, for a script, and for whatever comes next.
+--
+--   The package then exists for the things a trigger cannot do: validating a
+--   polymorphic reference before it is stored, computing the next review date,
+--   and carrying a human reason down to the trigger through current_reason.
+--
+-- WHAT THE PACKAGE STILL ENFORCES
+--   link_entity checks that the entity exists. The reference is polymorphic, so
+--   no foreign key can protect it, and a mistyped id would produce an attachment
+--   that resolves to no database at all -- indistinguishable from an application
+--   nobody has attached yet.
+--
+-- Prerequisite for stored documents: EXECUTE on SYS.DBMS_CRYPTO. A file that
+-- cannot be fingerprinted is refused rather than stored unverifiable. Documents
+-- carrying only a URL need no such grant, so the registry stays usable without
+-- it -- which is the point of allowing a link instead of a file.
+-- ============================================================================
+
+
 create or replace package pkg_dbinv_application as
 
    -- ---------------------------------------------------------------------

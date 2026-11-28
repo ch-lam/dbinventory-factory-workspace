@@ -924,7 +924,7 @@ create or replace package body pkg_dbinv_transfer as
       if nvl(l_root.get_number('version'), 0) > c_version then
          raise_application_error(-20953,
             'File format version ' || l_root.get_number('version') || ' is newer than this '
-            || 'package (' || c_version || '). Deploy the newer V__015 here first.');
+            || 'package (' || c_version || '). Deploy the newer pkg_dbinv_transfer here first.');
       end if;
 
       l_src    := case when has_value(l_root, 'source') then l_root.get_object('source') else json_object_t() end;

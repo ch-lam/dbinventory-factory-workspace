@@ -21,4 +21,5 @@ create or replace view v_database_without_application as
     where not exists ( select 1
                          from v_application_database ad
                         where ad.database_id = d.database_id );
+
 comment on table v_database_without_application is 'Databases attached to no application; the backlog of the registry, and the first thing to look at after a collect discovers something new.';

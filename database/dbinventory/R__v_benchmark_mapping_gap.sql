@@ -19,4 +19,5 @@ select rr.rule_code,
   left join ref_benchmark b on b.benchmark_code = rr.benchmark_code
  where rr.origin in ( 'BENCHMARK', 'HOUSE_CONFLICT' )
    and rr.benchmark_ref is null;
+
 comment on table v_benchmark_mapping_gap is 'Rules claiming a benchmark origin whose recommendation identifier is not yet mapped; drives the review that makes the score opposable.';

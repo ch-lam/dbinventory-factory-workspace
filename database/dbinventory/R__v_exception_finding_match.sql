@@ -38,4 +38,5 @@ create or replace view v_exception_finding_match as
                            when 'DATABASE' then a.database_id
                            when 'STORAGE'  then a.storage_unit_id
                         end;
+
 comment on table v_exception_finding_match is 'Findings designated by the scope of each derogation, regardless of its status, dates or the compliance of the finding; the single matching rule shared by apply_exceptions and v_exception_review.';

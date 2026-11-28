@@ -7,6 +7,12 @@ description: Oracle Database guidance for SQL, PL/SQL, SQLcl, ORDS, administrati
 
 This domain contains Oracle Database skills for administration, SQL and PL/SQL development, performance tuning, security, ORDS, SQLcl, migrations, frameworks, OCR container guidance, and agent-safe database workflows.
 
+> **Local rule (dbInventory) — read before applying anything below.** No separately
+> licensed Oracle option or pack (Advanced Compression, Diagnostics/Tuning Pack,
+> Partitioning, Advanced Security, In-Memory...) may be used without explicit written
+> approval from the licence owner, even where a guide in this skill recommends it.
+> See `AGENTS.md` at the repository root.
+
 ## How to Use This Domain
 
 1. Start with the routing table below.

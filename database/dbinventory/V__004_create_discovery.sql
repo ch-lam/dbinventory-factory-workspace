@@ -1,5 +1,5 @@
 -- ============================================================================
--- V__006_create_discovery.sql
+-- V__004_create_discovery.sql
 -- ----------------------------------------------------------------------------
 -- Discovery area: what is actually installed on the estate, as opposed to what
 -- dbInventory currently collects.
@@ -301,4 +301,3 @@ comment on column disc_instance.bitness is 'Engine bitness (64-bit, 32-bit).';
 comment on column disc_instance.is_free_edition is 'Flag: 1 when the edition is free (Express, Developer, Evaluation). Feeds the licensing view of the estate.';
 comment on column disc_instance.triage_status is 'Human decision on this instance: NEW (not triaged yet) or IGNORED (deliberately out of collection scope).';
 comment on column disc_instance.triage_note is 'Why the instance was ignored, or any note left during triage.';
-

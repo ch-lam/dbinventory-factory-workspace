@@ -74,4 +74,5 @@ create or replace view v_entity_collect_date as
          where regexp_like(ps.collect_id, '^COLL_ID_[0-9]{8}$')
      )
     group by instance_id;
+
 comment on table v_entity_collect_date is 'Collect date of the data behind each instance, taken as the oldest of its inputs; feeds the freshness columns of fact_scoring.';

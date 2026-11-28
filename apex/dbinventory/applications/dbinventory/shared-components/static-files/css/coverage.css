@@ -1,4 +1,5 @@
-/* Couverture applicative du dashboard (page 1, region application-coverage).
+/* Couverture applicative du dashboard (page 1, region application-coverage),
+   et pastille d'evolution des compteurs Databases (en fin de fichier).
    Declaree par la page 1 via css { fileUrls }, et nulle part ailleurs.
 
    Les deux badges « DBs attached to Apps » et « DBs not attached to Apps »
@@ -49,4 +50,39 @@
    lieu du contraste de la couleur de fond. */
 .dbinv-coverage .dbinv-cov {
    color: inherit;
+}
+
+/* Pastille d'evolution des compteurs Databases (page 1, region databases,
+   classe dbinv-db-trend). Le solde depuis le snapshot precedent de la meme
+   plateforme, calcule dans la requete (colonnes *_DELTA / *_DCLASS) :
+     is-up   solde positif ou nul  -> vert (u-color-4, comme les cartes OK)
+     is-down solde negatif         -> rouge (u-color-9, comme Critical)
+     is-none aucun snapshot precedent -> pas de pastille.
+   Le badge garde sa couleur de position : la pastille se detache par un
+   liseret de la couleur de fond de la page, pas par une couleur du badge. */
+
+.dbinv-db-trend .dbinv-delta {
+   display: inline-block;
+   margin-left: .35em;
+   padding: 0 .5em;
+   border-radius: 999px;
+   font-size: .45em;
+   font-weight: 700;
+   line-height: 1.7;
+   vertical-align: super;
+   box-shadow: 0 0 0 2px var(--ut-body-background-color, #fff);
+}
+
+.dbinv-db-trend .dbinv-delta.is-up {
+   background-color: var(--u-color-4);
+   color: var(--u-color-4-contrast);
+}
+
+.dbinv-db-trend .dbinv-delta.is-down {
+   background-color: var(--u-color-9);
+   color: var(--u-color-9-contrast);
+}
+
+.dbinv-db-trend .dbinv-delta.is-none {
+   display: none;
 }

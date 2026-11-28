@@ -35,6 +35,18 @@ database/dbinventory/migrate.sh DEMO_DBINVENTORY_dbinventory
 
 Le schéma s'installe par ses `V__` (`R__` pour le code), appliqués par `migrate.sh`.
 
+Hors factory, dans un environnement temporaire (test, PDB jetable, poste de
+travail), la même installation se fait en une passe SQLcl, **depuis
+`database/dbinventory/`** car leurs `@` sont relatifs :
+
+```bash
+cd database/dbinventory
+sql -S -name <conn> @X_001_cleanup_and_reinstall_all.sql   # vide le schéma puis X_000
+```
+
+`X_001` refuse un schéma géré par `migrate.sh` (table `SCHEMA_MIGRATIONS`) :
+jamais sur DEV ou DEMO de la factory.
+
 ## Outillage commun — `bin/`
 
 Les scripts prennent **le répertoire d'une application** en premier argument :

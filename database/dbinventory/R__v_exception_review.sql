@@ -73,4 +73,5 @@ select e.exception_id,
   left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
   left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
   left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id;
+
 comment on table v_exception_review is 'Every derogation with its review state; drives the periodic RSSI review and the derogations page. Platform-agnostic by construction.';

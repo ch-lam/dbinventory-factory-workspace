@@ -18,15 +18,30 @@
 #     --enable-native-access, and jansi/jna classes are absent.
 #   * stdin must come from a real file. /dev/null and heredocs make SQLcl die
 #     with "java.io.IOException: Fonction incorrecte" from System.in.available().
+#
+# PORTABLE ON PURPOSE -- Linux (factory host) AND Git Bash on Windows (the
+# owner's workstation). to_win, java.exe and the Windows JDK root below are
+# no-ops on Linux; removing them breaks Windows, where SQLcl then fails or,
+# worse, exits 0 without having run anything. Changing this needs the owner's
+# written approval: see AGENTS.md, "Outillage portable".
 # ---------------------------------------------------------------------------
 
 APEX_SQLCL_TOOL_OPTIONS="-Duser.language=en -Xmx800m -Dorg.jline.terminal.provider=dumb"
 
-usable_jdk() { [[ -x "$1/bin/java" ]]; }
+# SQLcl on Windows reads /g/... as C:\g\..., so hand it a Windows-resolvable
+# path. cygpath -m keeps forward slashes (no escaping). Without cygpath
+# (Linux) the path is returned unchanged.
+to_win() {
+   if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi
+}
 
-# find_jdk -> prints the JDK to use, or nothing (JDK 21 lives in /usr/lib/jvm
-# on the factory host). In order of decreasing certainty. Do NOT hardcode a
-# version here.
+usable_jdk() { [[ -x "$1/bin/java.exe" || -x "$1/bin/java" ]]; }
+
+# find_jdk -> prints the JDK to use, or nothing. JDK 21 lives in /usr/lib/jvm
+# on the factory host, under C:/Program Files/Java on Windows. In order of
+# decreasing certainty. Do NOT hardcode a version here: the scripts used to
+# pin C:/Program Files/Java/jdk-24, the machine was upgraded to 26, and they
+# began failing with "no JDK" on a box that had one.
 find_jdk() {
    local candidate
    for candidate in "${APEXLANG_JDK:-}" "${JAVA_HOME:-}"; do
@@ -36,7 +51,7 @@ find_jdk() {
    # jdk-9 does not beat jdk-24.
    while IFS= read -r candidate; do
       usable_jdk "$candidate" && { printf '%s' "$candidate"; return; }
-   done < <(ls -d /usr/lib/jvm/*jdk* 2>/dev/null | sort -V -r)
+   done < <(ls -d "/c/Program Files/Java"/jdk-* /usr/lib/jvm/*jdk* 2>/dev/null | sort -V -r)
 }
 
 # sqlcl_compiler_jar -> prints the APEXLang compiler jar of the SQLcl on the

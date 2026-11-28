@@ -42,7 +42,7 @@ fi
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-printf 'apex validate -input %s\nexit\n' "$APP_DIR" > "$work/av.sql"
+printf 'apex validate -input %s\nexit\n' "$(to_win "$APP_DIR")" > "$work/av.sql"
 : > "$work/stdin"
 
 if [[ -n "$DB_CONN" ]]; then sql_target=(-name "$DB_CONN"); via="live via $DB_CONN"
@@ -51,7 +51,7 @@ else sql_target=(/nolog); via="/nolog"; fi
 echo "=== apex validate (SQLcl, $via) on $(basename "$APP_DIR") ==="
 JAVA_HOME="$JDK" \
 JAVA_TOOL_OPTIONS="$APEX_SQLCL_TOOL_OPTIONS" \
-   sql -S "${sql_target[@]}" @"$work/av.sql" < "$work/stdin" 2>&1 \
+   sql -S "${sql_target[@]}" @"$(to_win "$work/av.sql")" < "$work/stdin" 2>&1 \
    | grep -v 'Picked up JAVA_TOOL_OPTIONS' | tee "$work/live.out"
 
 # SQLcl exits 0 even when apex validate reports errors or cannot read the
@@ -70,7 +70,7 @@ COMPILER_JAR="$(sqlcl_compiler_jar)"
 compiler_opt=()
 if [[ -n "$COMPILER_JAR" ]]; then
    echo "compiler: $COMPILER_JAR"
-   compiler_opt=( --compiler-oracle-home "$COMPILER_JAR" )
+   compiler_opt=( --compiler-oracle-home "$(to_win "$COMPILER_JAR")" )
 else
    echo "WARNING: no APEXLang compiler found next to SQLcl; the audit picks its own," >&2
    echo "         which may not be the one apex validate used." >&2

@@ -54,7 +54,7 @@ trap 'rm -rf "$work"' EXIT
 echo "=== APEX page smoke test (live via $DB_CONN) ==="
 JAVA_HOME="${JDK:-${JAVA_HOME:-}}" \
 JAVA_TOOL_OPTIONS="$APEX_SQLCL_TOOL_OPTIONS" \
-   sql -S -name "$DB_CONN" @"$SMOKE" < "$work/stdin" 2>&1 \
+   sql -S -name "$DB_CONN" @"$(to_win "$SMOKE")" < "$work/stdin" 2>&1 \
    | grep -v 'Picked up JAVA_TOOL_OPTIONS' | tee "$work/smoke.out"
 rc="${PIPESTATUS[0]}"
 

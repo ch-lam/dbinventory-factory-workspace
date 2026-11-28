@@ -32,12 +32,42 @@ repository works.
 
 ## Ce dépôt
 - L'application `DBINVENTORY` a l'id 110, en DEV comme en DEMO.
+- Schéma : les `V__` portent les tables et les données, les `R__` le code (packages, vues,
+  triggers), un objet par fichier, dans l'ordre de `R__order.txt`. Corriger un package, c'est
+  éditer son `R__`, jamais ajouter un `V__` qui le recopie.
 - Les `T__` de `database/dbinventory/` ne contiennent que des contrôles indépendants des
-  données ; les contrôles qui ont besoin des fixtures sont dans `fixtures/checks/`.
+  données (`T__000` objets invalides, `T__001` options payantes) ; les contrôles qui ont
+  besoin des fixtures sont dans `fixtures/checks/`.
+- **`X_000_reinstall_all.sql` et `X_001_cleanup_and_reinstall_all.sql` restent** : ils
+  installent le schéma en une passe SQLcl dans un environnement temporaire (test, PDB
+  jetable, poste du responsable), sans `migrate.sh`. Ils ne servent jamais sur DEV ou DEMO
+  de la factory : `X_001` refuse un schéma qui porte `SCHEMA_MIGRATIONS`. Tout `V__`, `R__`
+  ou `T__` ajouté va aussi dans `X_000`, dans l'ordre de `migrate.sh` ; `migrate.sh` (donc le
+  pipeline, par `--dry-run`) échoue sinon. Ne pas les supprimer.
 - Les fixtures se chargent en DEMO seulement (`fixtures/load_fixtures.sh`), jamais en DEV.
 - Les envois de fichiers (pages 71 et 85) exigent `EXECUTE ON SYS.DBMS_CRYPTO` pour le schéma.
 - Après chaque import, lancer `apex/dbinventory/bin/post_import.sh` : `apex validate` ne
   prouve pas que l'import a gardé le bloc `storage` des items de téléversement.
+
+## Outillage portable Windows et Linux : ne pas le réduire à Linux
+
+`database/dbinventory/migrate.sh`, `apex/dbinventory/bin/*.sh`, `fixtures/*.sh` et
+`fixtures/sqlcl.sh` doivent tourner **sur l'hôte Linux de la factory et sous Git Bash
+Windows** (poste du responsable : environnements temporaires, tests). C'est un choix du
+responsable, pas un reste à nettoyer.
+
+Ne pas retirer, même si Linux n'en a pas besoin :
+- la conversion de chemins `to_win` / `cygpath -m` (sans cygpath, elle ne fait rien) ;
+- `java.exe` et `C:/Program Files/Java` dans la recherche du JDK ;
+- le stdin de SQLcl depuis un vrai fichier vide, jamais un pipe, un heredoc ou `/dev/null` ;
+- `-Dorg.jline.terminal.provider=dumb` dans `JAVA_TOOL_OPTIONS`.
+
+Sans eux, SQLcl sous Windows écrit `java.io.IOException` à la place du résultat et **rend
+0** : un script qui n'a rien fait annonce un succès. `migrate.sh` compte en plus une
+`IOException` comme un échec, et calcule ses sommes de contrôle sans les retours chariot,
+pour qu'un checkout CRLF et un checkout LF donnent la même. Une évolution de l'outillage
+se teste sur les deux. Réduire à un seul système demande une validation écrite du
+responsable.
 
 ## Options et packs Oracle payants : interdits sans validation explicite
 
@@ -70,8 +100,8 @@ Et en SE2, rien de ce qui est réservé à l'Enterprise Edition : compression de
 et demander avant de l'écrire. Pour une requête de collecte qui doit lire une vue
 d'un pack, passer par `fct_has_diag_pack` (voir `setup/inventory/dbMonitoring/bin/check_oracle.sh`).
 
-**Garde-fou** : `database/dbinventory/T_006_no_licensed_options.sql`, lancé par `X_000`,
-échoue si le schéma utilise une de ces options. Une option validée se traduit par une
+**Garde-fou** : `database/dbinventory/T__001_no_licensed_options.sql`, lancé par
+`migrate.sh` et par `X_000`, échoue si le schéma utilise une de ces options. Une option validée se traduit par une
 modification de ce test, jamais par son contournement.
 
 Historique : en 2026-11, deux LOB de documents (`ref_exception_document`,

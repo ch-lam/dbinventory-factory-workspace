@@ -650,7 +650,8 @@ update ref_control_rule set origin = 'BENCHMARK', benchmark_code = 'CIS_POSTGRES
    'PG_PUBLIC_NO_CREATE' );
 
 -- Mixed mode authentication: CIS asks for Windows only, the CHL norm accepts
--- mixed mode. Same standing as the TCP port. ref_control_rule set origin = 'HOUSE_CONFLICT', benchmark_code = 'CIS_MSSQL'
+-- mixed mode. Same standing as the TCP port.
+update ref_control_rule set origin = 'HOUSE_CONFLICT', benchmark_code = 'CIS_MSSQL'
  where rule_code in ( 'MSSQL_REG_TCP_PORT', 'MSSQL_AUTH_WINDOWS_ONLY' );
 
 -- Left as HOUSE, and worth re-examining during the mapping review:

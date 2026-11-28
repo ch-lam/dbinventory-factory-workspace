@@ -49,6 +49,10 @@ if [[ -n "$DB_CONN" ]]; then sql_target=(-name "$DB_CONN"); via="live via $DB_CO
 else sql_target=(/nolog); via="/nolog"; fi
 
 echo "=== apex validate (SQLcl, $via) on $(basename "$APP_DIR") ==="
+# MSYS_NO_PATHCONV: under Git Bash, MSYS rewrites the argument /nolog into
+# "C:/Program Files/Git/nolog" for a Windows program, and SQLcl answers
+# "Bad Option". The paths are already converted by to_win. No effect on Linux.
+MSYS_NO_PATHCONV=1 \
 JAVA_HOME="$JDK" \
 JAVA_TOOL_OPTIONS="$APEX_SQLCL_TOOL_OPTIONS" \
    sql -S "${sql_target[@]}" @"$(to_win "$work/av.sql")" < "$work/stdin" 2>&1 \

@@ -60,7 +60,9 @@ Ne pas retirer, même si Linux n'en a pas besoin :
 - la conversion de chemins `to_win` / `cygpath -m` (sans cygpath, elle ne fait rien) ;
 - `java.exe` et `C:/Program Files/Java` dans la recherche du JDK ;
 - le stdin de SQLcl depuis un vrai fichier vide, jamais un pipe, un heredoc ou `/dev/null` ;
-- `-Dorg.jline.terminal.provider=dumb` dans `JAVA_TOOL_OPTIONS`.
+- `-Dorg.jline.terminal.provider=dumb` dans `JAVA_TOOL_OPTIONS` ;
+- `MSYS_NO_PATHCONV=1` devant un appel à SQLcl qui passe un argument commençant par `/`
+  (`/nolog`) : MSYS le réécrit sinon en `C:/Program Files/Git/nolog`.
 
 Sans eux, SQLcl sous Windows écrit `java.io.IOException` à la place du résultat et **rend
 0** : un script qui n'a rien fait annonce un succès. `migrate.sh` compte en plus une

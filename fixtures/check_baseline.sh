@@ -25,7 +25,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASELINE="${SCRIPT_DIR}/expected/baseline.csv"
-T003="$(cd "${SCRIPT_DIR}/checks" && pwd)/T_003_fixture_expectations.sql"
+T003="$(cd "${SCRIPT_DIR}/../database/dbinventory" && pwd)/T_003_fixture_expectations.sql"
 
 # Appels SQLcl : stdin depuis un vrai fichier, JLine en mode dumb, chemins
 # convertis. Sans ce helper, SQLcl repond « java.io.IOException: Fonction

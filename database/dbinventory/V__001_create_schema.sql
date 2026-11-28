@@ -1,4 +1,5 @@
 -- Oracle Database Schema for DBInventory
+alter session set current_schema=dbinventory;
 
 -- ============================================================
 -- mssql_backup
@@ -23,96 +24,6 @@ comment on column mssql_backup.backup_start_date is 'Timestamp at which the back
 comment on column mssql_backup.backup_finish_date is 'Timestamp at which the backup completed.';
 comment on column mssql_backup.backup_type is 'Type of backup (e.g. FULL, DIFF/DIFFERENTIAL, LOG).';
 comment on column mssql_backup.backup_size is 'Size of the backup, in bytes.';
-
--- ============================================================
--- mssql_backup_info_history
--- ============================================================
-create table mssql_backup_info_history (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   scoring_result                  timestamp default on null systimestamp not null,
-   cumulative_hours_between_backup number(10) not null
-);
-
-comment on table mssql_backup_info_history is 'Historical trend of the aggregated MSSQL backup freshness score, snapshotted at each daily scoring run.';
-comment on column mssql_backup_info_history.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_backup_info_history.collect_target is 'Target of the collection.';
-comment on column mssql_backup_info_history.scoring_result is 'Timestamp at which this scoring snapshot was taken.';
-comment on column mssql_backup_info_history.cumulative_hours_between_backup is 'Cumulative number of hours elapsed between successive backups.';
-
--- ============================================================
--- mssql_backup_stats
--- ============================================================
-create table mssql_backup_stats (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   hostname                        varchar2(50 char) not null,
-   database_name                   varchar2(100 char) not null,
-   recovery_model                  varchar2(20 char) not null,
-   backup_type                     varchar2(20 char) not null,
-   cumulative_hours_between_backup number(10) not null,
-   nbrebu                          number(10) not null
-);
-
-comment on table mssql_backup_stats is 'Aggregated MSSQL backup statistics per database and backup type (average interval, number of backups).';
-comment on column mssql_backup_stats.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_backup_stats.collect_target is 'Target of the collection.';
-comment on column mssql_backup_stats.hostname is 'Host name of the database server or instance.';
-comment on column mssql_backup_stats.database_name is 'Name of the database.';
-comment on column mssql_backup_stats.recovery_model is 'Database recovery model (e.g. FULL, SIMPLE, BULK_LOGGED).';
-comment on column mssql_backup_stats.backup_type is 'Type of backup (e.g. FULL, DIFF/DIFFERENTIAL, LOG).';
-comment on column mssql_backup_stats.cumulative_hours_between_backup is 'Cumulative number of hours elapsed between successive backups.';
-comment on column mssql_backup_stats.nbrebu is 'Number of backups considered in this aggregation.';
-
--- ============================================================
--- mssql_backup_summary
--- ============================================================
-create table mssql_backup_summary (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   hostname             varchar2(50 char) not null,
-   database_name        varchar2(100 char) not null,
-   recovery_model       varchar2(100 char),
-   backup_type          varchar2(20 char) not null,
-   backup_start_date    date not null,
-   previous_backup      date not null,
-   hours_between_backup number(10) not null
-);
-
-comment on table mssql_backup_summary is 'Per-database MSSQL backup summary comparing the latest backup to the previous one, used to compute backup freshness.';
-comment on column mssql_backup_summary.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_backup_summary.collect_target is 'Target of the collection.';
-comment on column mssql_backup_summary.hostname is 'Host name of the database server or instance.';
-comment on column mssql_backup_summary.database_name is 'Name of the database.';
-comment on column mssql_backup_summary.recovery_model is 'Database recovery model (e.g. FULL, SIMPLE, BULK_LOGGED).';
-comment on column mssql_backup_summary.backup_type is 'Type of backup (e.g. FULL, DIFF/DIFFERENTIAL, LOG).';
-comment on column mssql_backup_summary.backup_start_date is 'Timestamp at which the backup started.';
-comment on column mssql_backup_summary.previous_backup is 'Start date of the previous backup, used to compute the interval.';
-comment on column mssql_backup_summary.hours_between_backup is 'Number of hours elapsed between this backup and the previous one.';
-
--- ============================================================
--- mssql_backup_temp
--- ============================================================
-create table mssql_backup_temp (
-   collect_id         varchar2(16) not null,
-   collect_target     varchar2(50 char) not null,
-   hostname           varchar2(50 char) not null,
-   database_name      varchar2(100 char) not null,
-   backup_start_date  date not null,
-   backup_finish_date date not null,
-   backup_type        varchar2(20 char) not null,
-   backup_size        number(19) not null
-);
-
-comment on table mssql_backup_temp is 'Staging table used to land MSSQL backup data during the load process before it is merged into mssql_backup.';
-comment on column mssql_backup_temp.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_backup_temp.collect_target is 'Target of the collection.';
-comment on column mssql_backup_temp.hostname is 'Host name of the database server or instance.';
-comment on column mssql_backup_temp.database_name is 'Name of the database.';
-comment on column mssql_backup_temp.backup_start_date is 'Timestamp at which the backup started.';
-comment on column mssql_backup_temp.backup_finish_date is 'Timestamp at which the backup completed.';
-comment on column mssql_backup_temp.backup_type is 'Type of backup (e.g. FULL, DIFF/DIFFERENTIAL, LOG).';
-comment on column mssql_backup_temp.backup_size is 'Size of the backup, in bytes.';
 
 -- ============================================================
 -- mssql_databases
@@ -197,7 +108,6 @@ comment on column mssql_files.max_size is 'Maximum size the file is allowed to g
 -- ============================================================
 -- mssql_hosts
 -- ============================================================
--- drop table mssql_hosts;
 create table mssql_hosts (
    collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
@@ -256,7 +166,6 @@ comment on column mssql_hosts.is_integrated_security_only is 'Authentication mod
 -- ============================================================
 -- mssql_logins
 -- ============================================================
--- drop table mssql_logins;
 create table mssql_logins (
    collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
@@ -385,7 +294,6 @@ comment on column mssql_security_configoptions.date_value is 'Timestamp at which
 -- ============================================================
 -- mssql_security_dbproperties
 -- ============================================================
--- drop table mssql_security_dbproperties;
 create table mssql_security_dbproperties (
    collect_id         varchar2(16) not null,
    collect_target     varchar2(50 char) not null,
@@ -393,17 +301,19 @@ create table mssql_security_dbproperties (
    db_name           varchar2(50 char) not null,
    is_auto_close_on  number(10) not null,
    is_trustworthy_on number(10) not null,
+   query_store_state varchar2(30 char),
    compliance_score  number(2) default 0,
    date_value        timestamp default on null systimestamp not null
 );
 
-comment on table mssql_security_dbproperties is 'MSSQL database property compliance check results (AUTO_CLOSE, TRUSTWORTHY).';
+comment on table mssql_security_dbproperties is 'MSSQL database property compliance check results (AUTO_CLOSE, TRUSTWORTHY, Query Store).';
 comment on column mssql_security_dbproperties.collect_id is 'Identifier for the collect run that produced this row';
 comment on column mssql_security_dbproperties.collect_target is 'Target of the collection.';
 comment on column mssql_security_dbproperties.servername is 'Name of the SQL Server instance being evaluated.';
 comment on column mssql_security_dbproperties.db_name is 'Name of the database.';
 comment on column mssql_security_dbproperties.is_auto_close_on is 'Indicates whether the AUTO_CLOSE database option is enabled.';
 comment on column mssql_security_dbproperties.is_trustworthy_on is 'Indicates whether the TRUSTWORTHY database option is enabled.';
+comment on column mssql_security_dbproperties.query_store_state is 'Query Store actual state (OFF, READ_ONLY, READ_WRITE, ERROR); empty before SQL Server 2016, on system, offline or non READ_WRITE databases.';
 comment on column mssql_security_dbproperties.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column mssql_security_dbproperties.date_value is 'Timestamp at which this row was collected or computed.';
 
@@ -486,27 +396,8 @@ comment on column mssql_security_guestconnect.date_value is 'Timestamp at which 
 
 
 -- ============================================================
--- mssql_security_history
--- ============================================================
-create table mssql_security_history (
-   collect_id             varchar2(16) not null,
-   collect_target         varchar2(50 char) not null,
-   servername             varchar2(50 char) not null,
-   compliance_score_total number(2),
-   date_value             timestamp default on null systimestamp not null
-);
-
-comment on table mssql_security_history is 'Historical trend of the overall MSSQL security compliance score per server.';
-comment on column mssql_security_history.collect_id is 'Identifier for the collect run that produced this row';
-comment on column mssql_security_history.collect_target is 'Target of the collection.';
-comment on column mssql_security_history.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_history.compliance_score_total is 'Overall compliance score aggregated across all checks.';
-comment on column mssql_security_history.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
 -- mssql_security_logins
 -- ============================================================
--- drop table mssql_security_logins;
 create table mssql_security_logins (
    collect_id             varchar2(16) not null,
    collect_target         varchar2(50 char) not null,
@@ -640,51 +531,8 @@ comment on column mssql_security_sa.date_value is 'Timestamp at which this row w
 
 
 -- ============================================================
--- mssql_security_scoring
--- ============================================================
-create table mssql_security_scoring (
-   servername             varchar2(50 char) not null,
-   environment            varchar2(20 char),
-   configoptions          number(2) default 0 not null,
-   dbproperties           number(2) default 0 not null,
-   auditlevel             number(2) default 0 not null,
-   encryption             number(10) default 0 not null,
-   groups                 number(10) default 0 not null,
-   guestconnect           number(10) default 0 not null,
-   logins                 number(10) default 0 not null,
-   orphanedusers          number(10) default 0 not null,
-   publicpermission       number(10) default 0 not null,
-   registryinfo           number(10) default 0 not null,
-   sqlserveraudit         number(10) default 0 not null,
-   compliance_score_total number(2) default 0 not null,
-   exception_detected     number(2) default 0 not null,
-   legacy_server          number(2) default 0 not null,
-   date_value             timestamp default on null systimestamp not null
-);
-
-comment on table mssql_security_scoring is 'Aggregated MSSQL security compliance score per server, broken down by check category.';
-comment on column mssql_security_scoring.servername is 'Name of the SQL Server instance being evaluated.';
-comment on column mssql_security_scoring.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column mssql_security_scoring.configoptions is 'Compliance score for the sp_configure options check.';
-comment on column mssql_security_scoring.dbproperties is 'Compliance score for the database properties check.';
-comment on column mssql_security_scoring.auditlevel is 'Compliance score for the server audit level check.';
-comment on column mssql_security_scoring.encryption is 'Compliance score for the encryption keys check.';
-comment on column mssql_security_scoring.groups is 'Compliance score for the local Windows groups check.';
-comment on column mssql_security_scoring.guestconnect is 'Compliance score for the guest CONNECT permission check.';
-comment on column mssql_security_scoring.logins is 'Compliance score for the sysadmin/high-privilege logins check.';
-comment on column mssql_security_scoring.orphanedusers is 'Compliance score for the orphaned database users check.';
-comment on column mssql_security_scoring.publicpermission is 'Compliance score for the public role permissions check.';
-comment on column mssql_security_scoring.registryinfo is 'Compliance score for the registry configuration check.';
-comment on column mssql_security_scoring.sqlserveraudit is 'Compliance score for the SQL Server Audit check.';
-comment on column mssql_security_scoring.compliance_score_total is 'Overall compliance score aggregated across all checks.';
-comment on column mssql_security_scoring.exception_detected is 'Indicates whether at least one documented exception was applied for this server.';
-comment on column mssql_security_scoring.legacy_server is 'Indicates whether the server is flagged as a legacy/end-of-support SQL Server version.';
-comment on column mssql_security_scoring.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
 -- mssql_security_sqlserveraudit
 -- ============================================================
--- drop table mssql_security_sqlserveraudit;
 create table mssql_security_sqlserveraudit (
    collect_id                varchar2(16) not null,
    collect_target            varchar2(50 char) not null,
@@ -718,7 +566,6 @@ comment on column mssql_security_sqlserveraudit.date_value is 'Timestamp at whic
 -- ============================================================
 -- mssql_users
 -- ============================================================
--- drop table mssql_users;
 create table mssql_users (
    collect_id        varchar2(16) not null,
    collect_target    varchar2(50 char) not null,
@@ -771,52 +618,6 @@ comment on column mssql_validatelogin.modify_date is 'Timestamp at which the log
 comment on column mssql_validatelogin.scandate is 'Timestamp at which this row was scanned/collected.';
 
 -- ============================================================
--- oracle_audit_logon
--- ============================================================
-create table oracle_audit_logon (
-   db_name        varchar2(50 char) not null,
-   logon_time     varchar2(100 char),
-   db_username    varchar2(100 char) not null,
-   os_username    varchar2(100 char) not null,
-   host_client    varchar2(100 char) not null,
-   client_name    varchar2(200 char) not null,
-   expected_logon number(2) default 0 not null
-);
-
-comment on table oracle_audit_logon is 'Raw Oracle unified audit logon events collected since the last run.';
-comment on column oracle_audit_logon.db_name is 'Name of the database.';
-comment on column oracle_audit_logon.logon_time is 'Timestamp of the logon event.';
-comment on column oracle_audit_logon.db_username is 'Name of the database account.';
-comment on column oracle_audit_logon.os_username is 'Name of the operating system account used to connect.';
-comment on column oracle_audit_logon.host_client is 'Host name of the client machine that connected.';
-comment on column oracle_audit_logon.client_name is 'Name/program of the client that connected.';
-comment on column oracle_audit_logon.expected_logon is 'Indicates whether this logon matches an expected/whitelisted pattern.';
-
--- ============================================================
--- oracle_audit_logon_history
--- ============================================================
-create table oracle_audit_logon_history (
-   db_name        varchar2(50 char) not null,
-   logon_time     varchar2(100 char),
-   db_username    varchar2(100 char) not null,
-   os_username    varchar2(100 char) not null,
-   host_client    varchar2(100 char) not null,
-   client_name    varchar2(200 char) not null,
-   expected_logon number(2) default 0 not null,
-   date_value     timestamp default on null systimestamp not null
-);
-
-comment on table oracle_audit_logon_history is 'Historized Oracle unified audit logon events.';
-comment on column oracle_audit_logon_history.db_name is 'Name of the database.';
-comment on column oracle_audit_logon_history.logon_time is 'Timestamp of the logon event.';
-comment on column oracle_audit_logon_history.db_username is 'Name of the database account.';
-comment on column oracle_audit_logon_history.os_username is 'Name of the operating system account used to connect.';
-comment on column oracle_audit_logon_history.host_client is 'Host name of the client machine that connected.';
-comment on column oracle_audit_logon_history.client_name is 'Name/program of the client that connected.';
-comment on column oracle_audit_logon_history.expected_logon is 'Indicates whether this logon matches an expected/whitelisted pattern.';
-comment on column oracle_audit_logon_history.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
 -- oracle_backup
 -- ============================================================
 create table oracle_backup (
@@ -839,68 +640,6 @@ comment on column oracle_backup.status is 'Status reported for the backup job (e
 comment on column oracle_backup.start_time is 'Timestamp at which the backup job started.';
 comment on column oracle_backup.end_time is 'Timestamp at which the backup job completed.';
 comment on column oracle_backup.elapsed_time is 'Duration of the backup job.';
-
--- ============================================================
--- oracle_backup_archivelog_gap
--- ============================================================
-create table oracle_backup_archivelog_gap (
-   db_name              varchar2(50 char) not null,
-   environment          varchar2(20 char) not null,
-   start_time           timestamp(6) not null,
-   previous_time        timestamp(6) not null,
-   hours_between_backup number(10) not null
-);
-
-comment on table oracle_backup_archivelog_gap is 'Gaps between successive Oracle archivelog backups, used to monitor archivelog backup freshness.';
-comment on column oracle_backup_archivelog_gap.db_name is 'Name of the database.';
-comment on column oracle_backup_archivelog_gap.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_backup_archivelog_gap.start_time is 'Timestamp of the archivelog backup.';
-comment on column oracle_backup_archivelog_gap.previous_time is 'Timestamp of the previous archivelog backup.';
-comment on column oracle_backup_archivelog_gap.hours_between_backup is 'Number of hours elapsed between this backup and the previous one.';
-
--- ============================================================
--- oracle_backup_history
--- ============================================================
-create table oracle_backup_history (
-   scoring_result                  timestamp default on null systimestamp not null,
-   environment                     varchar2(20 char) not null,
-   count_backup_failed             varchar2(50 char) not null,
-   cumulative_hours_between_backup number(10) not null
-);
-
-comment on table oracle_backup_history is 'Historical trend of the aggregated Oracle backup scoring, snapshotted at each daily scoring run.';
-comment on column oracle_backup_history.scoring_result is 'Timestamp at which this scoring snapshot was taken.';
-comment on column oracle_backup_history.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_backup_history.count_backup_failed is 'Number of failed backups counted for this snapshot.';
-comment on column oracle_backup_history.cumulative_hours_between_backup is 'Cumulative number of hours elapsed between successive backups.';
-
--- ============================================================
--- oracle_backup_summary
--- ============================================================
-create table oracle_backup_summary (
-   db_name                         varchar2(50 char) not null,
-   environment                     varchar2(20 char) not null,
-   failed_backup_detected          number(10) default 0 not null,
-   avg_archive_elapsed             number(10) not null,
-   avg_archive_sla                 number(10) not null,
-   backup_archive_sla_result       number(10) default 0 not null,
-   avg_inc_elapsed                 number(10) not null,
-   avg_inc_sla                     number(10) not null,
-   backup_inc_sla_result           number(10) default 0 not null,
-   cumulative_hours_between_backup number(10) not null
-);
-
-comment on table oracle_backup_summary is 'Per-database Oracle backup summary and SLA compliance results.';
-comment on column oracle_backup_summary.db_name is 'Name of the database.';
-comment on column oracle_backup_summary.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_backup_summary.failed_backup_detected is 'Indicates whether a failed backup was detected for this database.';
-comment on column oracle_backup_summary.avg_archive_elapsed is 'Average elapsed time of archivelog backups, in minutes.';
-comment on column oracle_backup_summary.avg_archive_sla is 'SLA target elapsed time for archivelog backups, in minutes.';
-comment on column oracle_backup_summary.backup_archive_sla_result is 'Indicates whether the archivelog backup SLA was met.';
-comment on column oracle_backup_summary.avg_inc_elapsed is 'Average elapsed time of incremental backups, in minutes.';
-comment on column oracle_backup_summary.avg_inc_sla is 'SLA target elapsed time for incremental backups, in minutes.';
-comment on column oracle_backup_summary.backup_inc_sla_result is 'Indicates whether the incremental backup SLA was met.';
-comment on column oracle_backup_summary.cumulative_hours_between_backup is 'Cumulative number of hours elapsed between successive backups.';
 
 -- ============================================================
 -- oracle_client_version
@@ -937,93 +676,6 @@ comment on column oracle_client_version.failover_method is 'Method used for conn
 comment on column oracle_client_version.check_client is 'Indicates whether this client version should be checked against the minimum supported version.';
 
 -- ============================================================
--- oracle_metrics_cpu_memory
--- ============================================================
-create table oracle_metrics_cpu_memory (
-   collect_id       varchar2(16),
-   pdb_name            varchar2(50 char) not null,
-   cpu_time_minutes    number(10) not null,
-   avg_sga_mb          number(10) not null,
-   avg_pga_mb          number(10) not null,
-   avg_buffer_cache_mb number(10) not null,
-   avg_shared_pool_mb  number(10) not null,
-   environment         varchar2(20 char),
-   date_value          timestamp default on null systimestamp not null
-);
-
-comment on table oracle_metrics_cpu_memory is 'Current Oracle PDB CPU and memory usage metrics.';
-comment on column oracle_metrics_cpu_memory.collect_id is 'Identifier for the collect run that produced this row';
-comment on column oracle_metrics_cpu_memory.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_metrics_cpu_memory.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
-comment on column oracle_metrics_cpu_memory.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
-comment on column oracle_metrics_cpu_memory.avg_pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
-comment on column oracle_metrics_cpu_memory.avg_buffer_cache_mb is 'Average buffer cache size, in megabytes.';
-comment on column oracle_metrics_cpu_memory.avg_shared_pool_mb is 'Average shared pool size, in megabytes.';
-comment on column oracle_metrics_cpu_memory.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_metrics_cpu_memory.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
--- oracle_metrics_cpu_mem_hist
--- ============================================================
-create table oracle_metrics_cpu_mem_hist (
-   pdb_name            varchar2(50 char) not null,
-   cpu_time_minutes    number(10) not null,
-   avg_sga_mb          number(10) not null,
-   avg_pga_mb          number(10) not null,
-   avg_buffer_cache_mb number(10) not null,
-   avg_shared_pool_mb  number(10) not null,
-   environment         varchar2(20 char),
-   date_value          timestamp default on null systimestamp not null
-);
-
-comment on table oracle_metrics_cpu_mem_hist is 'Historized Oracle PDB CPU and memory usage metrics.';
-comment on column oracle_metrics_cpu_mem_hist.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_metrics_cpu_mem_hist.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
-comment on column oracle_metrics_cpu_mem_hist.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
-comment on column oracle_metrics_cpu_mem_hist.avg_pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
-comment on column oracle_metrics_cpu_mem_hist.avg_buffer_cache_mb is 'Average buffer cache size, in megabytes.';
-comment on column oracle_metrics_cpu_mem_hist.avg_shared_pool_mb is 'Average shared pool size, in megabytes.';
-comment on column oracle_metrics_cpu_mem_hist.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_metrics_cpu_mem_hist.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
--- oracle_metrics_cpu_service
--- ============================================================
-create table oracle_metrics_cpu_service (
-   collect_id       varchar2(16),
-   pdb_name           varchar2(50 char) not null,
-   service_name       varchar2(100 char) not null,
-   dbcpu_time_minutes number(10) not null,
-   date_value         timestamp default on null systimestamp not null
-);
-
-comment on table oracle_metrics_cpu_service is 'Current Oracle CPU usage metrics broken down by service.';
-comment on column oracle_metrics_cpu_service.collect_id is 'Identifier for the collect run that produced this row';
-comment on column oracle_metrics_cpu_service.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_metrics_cpu_service.service_name is 'Name of the Oracle service.';
-comment on column oracle_metrics_cpu_service.dbcpu_time_minutes is 'Database CPU time consumed by the service, in minutes.';
-comment on column oracle_metrics_cpu_service.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
--- oracle_metrics_cpu_svc_hist
--- Note : decimal(50,3) -> NUMBER(38,3) [precision max Oracle = 38]
--- ============================================================
-create table oracle_metrics_cpu_svc_hist (
-   pdb_name           varchar2(50 char) not null,
-   service_name       varchar2(100 char) not null,
-   dbcpu_time_minutes number(10) not null,
-   percentage_usage   number(38,3) not null,
-   date_value         varchar2(8 char) not null
-);
-
-comment on table oracle_metrics_cpu_svc_hist is 'Historized Oracle CPU usage metrics broken down by service.';
-comment on column oracle_metrics_cpu_svc_hist.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_metrics_cpu_svc_hist.service_name is 'Name of the Oracle service.';
-comment on column oracle_metrics_cpu_svc_hist.dbcpu_time_minutes is 'Database CPU time consumed by the service, in minutes.';
-comment on column oracle_metrics_cpu_svc_hist.percentage_usage is 'Share of the database total CPU time consumed by this service, in percent.';
-comment on column oracle_metrics_cpu_svc_hist.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
 -- oracle_size_usage
 -- ============================================================
 create table oracle_size_usage (
@@ -1032,8 +684,6 @@ create table oracle_size_usage (
    pdb_name        varchar2(50 char) not null,
    tablespace_name varchar2(200 char) not null,
    size_mb         number(10) not null,
-   environment     varchar2(20 char),
-   sum_segment_mb  number(10) default 0,
    date_value      timestamp default on null systimestamp not null
 );
 
@@ -1043,31 +693,7 @@ comment on column oracle_size_usage.db_name is 'Name of the database.';
 comment on column oracle_size_usage.pdb_name is 'Name of the Oracle pluggable database (PDB).';
 comment on column oracle_size_usage.tablespace_name is 'Name of the tablespace.';
 comment on column oracle_size_usage.size_mb is 'Size, in megabytes.';
-comment on column oracle_size_usage.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_size_usage.sum_segment_mb is 'Sum of segment sizes allocated within the tablespace, in megabytes.';
 comment on column oracle_size_usage.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
--- oracle_size_usage_history
--- ============================================================
-create table oracle_size_usage_history (
-   db_name         varchar2(50 char) not null,
-   pdb_name        varchar2(50 char) not null,
-   tablespace_name varchar2(200 char) not null,
-   size_mb         number(10) not null,
-   environment     varchar2(20 char),
-   sum_segment_mb  number(10) default 0,
-   date_value      timestamp default on null systimestamp not null
-);
-
-comment on table oracle_size_usage_history is 'Historized Oracle tablespace size usage per PDB.';
-comment on column oracle_size_usage_history.db_name is 'Name of the database.';
-comment on column oracle_size_usage_history.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_size_usage_history.tablespace_name is 'Name of the tablespace.';
-comment on column oracle_size_usage_history.size_mb is 'Size, in megabytes.';
-comment on column oracle_size_usage_history.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_size_usage_history.sum_segment_mb is 'Sum of segment sizes allocated within the tablespace, in megabytes.';
-comment on column oracle_size_usage_history.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_size_usage_seg
@@ -1088,95 +714,6 @@ comment on column oracle_size_usage_seg.pdb_name is 'Name of the Oracle pluggabl
 comment on column oracle_size_usage_seg.tablespace_name is 'Name of the tablespace.';
 comment on column oracle_size_usage_seg.sum_segment_mb is 'Sum of segment sizes allocated within the tablespace, in megabytes.';
 comment on column oracle_size_usage_seg.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
--- oracle_capplan_exacc_usage
--- ============================================================
-create table oracle_capplan_exacc_usage (
-   price         number(10),
-   cluster_name  varchar2(30 char) not null,
-   date_of_month varchar2(8 char)
-);
-
-comment on table oracle_capplan_exacc_usage is 'Exadata Cloud at Customer (ExaCC) cluster pricing reference used for capacity planning cost calculations.';
-comment on column oracle_capplan_exacc_usage.price is 'Unit price used for the cost calculation.';
-comment on column oracle_capplan_exacc_usage.cluster_name is 'Name of the Exadata Cloud at Customer (ExaCC) cluster.';
-comment on column oracle_capplan_exacc_usage.date_of_month is 'Reference month for this capacity planning snapshot (YYYYMM/YYYYMMDD).';
-
--- ============================================================
--- oracle_capplan_hist_prebuilt
--- Notes : decimal(50,3) -> NUMBER(38,3) [precision max Oracle = 38]
---         float -> BINARY_FLOAT
---         DEFAULT '' retire (chaine vide = NULL en Oracle)
--- ============================================================
-create table oracle_capplan_hist_prebuilt (
-   pdb_name                      varchar2(50 char) not null,
-   env                           varchar2(8 char) not null,
-   application_name              varchar2(30 char) not null,
-   cluster_name                  varchar2(30 char) not null,
-   size_gb                       number(10),
-   cpu_consume_per_month_per_pdb number(10),
-   cpu_minutes_price             binary_float,
-   global_percentage_consumption number(38,3),
-   env_percentage_consumption    number(38,3),
-   date_of_month                 varchar2(8 char),
-   cost_total                    binary_float not null,
-   exacc_cost_usage              binary_float not null,
-   exacc_ocpu_usage              binary_float not null,
-   zdlra_cost_usage              binary_float not null
-);
-
-comment on table oracle_capplan_hist_prebuilt is 'Historized capacity planning data per PDB: size, CPU consumption and cost breakdown.';
-comment on column oracle_capplan_hist_prebuilt.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_capplan_hist_prebuilt.env is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_capplan_hist_prebuilt.application_name is 'Name of the business application associated with this PDB.';
-comment on column oracle_capplan_hist_prebuilt.cluster_name is 'Name of the Exadata Cloud at Customer (ExaCC) cluster.';
-comment on column oracle_capplan_hist_prebuilt.size_gb is 'Size, in gigabytes.';
-comment on column oracle_capplan_hist_prebuilt.cpu_consume_per_month_per_pdb is 'CPU time consumed per month by this PDB, in minutes.';
-comment on column oracle_capplan_hist_prebuilt.cpu_minutes_price is 'Unit price applied per CPU minute consumed.';
-comment on column oracle_capplan_hist_prebuilt.global_percentage_consumption is 'Share of the total cluster CPU consumption attributed to this PDB, in percent.';
-comment on column oracle_capplan_hist_prebuilt.env_percentage_consumption is 'Share of the environment CPU consumption attributed to this PDB, in percent.';
-comment on column oracle_capplan_hist_prebuilt.date_of_month is 'Reference month for this capacity planning snapshot (YYYYMM/YYYYMMDD).';
-comment on column oracle_capplan_hist_prebuilt.cost_total is 'Total cost attributed to this PDB for the period.';
-comment on column oracle_capplan_hist_prebuilt.exacc_cost_usage is 'Cost share attributed to Exadata Cloud at Customer (ExaCC) usage.';
-comment on column oracle_capplan_hist_prebuilt.exacc_ocpu_usage is 'OCPU usage attributed to Exadata Cloud at Customer (ExaCC).';
-comment on column oracle_capplan_hist_prebuilt.zdlra_cost_usage is 'Cost share attributed to Zero Data Loss Recovery Appliance (ZDLRA) usage.';
-
--- ============================================================
--- oracle_capplan_summary
--- ============================================================
-create table oracle_capplan_summary (
-   db_name             varchar2(50 char) not null,
-   pdb_name            varchar2(50 char) not null,
-   environment         varchar2(20 char) not null,
-   size_mb             number(10) not null,
-   cpu_time_minutes    number(10) default 0 not null,
-   avg_sga_mb          number(10) default 0 not null,
-   avg_pga_mb          number(10) default 0 not null,
-   avg_buffer_cache_mb number(10) default 0 not null,
-   avg_shared_pool_mb  number(10) default 0 not null,
-   zdlra_cost_usage    binary_float default 0 not null,
-   exacc_ocpu_usage    binary_float default 0 not null,
-   exacc_cost_usage    binary_float default 0 not null,
-   cost_total          binary_float default 0 not null,
-   date_value          timestamp default on null systimestamp not null
-);
-
-comment on table oracle_capplan_summary is 'Current capacity planning summary per PDB: size, CPU/memory usage and cost breakdown.';
-comment on column oracle_capplan_summary.db_name is 'Name of the database.';
-comment on column oracle_capplan_summary.pdb_name is 'Name of the Oracle pluggable database (PDB).';
-comment on column oracle_capplan_summary.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_capplan_summary.size_mb is 'Size, in megabytes.';
-comment on column oracle_capplan_summary.cpu_time_minutes is 'Cumulative CPU time consumed, in minutes.';
-comment on column oracle_capplan_summary.avg_sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
-comment on column oracle_capplan_summary.avg_pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
-comment on column oracle_capplan_summary.avg_buffer_cache_mb is 'Average buffer cache size, in megabytes.';
-comment on column oracle_capplan_summary.avg_shared_pool_mb is 'Average shared pool size, in megabytes.';
-comment on column oracle_capplan_summary.zdlra_cost_usage is 'Cost share attributed to Zero Data Loss Recovery Appliance (ZDLRA) usage.';
-comment on column oracle_capplan_summary.exacc_ocpu_usage is 'OCPU usage attributed to Exadata Cloud at Customer (ExaCC).';
-comment on column oracle_capplan_summary.exacc_cost_usage is 'Cost share attributed to Exadata Cloud at Customer (ExaCC) usage.';
-comment on column oracle_capplan_summary.cost_total is 'Total cost attributed to this PDB for the period.';
-comment on column oracle_capplan_summary.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_databases
@@ -1200,8 +737,7 @@ create table oracle_databases (
    asm_free         varchar2(50 char),
    asm_total        varchar2(50 char),
    easy_connect_tns varchar2(100 char),
-   database_type    varchar2(50 char) not null,
-   count_pdb        number(10) default 0
+   database_type    varchar2(50 char) not null
 );
 
 comment on table oracle_databases is 'Inventory of Oracle databases/instances and their configuration.';
@@ -1224,7 +760,6 @@ comment on column oracle_databases.asm_free is 'Free space available in the ASM 
 comment on column oracle_databases.asm_total is 'Total space of the ASM disk group, if applicable.';
 comment on column oracle_databases.easy_connect_tns is 'Easy Connect / TNS connection string for the database.';
 comment on column oracle_databases.database_type is 'Type of database deployment (e.g. single instance, RAC, CDB).';
-comment on column oracle_databases.count_pdb is 'Number of pluggable databases (PDBs) hosted, if the database is a CDB.';
 
 -- ============================================================
 -- oracle_dataguard
@@ -1269,26 +804,6 @@ comment on column oracle_hosts.memory_gb is 'Amount of memory available on the h
 comment on column oracle_hosts.os_type is 'Operating system running on the host.';
 
 -- ============================================================
--- oracle_jdbc_tns
--- ============================================================
-create table oracle_jdbc_tns (
-   service_name     varchar2(100 char) not null,
-   easy_connect_tns varchar2(100 char),
-   db_name          varchar2(50 char) not null,
-   tcp_port         number(5),
-   primary_hst      varchar2(50 char),
-   standby_hst      varchar2(50 char)
-);
-
-comment on table oracle_jdbc_tns is 'Oracle JDBC/TNS connection information per service.';
-comment on column oracle_jdbc_tns.service_name is 'Name of the Oracle service.';
-comment on column oracle_jdbc_tns.easy_connect_tns is 'Easy Connect / TNS connection string for the service.';
-comment on column oracle_jdbc_tns.db_name is 'Name of the database.';
-comment on column oracle_jdbc_tns.tcp_port is 'TCP port used by the listener for this connection.';
-comment on column oracle_jdbc_tns.primary_hst is 'Host name of the primary database for this connection.';
-comment on column oracle_jdbc_tns.standby_hst is 'Host name of the standby database for this connection, if any.';
-
--- ============================================================
 -- oracle_lms
 -- ============================================================
 create table oracle_lms (
@@ -1317,21 +832,6 @@ comment on column oracle_lms.first_usage_date is 'Date the feature was first use
 comment on column oracle_lms.last_usage_date is 'Date the feature was last used, or ''Never'' if it has not been used.';
 comment on column oracle_lms.db_name is 'Name of the database.';
 comment on column oracle_lms.hostname is 'Host name of the database server or instance.';
-
--- ============================================================
--- oracle_lms_reference
--- ============================================================
-create table oracle_lms_reference (
-   product_name varchar2(150 char) not null,
-   num_core     number(6) not null,
-   license_type varchar2(50 char) not null,
-   constraint pk_oracle_lms_reference primary key ( product_name )
-);
-
-comment on table oracle_lms_reference is 'Reference table mapping Oracle product/option names to their licensing core factor and license type, used to compute LMS licensing costs.';
-comment on column oracle_lms_reference.product_name is 'Name of the Oracle option/feature, matching oracle_lms.product_name.';
-comment on column oracle_lms_reference.num_core is 'Number of cores counted per license unit for this product.';
-comment on column oracle_lms_reference.license_type is 'Oracle licensing metric this product is billed under (e.g. Processor, Named User Plus).';
 
 -- ============================================================
 -- oracle_pdbs
@@ -1523,22 +1023,6 @@ comment on column oracle_sec_high_tab_privs.date_value is 'Timestamp at which th
 
 
 -- ============================================================
--- oracle_security_history
--- ============================================================
-create table oracle_security_history (
-   db_name                varchar2(50 char) not null,
-   environment            varchar2(20 char) not null,
-   compliance_score_total number(2),
-   date_value             timestamp default on null systimestamp not null
-);
-
-comment on table oracle_security_history is 'Historical trend of the overall Oracle security compliance score per database.';
-comment on column oracle_security_history.db_name is 'Name of the database.';
-comment on column oracle_security_history.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_security_history.compliance_score_total is 'Overall compliance score aggregated across all checks.';
-comment on column oracle_security_history.date_value is 'Timestamp at which this row was collected or computed.';
-
--- ============================================================
 -- oracle_sec_network_encryption
 -- ============================================================
 create table oracle_sec_network_encryption (
@@ -1555,6 +1039,44 @@ comment on column oracle_sec_network_encryption.db_name is 'Name of the database
 comment on column oracle_sec_network_encryption.sqlnet_encryption is 'Value of the SQL*Net encryption configuration parameter.';
 comment on column oracle_sec_network_encryption.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_sec_network_encryption.date_value is 'Timestamp at which this row was collected or computed.';
+
+-- ============================================================
+-- oracle_sec_net_enc_audit
+-- ------------------------------------------------------------
+-- Read from SYSTEM.HIST_SESSION_ENCRYPTION, which only exists on a database
+-- left in SQLNET.ENCRYPTION_SERVER=REQUESTED (setup/targets/oracle/
+-- ORACLE_network_encryption_audit.sql). One AUDIT row per container holding the
+-- table -- its presence is what declares the database REQUESTED, even when no
+-- client is recorded -- plus one CLIENT row per client seen in the last 90 days.
+-- Dates and counter stay text, converted by the ETL: a malformed value must
+-- cost one finding, not the whole LOAD.
+-- ============================================================
+create table oracle_sec_net_enc_audit (
+   collect_id  varchar2(16),
+   db_name     varchar2(50 char) not null,
+   pdb_name    varchar2(128 char) not null,
+   record_type varchar2(10 char) not null,
+   username    varchar2(128 char),
+   machine     varchar2(256 char),
+   program     varchar2(128 char),
+   osuser      varchar2(128 char),
+   first_seen  varchar2(20 char),
+   last_seen   varchar2(20 char),
+   logon_count varchar2(20 char)
+);
+
+comment on table oracle_sec_net_enc_audit is 'Unencrypted-client audit of Oracle databases left in REQUESTED network encryption mode (SYSTEM.HIST_SESSION_ENCRYPTION).';
+comment on column oracle_sec_net_enc_audit.collect_id is 'Identifier for the collect run that produced this row';
+comment on column oracle_sec_net_enc_audit.db_name is 'Name of the database (v$database.name).';
+comment on column oracle_sec_net_enc_audit.pdb_name is 'Container holding the audit table, or NON CONTAINER.';
+comment on column oracle_sec_net_enc_audit.record_type is 'AUDIT: the audit table exists in this container; CLIENT: one unencrypted client.';
+comment on column oracle_sec_net_enc_audit.username is 'Database user of the unencrypted client.';
+comment on column oracle_sec_net_enc_audit.machine is 'Client machine.';
+comment on column oracle_sec_net_enc_audit.program is 'Client program.';
+comment on column oracle_sec_net_enc_audit.osuser is 'Client operating system user.';
+comment on column oracle_sec_net_enc_audit.first_seen is 'First unencrypted logon, YYYY-MM-DD HH24:MI:SS.';
+comment on column oracle_sec_net_enc_audit.last_seen is 'Last unencrypted logon, YYYY-MM-DD HH24:MI:SS.';
+comment on column oracle_sec_net_enc_audit.logon_count is 'Number of unencrypted logons recorded.';
 
 -- ============================================================
 -- oracle_security_parameter
@@ -1601,44 +1123,6 @@ comment on column oracle_security_profile.limit_value is 'Value configured for t
 comment on column oracle_security_profile.compliance_score is 'Compliance score assigned to this check result (0 = non-compliant, higher = compliant).';
 comment on column oracle_security_profile.date_value is 'Timestamp at which this row was collected or computed.';
 
-
--- ============================================================
--- oracle_security_scoring
--- ============================================================
-create table oracle_security_scoring (
-   db_name                    varchar2(50 char) not null,
-   environment                varchar2(20 char),
-   admin_high_privs_score     number(2) default 0,
-   audit_enable_score         number(2) default 0,
-   default_profile_score      number(2) default 0,
-   default_user_pwd_score     number(2) default 0,
-   high_role_privs_score      number(2) default 0,
-   high_sys_privs_score       number(2) default 0,
-   high_tab_privs_score       number(2) default 0,
-   security_parameter_score   number(2) default 0,
-   security_profile_score     number(2) default 0,
-   encrypted_tablespace_score number(2) default 0,
-   network_encryption_score   number(2) default 0,
-   compliance_score_total     number(2) default 0,
-   date_value                 timestamp default on null systimestamp not null
-);
-
-comment on table oracle_security_scoring is 'Aggregated Oracle security compliance score per database, broken down by check category.';
-comment on column oracle_security_scoring.db_name is 'Name of the database.';
-comment on column oracle_security_scoring.environment is 'Environment the row applies to (e.g. PROD, DEV, TEST).';
-comment on column oracle_security_scoring.admin_high_privs_score is 'Compliance score for the high administrative privileges check.';
-comment on column oracle_security_scoring.audit_enable_score is 'Compliance score for the audit policy activation check.';
-comment on column oracle_security_scoring.default_profile_score is 'Compliance score for the default profile check.';
-comment on column oracle_security_scoring.default_user_pwd_score is 'Compliance score for the default password check.';
-comment on column oracle_security_scoring.high_role_privs_score is 'Compliance score for the high-privilege roles check.';
-comment on column oracle_security_scoring.high_sys_privs_score is 'Compliance score for the high-privilege system privileges check.';
-comment on column oracle_security_scoring.high_tab_privs_score is 'Compliance score for the high-privilege table privileges check.';
-comment on column oracle_security_scoring.security_parameter_score is 'Compliance score for the security parameter check.';
-comment on column oracle_security_scoring.security_profile_score is 'Compliance score for the profile resource limit check.';
-comment on column oracle_security_scoring.encrypted_tablespace_score is 'Compliance score for the tablespace encryption check.';
-comment on column oracle_security_scoring.network_encryption_score is 'Compliance score for the network encryption check.';
-comment on column oracle_security_scoring.compliance_score_total is 'Overall compliance score aggregated across all checks.';
-comment on column oracle_security_scoring.date_value is 'Timestamp at which this row was collected or computed.';
 
 -- ============================================================
 -- oracle_security_tablespace
@@ -2081,33 +1565,6 @@ comment on column oracle_collect_list.license_type is 'Licensing type applied to
 comment on column oracle_collect_list.active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
 
 -- ============================================================
--- scoring_activity_list
--- ============================================================
-create table scoring_activity_list (
-   scoring_type             varchar2(30 char) not null,
-   last_scoring_date        timestamp default current_timestamp not null,
-   last_scoring_value       number(3) default 0 not null,
-   scoring_card_class       varchar2(100 char) not null,
-   scoring_status           varchar2(10 char) not null,
-   status_color             varchar2(100 char),
-   scoring_label            varchar2(256 char),
-   details_apex_page_number number,
-   scoring_order            number(2),
-   constraint pk_scoring_activity_list primary key ( scoring_type )
-);
-
-comment on table scoring_activity_list is 'Reference list of scoring/compliance activities displayed on the dashboard, with their latest computed value and status.';
-comment on column scoring_activity_list.scoring_type is 'Unique identifier of the scoring activity.';
-comment on column scoring_activity_list.last_scoring_date is 'Timestamp of the last computed scoring run.';
-comment on column scoring_activity_list.last_scoring_value is 'Latest computed score value.';
-comment on column scoring_activity_list.scoring_card_class is 'CSS/style class used to render the scoring card on the dashboard.';
-comment on column scoring_activity_list.scoring_status is 'Latest status of the scoring activity (e.g. OK, WARNING, CRITICAL).';
-comment on column scoring_activity_list.status_color is 'Color used to represent the status on the dashboard.';
-comment on column scoring_activity_list.scoring_label is 'Display label of the scoring activity on the dashboard.';
-comment on column scoring_activity_list.details_apex_page_number is 'APEX page number linked from the dashboard for the detail view.';
-comment on column scoring_activity_list.scoring_order is 'Display order of the scoring activity on the dashboard.';
-
--- ============================================================
 -- environments
 -- ============================================================
 create table environments (
@@ -2119,106 +1576,6 @@ create table environments (
 comment on table environments is 'List of environments used in the system.';
 comment on column environments.envt_short_code is 'Short code representing the environment (PK)';
 comment on column environments.environment is 'Full name of the environment.';
-
--- ============================================================
--- oracle_discovery_list
--- ============================================================
-create table oracle_discovery_list (
-   server_name       varchar2(100 char) not null,
-   instance_name     varchar2(100 char) not null,
-   port              number(5),
-   envt_short_code   varchar2(3 char) not null,
-   license_type      varchar2(30 char) not null,
-   collect_active    number(1) default 0 not null,
-   discovery_date    timestamp default systimestamp,
-   last_update       timestamp default on null systimestamp not null,
-   constraint pk_oracle_discovery_list primary key ( instance_name )
-);
-
-comment on table oracle_discovery_list is 'List of Oracle instances discovered by the discovery script.';
-comment on column oracle_discovery_list.server_name is 'Name of the server hosting the Oracle instance.';
-comment on column oracle_discovery_list.instance_name is 'Name of the Oracle instance';
-comment on column oracle_discovery_list.port is 'TCP port the instance listens on.';
-comment on column oracle_discovery_list.envt_short_code is 'Environment the row applies to (e.g. PRD, DEV, TST).';
-comment on column oracle_discovery_list.license_type is 'Licensing type applied to this host/instance.';
-comment on column oracle_discovery_list.collect_active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
-comment on column oracle_discovery_list.discovery_date is 'Timestamp at which this row was discovered.';
-comment on column oracle_discovery_list.last_update is 'Timestamp at which this row was last updated.';
-
--- ============================================================
--- mssql_discovery_list
--- ============================================================
-create table mssql_discovery_list (
-   server_name       varchar2(100 char) not null,
-   instance_name     varchar2(100 char) not null,
-   port              number(5),
-   envt_short_code   varchar2(3 char) not null,
-   license_type      varchar2(30 char) not null,
-   collect_active    number(1) default 0 not null,
-   discovery_date    timestamp default systimestamp,
-   last_update       timestamp default on null systimestamp not null,
-   constraint pk_mssql_discovery_list primary key ( instance_name )
-);
-
-comment on table mssql_discovery_list is 'List of MSSQL instances discovered by the discovery script.';
-comment on column mssql_discovery_list.server_name is 'Name of the server hosting the MSSQL instance.';
-comment on column mssql_discovery_list.instance_name is 'Name of the MSSQL instance';
-comment on column mssql_discovery_list.port is 'TCP port the instance listens on.';
-comment on column mssql_discovery_list.envt_short_code is 'Environment the row applies to (e.g. PRD, DEV, TST).';
-comment on column mssql_discovery_list.license_type is 'Licensing type applied to this host/instance.';
-comment on column mssql_discovery_list.collect_active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
-comment on column mssql_discovery_list.discovery_date is 'Timestamp at which this row was discovered.';
-comment on column mssql_discovery_list.last_update is 'Timestamp at which this row was last updated.';
-
--- ============================================================
--- postgres_discovery_list
--- ============================================================
-create table postgres_discovery_list (
-   server_name       varchar2(100 char) not null,
-   instance_name     varchar2(100 char) not null,
-   port              number(5),
-   envt_short_code   varchar2(3 char) not null,
-   license_type      varchar2(30 char) not null,
-   collect_active    number(1) default 0 not null,
-   discovery_date    timestamp default systimestamp,
-   last_update       timestamp default on null systimestamp not null,
-   constraint pk_postgres_discovery_list primary key ( instance_name )
-);
-
-comment on table postgres_discovery_list is 'List of PostgreSQL instances discovered by the discovery script.';
-comment on column postgres_discovery_list.server_name is 'Name of the server hosting the PostgreSQL instance.';
-comment on column postgres_discovery_list.instance_name is 'Name of the PostgreSQL instance';
-comment on column postgres_discovery_list.port is 'TCP port the instance listens on.';
-comment on column postgres_discovery_list.envt_short_code is 'Environment the row applies to (e.g. PRD, DEV, TST).';
-comment on column postgres_discovery_list.license_type is 'Licensing type applied to this host/instance.';
-comment on column postgres_discovery_list.collect_active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
-comment on column postgres_discovery_list.discovery_date is 'Timestamp at which this row was discovered.';
-comment on column postgres_discovery_list.last_update is 'Timestamp at which this row was last updated.';
-
--- ============================================================
--- mysql_discovery_list
--- ============================================================
-create table mysql_discovery_list (
-   server_name       varchar2(100 char) not null,
-   instance_name     varchar2(100 char) not null,
-   port              number(5),
-   envt_short_code   varchar2(3 char) not null,
-   license_type      varchar2(30 char) not null,
-   collect_active    number(1) default 0 not null,
-   discovery_date    timestamp default systimestamp,
-   last_update       timestamp default on null systimestamp not null,
-   constraint pk_mysql_discovery_list primary key ( instance_name )
-);
-
-comment on table mysql_discovery_list is 'List of MySQL instances discovered by the discovery script.';
-comment on column mysql_discovery_list.server_name is 'Name of the server hosting the MySQL instance.';
-comment on column mysql_discovery_list.instance_name is 'Name of the MySQL instance';
-comment on column mysql_discovery_list.port is 'TCP port the instance listens on.';
-comment on column mysql_discovery_list.envt_short_code is 'Environment the row applies to (e.g. PRD, DEV, TST).';
-comment on column mysql_discovery_list.license_type is 'Licensing type applied to this host/instance.';
-comment on column mysql_discovery_list.collect_active is 'Flag indicating whether this entry is actively collected (1) or disabled (0).';
-comment on column mysql_discovery_list.discovery_date is 'Timestamp at which this row was discovered.';
-comment on column mysql_discovery_list.last_update is 'Timestamp at which this row was last updated.';
 
 -- ============================================================
 -- licence_types

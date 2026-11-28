@@ -482,6 +482,22 @@ list navigation-menu (
         }
     )
 
+    entry licensing (
+        label: Licensing (LMS)
+        icon {
+            imageIconCssClasses: fa-certificate
+        }
+        layout {
+            sequence: 25
+            parentEntry: @oracle
+        }
+        link {
+            target: {
+                page: 22
+            }
+        }
+    )
+
 
     entry ms-patching (
         label: Patching
@@ -510,8 +526,8 @@ list navigation-menu (
         isCurrent {
             type: pages
             pages: [
-                3
                 30
+                31
                 35
                 36
             ]
@@ -534,7 +550,6 @@ list navigation-menu (
         isCurrent {
             type: pages
             pages: [
-                5
                 50
             ]
         }
@@ -588,8 +603,9 @@ list navigation-menu (
         isCurrent {
             type: pages
             pages: [
-                2
                 20
+                21
+                22
                 25
                 26
             ]
@@ -676,7 +692,6 @@ list navigation-menu (
         isCurrent {
             type: pages
             pages: [
-                4
                 40
                 41
                 45
@@ -702,6 +717,134 @@ list navigation-menu (
         link {
             target: {
                 page: 35
+            }
+        }
+    )
+
+    entry oracle-data-models (
+        label: Data Models
+        icon {
+            imageIconCssClasses: fa-table
+        }
+        layout {
+            sequence: 26
+            parentEntry: @oracle
+        }
+        link {
+            target: {
+                page: 20
+            }
+        }
+    )
+
+    entry oracle-consumers (
+        label: Consumers
+        icon {
+            imageIconCssClasses: fa-users
+        }
+        layout {
+            sequence: 28
+            parentEntry: @oracle
+        }
+        link {
+            target: {
+                page: 20
+            }
+        }
+    )
+
+    entry ms-data-models (
+        label: Data Models
+        icon {
+            imageIconCssClasses: fa-table
+        }
+        layout {
+            sequence: 34
+            parentEntry: @ms-sql
+        }
+        link {
+            target: {
+                page: 30
+            }
+        }
+    )
+
+    entry ms-consumers (
+        label: Consumers
+        icon {
+            imageIconCssClasses: fa-users
+        }
+        layout {
+            sequence: 38
+            parentEntry: @ms-sql
+        }
+        link {
+            target: {
+                page: 30
+            }
+        }
+    )
+
+    entry pg-data-models (
+        label: Data Models
+        icon {
+            imageIconCssClasses: fa-table
+        }
+        layout {
+            sequence: 44
+            parentEntry: @postgres
+        }
+        link {
+            target: {
+                page: 40
+            }
+        }
+    )
+
+    entry pg-consumers (
+        label: Consumers
+        icon {
+            imageIconCssClasses: fa-users
+        }
+        layout {
+            sequence: 48
+            parentEntry: @postgres
+        }
+        link {
+            target: {
+                page: 40
+            }
+        }
+    )
+
+    entry mysql-data-models (
+        label: Data Models
+        icon {
+            imageIconCssClasses: fa-table
+        }
+        layout {
+            sequence: 54
+            parentEntry: @mysql
+        }
+        link {
+            target: {
+                page: 50
+            }
+        }
+    )
+
+    entry mysql-consumers (
+        label: Consumers
+        icon {
+            imageIconCssClasses: fa-users
+        }
+        layout {
+            sequence: 58
+            parentEntry: @mysql
+        }
+        link {
+            target: {
+                page: 50
             }
         }
     )

@@ -3,17 +3,15 @@
 -- ----------------------------------------------------------------------------
 -- Application data model for dbInventory (dimensional layer).
 --
--- This model is an ADDITIONAL layer on top of the collection tables created in
--- V__001_create_schema.sql. Those 89 tables are kept UNCHANGED and are now
--- treated as STAGING (TRUNCATE+LOAD, current state only). The tables below hold
--- the durable application state: stable entities (dimensions), dated measures
--- (facts, the time dimension for capacity planning) and a data-driven scoring
--- reference. They are populated later by PL/SQL INSERT ... SELECT from staging
--- (ETL out of scope for this iteration), so they are NOT subject to the SQLcl
--- LOAD 30-character table-name limitation.
+-- This model is a layer on top of the collection tables created in
+-- V__001_create_schema.sql, which are STAGING (TRUNCATE+LOAD, current state
+-- only). The tables below hold the durable application state: stable entities
+-- (dimensions), dated measures (facts, the time dimension for capacity
+-- planning) and a data-driven scoring reference. They are populated by PL/SQL
+-- INSERT ... SELECT from staging (V__004, V__005), so they are NOT subject to
+-- the SQLcl LOAD 30-character table-name limitation.
 --
--- Scope of this iteration: MSSQL + Oracle. MySQL/Postgres are declined later on
--- the same pattern.
+-- Platforms: Oracle, MSSQL, PostgreSQL (MySQL is a roadmap entry).
 --
 -- Naming conventions (technical tool, no data-warehouse jargon):
 --   * Dimension PK column      : <entity>_id  (IDENTITY)
@@ -27,17 +25,14 @@
 --   oracle_databases / mssql_hosts (engine part)    -> dim_instance (+ ext_oracle_instance / ext_mssql_instance)
 --   oracle_pdbs / oracle_databases / mssql_databases-> dim_database (+ ext_oracle_database / ext_mssql_database)
 --   oracle_size_usage(+_seg) / mssql_files          -> dim_storage_unit + fact_storage_capacity
---   oracle_metrics_cpu_memory                       -> fact_db_resource
 --   mssql_databases.last_backup_* / mssql_backup    -> fact_backup
 --   oracle_backup (RMAN, container-wide)            -> fact_instance_backup
 --   oracle_security_parameter / mssql_security_configoptions / _registryinfo
 --                                                   -> dim_parameter + fact_config_parameter
 --   oracle_users / mssql_logins / mssql_users       -> dim_account
---   all *_security_* / *_sec_* / *_exc              -> ref_control + fact_compliance
---   oracle_security_scoring / mssql_security_scoring (+ *_history)
---                                                   -> ref_scoring_weight + fact_scoring
--- Reused as-is (V__001): product_support, environments, licence_types,
---   scoring_activity_list (dashboard presentation, re-populated from fact_scoring later).
+--   all *_security_* / *_sec_* / *_exc              -> fact_control_finding + fact_compliance
+--   fact_compliance x ref_scoring_weight            -> fact_scoring
+-- Reused as-is (V__001): product_support, environments, licence_types.
 -- ============================================================================
 
 
@@ -425,32 +420,6 @@ comment on column fact_storage_capacity.used_mb is 'Used space within the storag
 comment on column fact_storage_capacity.free_mb is 'Free space within the storage unit, in megabytes.';
 comment on column fact_storage_capacity.max_size_mb is 'Maximum size the storage unit is allowed to grow to, in megabytes.';
 comment on column fact_storage_capacity.pct_used is 'Percentage of the storage unit that is used.';
-
-
--- ============================================================
--- fact_db_resource  (grain: database x day)
--- ============================================================
-create table fact_db_resource (
-   database_id      number not null,
-   snapshot_date    date not null,
-   cpu_time_min     number(14),
-   sga_mb           number(14),
-   pga_mb           number(14),
-   buffer_cache_mb  number(14),
-   shared_pool_mb   number(14),
-   constraint fact_db_resource_pk primary key ( database_id, snapshot_date ),
-   constraint fact_db_resource_db_fk foreign key ( database_id )
-      references dim_database ( database_id )
-);
-
-comment on table fact_db_resource is 'Dated CPU/memory resource measures per database (Oracle PDB); MSSQL columns remain null until per-database metrics are collected.';
-comment on column fact_db_resource.database_id is 'Database measured (FK to dim_database).';
-comment on column fact_db_resource.snapshot_date is 'Day the measure was collected.';
-comment on column fact_db_resource.cpu_time_min is 'CPU time consumed, in minutes.';
-comment on column fact_db_resource.sga_mb is 'Average SGA (System Global Area) size, in megabytes.';
-comment on column fact_db_resource.pga_mb is 'Average PGA (Program Global Area) size, in megabytes.';
-comment on column fact_db_resource.buffer_cache_mb is 'Average buffer cache size, in megabytes.';
-comment on column fact_db_resource.shared_pool_mb is 'Average shared pool size, in megabytes.';
 
 
 -- ============================================================
@@ -842,6 +811,31 @@ create index ref_control_rule_ctl_ix
 
 
 -- ============================================================
+-- v_benchmark_mapping_gap
+-- ------------------------------------------------------------
+-- The worklist of the mapping pass: every rule that claims a benchmark origin
+-- but does not yet name the recommendation it transcribes. A compliance claim
+-- is only as strong as this view is empty.
+-- ============================================================
+create or replace view v_benchmark_mapping_gap as
+select rr.rule_code,
+       rc.platform,
+       rc.score_domain,
+       rr.origin,
+       rr.benchmark_code,
+       b.version benchmark_version,
+       rr.title,
+       rr.active
+  from ref_control_rule rr
+  join ref_control rc on rc.control_code = rr.control_code
+  left join ref_benchmark b on b.benchmark_code = rr.benchmark_code
+ where rr.origin in ( 'BENCHMARK', 'HOUSE_CONFLICT' )
+   and rr.benchmark_ref is null;
+
+comment on table v_benchmark_mapping_gap is 'Rules claiming a benchmark origin whose recommendation identifier is not yet mapped; drives the review that makes the score opposable.';
+
+
+-- ============================================================
 -- ref_exception  (documented derogations granted against a rule)
 -- ------------------------------------------------------------
 -- Human-entered reference data, NOT collected: a signed derogation stating that
@@ -1028,7 +1022,7 @@ create table ref_exception_document (
    constraint ref_exc_doc_exc_fk foreign key ( exception_id )
       references ref_exception ( exception_id ),
    constraint ref_exc_doc_kind_ck check ( doc_kind in ( 'LICENSE', 'VENDOR_MANUAL', 'APPROVAL', 'OTHER' ) )
-) lob ( content ) store as securefile ( compress );
+) lob ( content ) store as securefile;
 
 comment on table ref_exception_document is 'Files attached to a derogation as evidence (licence, vendor manual, signed approval); fingerprinted so an auditor can verify they were not swapped.';
 comment on column ref_exception_document.document_id is 'Technical primary key of the attachment.';
@@ -1087,6 +1081,14 @@ comment on column ref_exception_event.new_value is 'New value, for an amendment.
 
 create index ref_exc_event_exc_ix
    on ref_exception_event ( exception_id, event_date );
+
+create or replace trigger ref_exception_event_append_only
+   before update or delete on ref_exception_event
+begin
+   raise_application_error(-20010,
+      'ref_exception_event is the audit trail of derogations: append-only, no update or delete.');
+end;
+/
 
 
 -- ============================================================
@@ -1150,6 +1152,445 @@ alter table fact_control_finding
 
 
 -- ============================================================
+-- v_entity_ancestry
+-- ------------------------------------------------------------
+-- Resolves any polymorphic (entity_type, entity_id) pair to the whole chain it
+-- belongs to: host > instance > database > storage unit, the entity itself
+-- included. Defined once because two very different consumers need exactly the
+-- same walk:
+--   * pkg_dbinv_scoring.apply_exceptions, to cascade an exception granted at a
+--     high level down to the findings below it;
+--   * pkg_dbinv_scoring.load_compliance, to roll findings up to the grain their
+--     control is scored at (ref_control.entity_type).
+-- ============================================================
+create or replace view v_entity_ancestry as
+   select 'HOST' entity_type, h.host_id entity_id,
+          h.host_id,
+          cast(null as number) instance_id,
+          cast(null as number) database_id,
+          cast(null as number) storage_unit_id
+     from dim_host h
+   union all
+   select 'INSTANCE', i.instance_id, i.host_id, i.instance_id, null, null
+     from dim_instance i
+   union all
+   select 'DATABASE', d.database_id, i.host_id, d.instance_id, d.database_id, null
+     from dim_database d
+     join dim_instance i on i.instance_id = d.instance_id
+   union all
+   select 'STORAGE', s.storage_unit_id, i.host_id, d.instance_id, s.database_id, s.storage_unit_id
+     from dim_storage_unit s
+     join dim_database d on d.database_id = s.database_id
+     join dim_instance i on i.instance_id = d.instance_id;
+
+comment on table v_entity_ancestry is 'Host/instance/database/storage chain of any polymorphic entity reference; used to cascade exceptions downwards and to roll findings up to their control grain.';
+
+
+-- ============================================================
+-- v_exception_finding_match
+-- ------------------------------------------------------------
+-- Which findings the scope of a derogation designates: same rule, the
+-- derogation entity being the finding entity or one of its ancestors, item and
+-- observed value equal or wildcarded. Deliberately WITHOUT the approval gate,
+-- the validity dates and the compliance of the finding: those belong to the
+-- caller.
+--   * pkg_dbinv_scoring.apply_exceptions adds them, the dates judged on the
+--     snapshot date;
+--   * v_exception_review uses the bare match to tell a derogation the scoring
+--     has not applied yet from one that genuinely covers nothing.
+-- Defined once so the two can never disagree on what "matches" means.
+-- ============================================================
+create or replace view v_exception_finding_match as
+   select e.exception_id,
+          f.rowid finding_rowid,
+          f.snapshot_date,
+          f.is_compliant,
+          case e.entity_type
+             when 'STORAGE'  then 1
+             when 'DATABASE' then 2
+             when 'INSTANCE' then 3
+             else 4
+          end specificity
+     from fact_control_finding f
+     join v_entity_ancestry a
+       on a.entity_type = f.entity_type and a.entity_id = f.entity_id
+     join ref_exception e
+       on e.rule_code = f.rule_code
+      and ( e.item_key = '*' or e.item_key = f.item_key )
+      and ( e.observed_value = '*' or e.observed_value = f.observed_value )
+      -- cascade: the exception entity must be the finding entity or one of its
+      -- ancestors
+      and e.entity_id = case e.entity_type
+                           when 'HOST'     then a.host_id
+                           when 'INSTANCE' then a.instance_id
+                           when 'DATABASE' then a.database_id
+                           when 'STORAGE'  then a.storage_unit_id
+                        end;
+
+comment on table v_exception_finding_match is 'Findings designated by the scope of each derogation, regardless of its status, dates or the compliance of the finding; the single matching rule shared by apply_exceptions and v_exception_review.';
+
+
+-- ============================================================
+-- v_exception_review
+-- ------------------------------------------------------------
+-- The periodic review worklist. review_state is ordered from the most blocking
+-- to the most benign, and the row that matters most is the last one before
+-- 'Current': an approved derogation that no longer covers any finding. It costs
+-- nothing, breaks nothing, and therefore survives untouched for years -- while
+-- still standing as an accepted deviation in front of an auditor.
+-- ============================================================
+create or replace view v_exception_review as
+select e.exception_id,
+       e.status,
+       rc.platform,
+       e.rule_code,
+       r.title rule_title,
+       e.entity_type,
+       e.entity_id,
+       nvl( nvl( i.instance_name, d.db_name ), h.hostname ) scope_name,
+       e.item_key,
+       e.observed_value,
+       e.start_date,
+       e.end_date,
+       e.review_due_date,
+       e.last_review_date,
+       e.created_by,
+       e.approved_by,
+       e.replaces_exception_id,
+       ( select count(*)
+           from fact_control_finding f
+          where f.exception_id = e.exception_id
+            and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) covered_today,
+       case
+          when e.status = 'DRAFT'     then 'Draft, not submitted'
+          when e.status = 'SUBMITTED' then 'Awaiting approval'
+          when e.status = 'REJECTED'  then 'Rejected'
+          when e.status = 'REVOKED'   then 'Revoked'
+          when e.status = 'SUPERSEDED' then 'Superseded'
+          when e.active = 0           then 'Disabled'
+          when e.end_date is not null and e.end_date < trunc(sysdate) then 'Expired'
+          -- Approved but starting later, typically a renewal: the derogation it
+          -- replaces covers until then. Without this state it read as "covers
+          -- nothing", which is true today and wrong tomorrow.
+          when e.start_date > sysdate then 'Approved, not yet in force'
+          -- Approved and valid today, it designates an open deviation of the
+          -- latest snapshot, yet covers none: the scoring has not run since it
+          -- was granted (or it starts after the latest snapshot date, which is
+          -- what apply_exceptions judges validity on). It has no effect at all,
+          -- which ranks it above any deadline -- and without this state it would
+          -- read exactly like a derogation that covers nothing.
+          when e.start_date <= sysdate
+           and ( select count(*)
+                   from fact_control_finding f
+                  where f.exception_id = e.exception_id
+                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
+           and exists ( select 1
+                          from v_exception_finding_match m
+                         where m.exception_id = e.exception_id
+                           and m.is_compliant = 0
+                           and m.snapshot_date = ( select max(f3.snapshot_date) from fact_control_finding f3 ) )
+             then 'Approved, not yet scored'
+          when e.review_due_date is not null and e.review_due_date < trunc(sysdate) then 'Review overdue'
+          when e.end_date is not null and e.end_date <= trunc(sysdate) + 60 then 'Expiring within 60 days'
+          when ( select count(*)
+                   from fact_control_finding f
+                  where f.exception_id = e.exception_id
+                    and f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 ) ) = 0
+             then 'Approved, covers nothing'
+          else 'Current'
+       end review_state
+  from ref_exception e
+  join ref_control_rule r on r.rule_code = e.rule_code
+  join ref_control rc on rc.control_code = r.control_code
+  left join dim_host h on e.entity_type = 'HOST' and h.host_id = e.entity_id
+  left join dim_instance i on e.entity_type = 'INSTANCE' and i.instance_id = e.entity_id
+  left join dim_database d on e.entity_type = 'DATABASE' and d.database_id = e.entity_id;
+
+comment on table v_exception_review is 'Every derogation with its review state; drives the periodic RSSI review and the derogations page. Platform-agnostic by construction.';
+
+
+-- ============================================================
+-- v_nis2_posture
+-- ------------------------------------------------------------
+-- One row per (entity, NIS2 domain), for the posture band carried by the six
+-- instance and database cards. Polymorphic like the rest of the model: INSTANCE
+-- and DATABASE rows sit in the same view, so the six pages share one query.
+--
+-- The CROSS JOIN with ref_nis2_domain is the point of the view, not a detail.
+-- Aggregating the findings alone would make a domain with nothing collected
+-- VANISH, and a missing block reads exactly like a passing one. Crossing first
+-- and outer-joining after is what lets rules_evaluated = 0 be stated instead of
+-- being inferred from an absence -- "what is missing" is the question the band
+-- exists to answer.
+--
+-- Two grains, two rules of belonging:
+--   * INSTANCE rolls the whole chain up -- the instance, its databases, their
+--     storage units. "Is anything wrong under this instance?"
+--   * DATABASE stops at the database and its storage units. An instance-grain
+--     finding is NOT copied down: one xp_cmdshell left on would otherwise
+--     redden all eleven databases of that instance, eleven times one fix.
+--
+-- An open gap is is_compliant = 0 AND no exception AND not accepted by the
+-- norm, the same definition the severity donuts of pages 21/31/41 already use.
+-- A waived finding is a deviation that someone owns; it must not be counted as
+-- a gap, and must not be silently turned into compliance either, hence its own
+-- DEROGATED status.
+--
+-- Severity ranks CRITICAL and HIGH together as CRITICAL: the band has one
+-- colour for "stop and fix", and splitting it further makes the screen quieter
+-- than the fleet is.
+-- ============================================================
+create or replace view v_nis2_posture as
+with fnd as (
+   select a.instance_id,
+          a.database_id,
+          r.nis2_domain_code,
+          f.rule_code,
+          case when f.is_compliant = 0
+                and f.exception_id is null
+                and f.is_norm_exception = 0
+               then 1 else 0 end is_open,
+          case when f.is_compliant = 0
+                and ( f.exception_id is not null or f.is_norm_exception = 1 )
+               then 1 else 0 end is_waived,
+          case nvl( r.severity, rc.severity )
+             when 'CRITICAL' then 4
+             when 'HIGH'     then 3
+             when 'MEDIUM'   then 2
+             else 1
+          end severity_rank
+     from fact_control_finding f
+     join ref_control_rule r
+       on r.rule_code = f.rule_code
+      and r.active = 1
+      and r.nis2_domain_code is not null
+     join ref_control rc
+       on rc.control_code = r.control_code
+      and rc.active = 1
+     join v_entity_ancestry a
+       on a.entity_type = f.entity_type
+      and a.entity_id = f.entity_id
+    where f.snapshot_date = ( select max(f2.snapshot_date) from fact_control_finding f2 )
+),
+agg as (
+   select 'INSTANCE' entity_type,
+          f.instance_id entity_id,
+          f.nis2_domain_code,
+          count(distinct f.rule_code) rules_evaluated,
+          sum(f.is_open) open_gaps,
+          sum(f.is_waived) derogated,
+          max(case when f.is_open = 1 then f.severity_rank end) worst_rank
+     from fnd f
+    where f.instance_id is not null
+    group by f.instance_id, f.nis2_domain_code
+   union all
+   select 'DATABASE',
+          f.database_id,
+          f.nis2_domain_code,
+          count(distinct f.rule_code),
+          sum(f.is_open),
+          sum(f.is_waived),
+          max(case when f.is_open = 1 then f.severity_rank end)
+     from fnd f
+    where f.database_id is not null
+    group by f.database_id, f.nis2_domain_code
+),
+ent as (
+   select 'INSTANCE' entity_type, i.instance_id entity_id, i.platform
+     from dim_instance i
+   union all
+   select 'DATABASE', d.database_id, d.platform
+     from dim_database d
+)
+select e.entity_type,
+       e.entity_id,
+       e.platform,
+       d.nis2_domain_code,
+       d.display_order,
+       d.title,
+       d.article_ref,
+       nvl( a.rules_evaluated, 0 ) rules_evaluated,
+       nvl( a.open_gaps, 0 ) open_gaps,
+       nvl( a.derogated, 0 ) derogated,
+       case a.worst_rank
+          when 4 then 'CRITICAL'
+          when 3 then 'HIGH'
+          when 2 then 'MEDIUM'
+          when 1 then 'LOW'
+       end worst_severity,
+       case when nvl( a.rules_evaluated, 0 ) = 0 then 'NOT_ASSESSED'
+            when a.worst_rank >= 3                then 'CRITICAL'
+            when a.worst_rank >= 1                then 'WARNING'
+            when nvl( a.derogated, 0 ) > 0        then 'DEROGATED'
+            else 'OK'
+       end status,
+       case when nvl( a.rules_evaluated, 0 ) = 0
+               then 'No rule of this measure is evaluated at this level.'
+            when nvl( a.open_gaps, 0 ) > 0
+               then a.open_gaps || ' open, worst '
+                    || initcap( case a.worst_rank
+                                   when 4 then 'CRITICAL'
+                                   when 3 then 'HIGH'
+                                   when 2 then 'MEDIUM'
+                                   else 'LOW'
+                                end )
+                    || ', on ' || a.rules_evaluated || ' rule(s) checked.'
+            when nvl( a.derogated, 0 ) > 0
+               then 'No open gap, ' || a.derogated
+                    || ' deviation(s) waived, on ' || a.rules_evaluated || ' rule(s) checked.'
+            else 'Compliant on ' || a.rules_evaluated || ' rule(s) checked.'
+       end summary
+  from ent e
+ cross join ref_nis2_domain d
+  left join agg a
+    on a.entity_type = e.entity_type
+   and a.entity_id = e.entity_id
+   and a.nis2_domain_code = d.nis2_domain_code;
+
+comment on table v_nis2_posture is 'NIS2 article 21(2) posture of every instance and database, one row per domain including those with nothing evaluated; feeds the posture band of the six card pages and nothing else.';
+
+
+-- ============================================================
+-- v_entity_collect_date
+-- ------------------------------------------------------------
+-- When was the data behind an instance actually collected. Single source of
+-- truth for the freshness columns of fact_scoring: every consumer reads this
+-- view, so changing where the date comes from stays a one-place change.
+--
+-- The date is read from collect_id, which all three collect chains write as
+-- COLL_ID_YYYYMMDD. It is a real collect date, unlike date_value, which is a
+-- `default systimestamp` stamped when the row lands in Oracle and therefore
+-- dates the load, not the collect.
+--
+-- MIN across the sources, not MAX: an instance is only as fresh as its oldest
+-- input. The inventory collect and the security collect run on separate
+-- schedules, and a fresh inventory next to a three-week-old security collect
+-- must not read as fresh.
+--
+-- Two sources per platform - the inventory anchor, which defines the instance,
+-- and the security anchor, the domain most sensitive to staleness. Widening the
+-- coverage is one more UNION branch.
+--
+-- A malformed collect_id yields no date rather than a wrong one: the regexp
+-- guard drops it, and the instance ends up with NULL, which is distinguishable
+-- from a collect dated today.
+-- ============================================================
+create or replace view v_entity_collect_date as
+   select instance_id, min(collect_date) data_as_of
+     from (
+        -- MSSQL inventory
+        select di.instance_id,
+               to_date(substr(h.collect_id, 9), 'YYYYMMDD') collect_date
+          from mssql_hosts h
+          join dim_instance di on di.platform = 'MSSQL' and di.instance_name = h.hostname
+         where regexp_like(h.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- MSSQL security
+        select di.instance_id,
+               to_date(substr(c.collect_id, 9), 'YYYYMMDD')
+          from mssql_security_configoptions c
+          join dim_instance di on di.platform = 'MSSQL' and di.instance_name = c.servername
+         where regexp_like(c.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- Oracle inventory
+        select di.instance_id,
+               to_date(substr(od.collect_id, 9), 'YYYYMMDD')
+          from oracle_databases od
+          join dim_host dh on dh.platform = 'ORACLE' and dh.hostname = od.hostname
+          join dim_instance di on di.host_id = dh.host_id and di.instance_name = od.instance_name
+         where regexp_like(od.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- Oracle security, resolved through the inventory the same way the
+        -- security ETL resolves its own entities
+        select di.instance_id,
+               to_date(substr(sp.collect_id, 9), 'YYYYMMDD')
+          from oracle_security_parameter sp
+          join oracle_databases od on od.db_name = sp.db_name
+          join dim_host dh on dh.platform = 'ORACLE' and dh.hostname = od.hostname
+          join dim_instance di on di.host_id = dh.host_id and di.instance_name = od.instance_name
+         where regexp_like(sp.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- PostgreSQL inventory: instance_name = hostname, see load_dim_instance
+        select di.instance_id,
+               to_date(substr(ph.collect_id, 9), 'YYYYMMDD')
+          from postgres_hosts ph
+          join dim_instance di on di.platform = 'POSTGRES' and di.instance_name = ph.hostname
+         where regexp_like(ph.collect_id, '^COLL_ID_[0-9]{8}$')
+        union all
+        -- PostgreSQL security. Collected on primaries only, so a standby is
+        -- dated by its inventory alone.
+        select di.instance_id,
+               to_date(substr(ps.collect_id, 9), 'YYYYMMDD')
+          from postgres_security_parameter ps
+          join dim_instance di on di.platform = 'POSTGRES' and di.instance_name = ps.hostname
+         where regexp_like(ps.collect_id, '^COLL_ID_[0-9]{8}$')
+     )
+    group by instance_id;
+
+comment on table v_entity_collect_date is 'Collect date of the data behind each instance, taken as the oldest of its inputs; feeds the freshness columns of fact_scoring.';
+
+
+-- ============================================================
+-- v_database_census  (how many databases each snapshot saw)
+-- ------------------------------------------------------------
+-- One row per platform and snapshot: the databases the collect actually
+-- measured that day, and what changed since the previous snapshot of the same
+-- platform. Feeds the Databases counters of the dashboard (page 1).
+--
+-- Why not dim_database: it is merged and never purged, so it counts every
+-- database ever seen, including those dropped or taken out of the perimeter.
+-- A database "seen" on a snapshot is one with a storage measure that day:
+-- every collected database has one (tablespaces, data/log files, PostgreSQL
+-- database size). Limit: an Oracle PDB whose tablespaces were not collected
+-- (closed or mounted) is not counted.
+--
+-- Same population as the dashboard always showed: MSSQL system databases and
+-- the PostgreSQL maintenance database are left out. No previous snapshot:
+-- previous_*, added_count and removed_count are NULL, not zero.
+-- ============================================================
+create or replace view v_database_census as
+with seen as (
+   select distinct d.platform, d.database_id, f.snapshot_date
+     from fact_storage_capacity f
+     join dim_storage_unit su on su.storage_unit_id = f.storage_unit_id
+     join dim_database d on d.database_id = su.database_id
+    where not ( d.platform = 'MSSQL' and d.db_name in ( 'master', 'msdb', 'tempdb', 'model' ) )
+      and not ( d.platform = 'POSTGRES' and d.db_name = 'postgres' )
+),
+snaps as (
+   select platform, snapshot_date,
+          lag(snapshot_date) over ( partition by platform order by snapshot_date ) previous_snapshot_date
+     from ( select distinct platform, snapshot_date from seen )
+)
+select sn.platform,
+       sn.snapshot_date,
+       ( select count(*) from seen s
+          where s.platform = sn.platform and s.snapshot_date = sn.snapshot_date ) database_count,
+       sn.previous_snapshot_date,
+       case when sn.previous_snapshot_date is not null then
+          ( select count(*) from seen s
+             where s.platform = sn.platform and s.snapshot_date = sn.previous_snapshot_date )
+       end previous_count,
+       case when sn.previous_snapshot_date is not null then
+          ( select count(*) from seen s
+             where s.platform = sn.platform and s.snapshot_date = sn.snapshot_date
+               and not exists ( select 1 from seen o
+                                 where o.database_id = s.database_id
+                                   and o.snapshot_date = sn.previous_snapshot_date ) )
+       end added_count,
+       case when sn.previous_snapshot_date is not null then
+          ( select count(*) from seen o
+             where o.platform = sn.platform and o.snapshot_date = sn.previous_snapshot_date
+               and not exists ( select 1 from seen s
+                                 where s.database_id = o.database_id
+                                   and s.snapshot_date = sn.snapshot_date ) )
+       end removed_count
+  from snaps sn;
+
+comment on table v_database_census is 'Databases measured per platform and snapshot, with the count, additions and removals since the previous snapshot; feeds the dashboard Databases counters.';
+
+
+-- ============================================================
 -- ref_app_release  (what was installed here, and when)
 -- ------------------------------------------------------------
 -- Append-only history, one row per installation, written by
@@ -1157,8 +1598,9 @@ alter table fact_control_finding
 -- free, and the sequence stays readable -- which is what tells you HOW two
 -- environments diverged, not merely that they did.
 --
--- Nothing is ever deleted here, including by a reinstall: the point of the table
--- is to survive one.
+-- Nothing deletes from it, and a rerun of X_000 keeps it (the create fails on the
+-- existing table, the rows stay). X_001 drops the whole schema, history included:
+-- a full cleanup starts the history over, on purpose.
 -- ============================================================
 create table ref_app_release (
    release_id     number generated by default on null as identity,
@@ -1176,3 +1618,91 @@ comment on column ref_app_release.installed_date is 'When this installation ran.
 comment on column ref_app_release.installed_by is 'Database user that ran it.';
 comment on column ref_app_release.note is 'Free text: what this release carries, or why it was rerun.';
 
+
+-- ============================================================
+-- v_environment_identity
+-- ------------------------------------------------------------
+-- Which environment am I looking at, and is its data real. One source of truth
+-- for three consumers: the About page for a human, SQLcl for a test, a pipeline
+-- for an automated guard.
+--
+-- Shaped as name/value pairs rather than columns, deliberately. The APEX page
+-- becomes a trivial report, a pipeline extracts one value by name
+--   select value from v_environment_identity where name = 'Service name'
+-- and adding an entry later touches neither the page nor any caller.
+--
+-- Why it exists: APEX_BASE_URL and the SQLcl connection name are configured
+-- independently, so nothing guarantees a browser and a script are looking at the
+-- same database. Two environments look alike until one of them lies to you.
+-- ============================================================
+create or replace view v_environment_identity as
+with release as (
+   select version, installed_date, installed_by
+     from ( select version, installed_date, installed_by
+              from ref_app_release order by release_id desc )
+    where rownum = 1
+),
+freshness as (
+   select max(data_as_of) newest, min(data_as_of) oldest, max(snapshot_date) last_snapshot
+     from fact_scoring
+    where snapshot_date = ( select max(snapshot_date) from fact_scoring )
+)
+-- 1. Identity: where this is running.
+select 1 section_order, 'Identity' section, 10 sort_order, 'Database' name,
+       sys_context('USERENV','DB_NAME') value from dual
+union all
+select 1, 'Identity', 20, 'Container', sys_context('USERENV','CON_NAME') from dual
+union all
+select 1, 'Identity', 30, 'Service name', sys_context('USERENV','SERVICE_NAME') from dual
+union all
+select 1, 'Identity', 40, 'Database unique name', sys_context('USERENV','DB_UNIQUE_NAME') from dual
+union all
+select 1, 'Identity', 50, 'Server host', sys_context('USERENV','SERVER_HOST') from dual
+union all
+select 1, 'Identity', 60, 'Schema', sys_context('USERENV','CURRENT_SCHEMA') from dual
+union all
+-- Matched on '%Database%', not 'Oracle Database%': the product is named
+-- "Oracle AI Database 26ai Enterprise Edition" here, and a stricter pattern
+-- silently returns nothing -- an empty field looks like a missing privilege.
+select 1, 'Identity', 70, 'Database version',
+       ( select max(version_full) from product_component_version
+          where product like '%Database%' ) from dual
+-- 2. Release: what was installed, and when.
+union all
+select 2, 'Release', 10, 'Schema version',
+       nvl(( select version from release ), '(never recorded)') from dual
+union all
+select 2, 'Release', 20, 'Deployed on',
+       nvl(to_char(( select installed_date from release ), 'YYYY-MM-DD HH24:MI'), '-') from dual
+union all
+select 2, 'Release', 30, 'Deployed by', nvl(( select installed_by from release ), '-') from dual
+union all
+select 2, 'Release', 40, 'Installations recorded', to_char(( select count(*) from ref_app_release )) from dual
+-- 3. Data: is what I am looking at real and recent.
+union all
+select 3, 'Data', 10, 'Collected on',
+       nvl(to_char(( select newest from freshness ), 'YYYY-MM-DD'), '(no scoring yet)') from dual
+union all
+select 3, 'Data', 20, 'Data age (days)',
+       nvl(to_char(trunc(sysdate) - ( select newest from freshness )), '-') from dual
+union all
+select 3, 'Data', 30, 'Oldest collect in scope',
+       nvl(to_char(( select oldest from freshness ), 'YYYY-MM-DD'), '-') from dual
+union all
+select 3, 'Data', 40, 'Last scoring snapshot',
+       nvl(to_char(( select last_snapshot from freshness ), 'YYYY-MM-DD'), '(none)') from dual
+-- 4. Volume: a plausibility check at a glance.
+union all
+select 4, 'Volume', 10, 'Instances', to_char(( select count(*) from dim_instance )) from dual
+union all
+select 4, 'Volume', 20, 'Databases', to_char(( select count(*) from dim_database )) from dual
+union all
+select 4, 'Volume', 30, 'Findings (last snapshot)',
+       to_char(( select count(*) from fact_control_finding
+                  where snapshot_date = ( select max(snapshot_date) from fact_control_finding ) )) from dual
+union all
+select 4, 'Volume', 40, 'Active rules', to_char(( select count(*) from ref_control_rule where active = 1 )) from dual
+union all
+select 4, 'Volume', 50, 'Derogations', to_char(( select count(*) from ref_exception )) from dual;
+
+comment on table v_environment_identity is 'Name/value description of the environment: identity, release, data freshness and volume. Read by the About page, by SQLcl and by deployment pipelines to confirm which database they are talking to.';

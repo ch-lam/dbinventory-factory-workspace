@@ -67,12 +67,18 @@ page 1 (
                        -- de sa plateforme, filtree sur ce domaine par la facette
                        -- P<page>_DOMAIN. clear_cache remet a zero les facettes
                        -- d'une visite precedente. Pas de page de conformite pour
-                       -- MySQL : lien sans filtre.
+                       -- MySQL : lien sans filtre vers sa page d'accueil, la 50
+                       -- (la 51 visee auparavant n'existe pas).
                        -- A 100 %, la facette Compliance arrive avec ses deux
                        -- valeurs : la page montre alors tous les controles du
                        -- domaine au lieu d'une liste vide. Sous 100 %, elle garde
                        -- sa valeur par defaut, Non compliant.
-                       case when platform in ( 'ORACLE', 'MSSQL', 'POSTGRES' )
+                       -- Oracle Licensing a sa propre page, la 22 : l'usage des
+                       -- options s'y lit avec ses dates et ses conteneurs, que
+                       -- la liste des constats de la page 21 ne porte pas.
+                       case when platform = 'ORACLE' and score_domain = 'LICENSING'
+                            then apex_page.get_url( p_page => 22, p_clear_cache => '22' )
+                            when platform in ( 'ORACLE', 'MSSQL', 'POSTGRES' )
                             then apex_page.get_url(
                                     p_page        => case platform when 'ORACLE' then 21 when 'MSSQL' then 31 else 41 end,
                                     p_clear_cache => case platform when 'ORACLE' then '21' when 'MSSQL' then '31' else '41' end,
@@ -81,7 +87,7 @@ page 1 (
                                                              then ',' || case platform when 'ORACLE' then 'P21' when 'MSSQL' then 'P31' else 'P41' end || '_COMPLIANCE' end,
                                     p_values      => initcap(score_domain)
                                                      || case when score_value = 100 then ',Non compliant:Compliant' end )
-                            else apex_page.get_url( p_page => case platform when 'MYSQL' then 51 else 1 end )
+                            else apex_page.get_url( p_page => case platform when 'MYSQL' then 50 else 1 end )
                        end details_apex_page_number,
                        row_number() over ( order by platform, score_domain ) scoring_order
                   from agg
@@ -148,16 +154,52 @@ page 1 (
             type: sqlQuery
             sqlQuery:
                 ```sql
-                Select 
-                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'ORACLE') ORACLE,
-                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'MSSQL' And db_name Not In ( 'master', 'msdb', 'tempdb', 'model')) MSSQL,
-                  -- 'postgres' est ecartee comme master/msdb/tempdb/model le sont
-                  -- au-dessus : c'est la base de maintenance du cluster, pas une base
-                  -- applicative. template0/template1 ne sont deja pas collectees.
-                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'POSTGRES' And db_name <> 'postgres' ) POSTGRES,
-                  ( Select COUNT(*) From DIM_DATABASE Where PLATFORM = 'MYSQL') MYSQL
-                From DUAL;
-                
+                -- Bases mesurees au dernier snapshot de chaque plateforme, et non
+                -- dim_database, jamais purgee, qui compte toute base jamais vue.
+                -- Memes exclusions qu avant (bases systeme MSSQL, base postgres),
+                -- portees par la vue v_database_census. La pastille donne le solde
+                -- depuis le snapshot precedent : vert si positif ou nul, rouge si
+                -- negatif, absente sans snapshot precedent.
+                with cur as (
+                   select platform, database_count, previous_snapshot_date,
+                          added_count, removed_count,
+                          database_count - previous_count delta
+                     from ( select c.*,
+                                   row_number() over ( partition by platform
+                                                           order by snapshot_date desc ) rn
+                              from v_database_census c )
+                    where rn = 1
+                ),
+                fmt as (
+                   select platform, database_count,
+                          case when previous_snapshot_date is null then null
+                               when delta > 0 then '+' || delta
+                               else to_char(delta) end delta_text,
+                          case when previous_snapshot_date is null then 'is-none'
+                               when delta < 0 then 'is-down'
+                               else 'is-up' end delta_class,
+                          case when previous_snapshot_date is null then 'No previous collect to compare with'
+                               else 'Since ' || to_char(previous_snapshot_date, 'DD/MM') || ': '
+                                    || added_count || ' added, ' || removed_count || ' removed' end delta_title
+                     from cur
+                )
+                select nvl(max(case platform when 'ORACLE'   then database_count end), 0) oracle,
+                       nvl(max(case platform when 'MSSQL'    then database_count end), 0) mssql,
+                       nvl(max(case platform when 'POSTGRES' then database_count end), 0) postgres,
+                       nvl(max(case platform when 'MYSQL'    then database_count end), 0) mysql,
+                       max(case platform when 'ORACLE'   then delta_text  end) oracle_delta,
+                       nvl(max(case platform when 'ORACLE'   then delta_class end), 'is-none') oracle_dclass,
+                       max(case platform when 'ORACLE'   then delta_title end) oracle_dtitle,
+                       max(case platform when 'MSSQL'    then delta_text  end) mssql_delta,
+                       nvl(max(case platform when 'MSSQL'    then delta_class end), 'is-none') mssql_dclass,
+                       max(case platform when 'MSSQL'    then delta_title end) mssql_dtitle,
+                       max(case platform when 'POSTGRES' then delta_text  end) postgres_delta,
+                       nvl(max(case platform when 'POSTGRES' then delta_class end), 'is-none') postgres_dclass,
+                       max(case platform when 'POSTGRES' then delta_title end) postgres_dtitle,
+                       max(case platform when 'MYSQL'    then delta_text  end) mysql_delta,
+                       nvl(max(case platform when 'MYSQL'    then delta_class end), 'is-none') mysql_dclass,
+                       max(case platform when 'MYSQL'    then delta_title end) mysql_dtitle
+                  from fmt
                 ```
         }
         layout {
@@ -172,6 +214,10 @@ page 1 (
                 #DEFAULT#
                 t-Form--stretchInputs
             ]
+            cssClasses: dbinv-db-trend
+        }
+        comments {
+            comments: Counts the databases measured on the last snapshot of each platform (v_database_census), not dim_database, which is never purged. The pill is the balance against the previous snapshot of the same platform: green when zero or positive, red when negative, hidden when there is no previous snapshot; its tooltip gives additions and removals. The Badge List template has no per-column class, so the pill rides in the link text and its class comes from a hidden column, styled by css/coverage.css.
         }
         reportLayout {
             numberOfRows: 1
@@ -204,7 +250,7 @@ page 1 (
                 target: {
                     page: 30
                 }
-                linkText: #MSSQL#
+                linkText: #MSSQL#<span class="dbinv-delta #MSSQL_DCLASS#" title="#MSSQL_DTITLE#">#MSSQL_DELTA#</span>
             }
         )
 
@@ -224,7 +270,7 @@ page 1 (
                 target: {
                     page: 50
                 }
-                linkText: #MYSQL#
+                linkText: #MYSQL#<span class="dbinv-delta #MYSQL_DCLASS#" title="#MYSQL_DTITLE#">#MYSQL_DELTA#</span>
             }
         )
 
@@ -244,7 +290,7 @@ page 1 (
                 target: {
                     page: 20
                 }
-                linkText: #ORACLE#
+                linkText: #ORACLE#<span class="dbinv-delta #ORACLE_DCLASS#" title="#ORACLE_DTITLE#">#ORACLE_DELTA#</span>
             }
         )
 
@@ -264,7 +310,115 @@ page 1 (
                 target: {
                     page: 40
                 }
-                linkText: #POSTGRES#
+                linkText: #POSTGRES#<span class="dbinv-delta #POSTGRES_DCLASS#" title="#POSTGRES_DTITLE#">#POSTGRES_DELTA#</span>
+            }
+        )
+
+        column ORACLE_DELTA (
+            reportColumnQueryId: 5
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 50
+            }
+        )
+
+        column ORACLE_DCLASS (
+            reportColumnQueryId: 6
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 60
+            }
+        )
+
+        column ORACLE_DTITLE (
+            reportColumnQueryId: 7
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 70
+            }
+        )
+
+        column MSSQL_DELTA (
+            reportColumnQueryId: 8
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 80
+            }
+        )
+
+        column MSSQL_DCLASS (
+            reportColumnQueryId: 9
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 90
+            }
+        )
+
+        column MSSQL_DTITLE (
+            reportColumnQueryId: 10
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 100
+            }
+        )
+
+        column POSTGRES_DELTA (
+            reportColumnQueryId: 11
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 110
+            }
+        )
+
+        column POSTGRES_DCLASS (
+            reportColumnQueryId: 12
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 120
+            }
+        )
+
+        column POSTGRES_DTITLE (
+            reportColumnQueryId: 13
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 130
+            }
+        )
+
+        column MYSQL_DELTA (
+            reportColumnQueryId: 14
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 140
+            }
+        )
+
+        column MYSQL_DCLASS (
+            reportColumnQueryId: 15
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 150
+            }
+        )
+
+        column MYSQL_DTITLE (
+            reportColumnQueryId: 16
+            derivedColumn: N
+            type: hidden
+            layout {
+                sequence: 160
             }
         )
 

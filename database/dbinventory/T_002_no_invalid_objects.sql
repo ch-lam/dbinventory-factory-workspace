@@ -1,5 +1,5 @@
 -- ============================================================================
--- T__000_no_invalid_objects.sql
+-- T_002_no_invalid_objects.sql
 -- ----------------------------------------------------------------------------
 -- Fails when any object in the schema carries a compilation error.
 --
@@ -21,8 +21,8 @@
 --   need to. It asks the database whether anything is broken.
 --
 -- USAGE
---   migrate.sh runs it last, on every run.
---     sql -S -name <conn> @T__000_no_invalid_objects.sql
+--   Run it at the end of every install. X_000 does.
+--     sql -S -name <conn> @T_002_no_invalid_objects.sql
 --
 --   Exits non-zero when anything is invalid, so it gates a deployment script.
 -- ============================================================================

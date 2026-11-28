@@ -28,11 +28,8 @@ node fixtures/generate.mjs
 # Après un changement de règle VOULU : on recapture, puis on relit le diff git
 ./fixtures/check_baseline.sh DEMO_DBINVENTORY_dbinventory --capture
 
-# Les contrôles T_001, T_003, T_004 et T_005 vivent dans fixtures/checks/ : ils exigent le jeu de
-# démonstration et ne peuvent pas tourner dans database/dbinventory/ (DEV est vide).
-
 # La promotion depuis la discovery — s'annule, ne déplace aucune mesure
-sql -S -name DEMO_DBINVENTORY_dbinventory @fixtures/checks/T_004_discovery_promotion.sql
+sql -S -name DEMO_DBINVENTORY_dbinventory @database/dbinventory/T_004_discovery_promotion.sql
 
 # La chaîne elle-même : les .lst régénérés DEPUIS LA BASE
 DBINVENTORY_CONN_NAME=DEMO_DBINVENTORY_dbinventory \
@@ -101,9 +98,9 @@ marqué `source: "déduit des scripts"`.
 ## Les pièges qui font échouer une génération naïve
 
 **Les colonnes à DEFAULT en fin de table ne sont pas dans le CSV**, et leur nombre varie :
-0 pour `mssql_hosts`, 1 pour `oracle_databases` (`count_pdb`), 2 pour la plupart des tables
-de sécurité (`compliance_score`, `date_value`), 3 pour `oracle_security_tablespace` et
-`oracle_size_usage`. Un champ de trop met un nom d'hôte dans `date_value` et la ligne est
+0 pour `mssql_hosts` et `oracle_databases`, 1 pour `oracle_size_usage` (`date_value`), 2 pour
+la plupart des tables de sécurité (`compliance_score`, `date_value`), 3 pour
+`oracle_security_tablespace`. Un champ de trop met un nom d'hôte dans `date_value` et la ligne est
 rejetée. `csv.mjs` refuse d'écrire un champ hors contrat.
 
 **Oracle n'émet que les déviations.** `oracle_sec_high_sys_privs` est vide sur une base
@@ -111,7 +108,9 @@ saine. Les verdicts conformes sont produits par anti-jointure contre deux **tém
 collecte réussie : `oracle_security_parameter` par instance, `oracle_security_profile` par
 base. Une base absente de son témoin ne produit **aucun** constat — voulu : une collecte
 ratée ne doit pas être notée conforme. MSSQL fait l'inverse et émet des lignes sentinelles
-(`NoOrphanedUser`, `nogroup`, `no_permission`).
+(`NoOrphanedUser`, `NoGroup`, `no_permission`), dans la casse exacte de la collecte : une
+fixture qui les écrit autrement masque un ETL qui ne les reconnaît pas (c'est arrivé à
+`NoGroup`).
 
 **`pdb_name` n'a pas la même valeur selon la table.** Les tables de sécurité portent
 `NON CONTAINER` pour une base non-CDB, que l'ETL retraduit en `db_name` ; `oracle_size_usage`
@@ -146,6 +145,16 @@ Chaque moteur a **son propre flux aléatoire** dérivé de la graine. Avec un fl
 ajouter une ligne dans l'émetteur Oracle décalait tous les tirages MSSQL en aval et
 réécrivait la totalité des fichiers : le diff devenait illisible.
 
+Le même principe vaut pour ce qui arrive après coup. La discovery (`seed + 404`), l'usage des options Oracle (`+ 505`) et le suivi des clients non chiffrés (`+ 606`) ont chacun leur flux. Un sujet ajouté ne décale ainsi aucun tirage des fichiers existants.
+
+Le suivi des clients non chiffrés (`oracle_sec_net_enc_audit`) n'est pas piloté par la matrice de défauts. Il pose quatre cas fixes sur quatre bases dont la session est chiffrée :
+- des clients récents ;
+- un client récent et un client de plus de 30 jours ;
+- des clients anciens seulement ;
+- une table vide.
+
+Ces quatre cas exercent les deux polarités des deux règles ainsi que la fenêtre de 30 jours. T_003 (assertions 32 et 33) le vérifie.
+
 ---
 
 ## La matrice de défauts
@@ -155,10 +164,16 @@ réécrivait la totalité des fichiers : le diff devenait illisible.
 marque un nombre **exact** d'éléments plutôt qu'un tirage indépendant : un test qui compare
 des comptes ne tolère pas « à peu près 30 % ».
 
-67 des 69 règles actives y figurent. Les deux autres, `MSSQL_ENGINE_SUPPORTED` et
-`MSSQL_ENGINE_PATCH_CURRENT`, sont pilotées par le mélange de versions, calé sur les dates
-de `product_support` pour produire les trois états : sous support, sous support étendu
-(`is_norm_exception = 1`) et hors support.
+89 des 95 règles actives y figurent. Les quatre règles de cycle de vie
+(`*_ENGINE_SUPPORTED` des trois moteurs, `MSSQL_ENGINE_PATCH_CURRENT`) sont pilotées par le
+mélange de versions, calé sur les dates de `product_support` pour produire les trois états :
+sous support, sous support étendu (`is_norm_exception = 1`) et hors support. Les deux
+règles de chiffrement réseau (`ORACLE_NETWORK_*`) suivent le flux de la table de suivi
+(voir plus bas).
+
+Une règle nouvelle prend son propre flux aléatoire (`makeRng(world.seed + N)`, comme le
+Query Store avec 707) ou une sélection par rang : un `flag()` de plus sur le flux d'un
+moteur décale tous les tirages qui le suivent, donc toute la référence.
 
 ---
 

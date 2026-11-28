@@ -32,28 +32,7 @@
 -- carried from the start -- adding them later means backfilling by hand.
 -- ============================================================================
 
-
--- ============================================================
--- Retire the previous attempt.
--- ------------------------------------------------------------
--- oracle_capplan_hist_applink mapped PDBs to an app_code for cost allocation.
--- Verified before removing it: empty, written by nothing, read by nothing, and
--- referenced in this repository only by its own DDL in V__001. Two competing
--- application registries is one too many.
---
--- Dropped here as well as removed from V__001, because X_000 does not purge: a
--- database installed before this change keeps the table unless something says
--- otherwise. Guarded, so a fresh install where it never existed is not an error.
--- ============================================================
-declare
-   l_n pls_integer;
-begin
-   select count(*) into l_n from user_tables where table_name = 'ORACLE_CAPPLAN_HIST_APPLINK';
-   if l_n > 0 then
-      execute immediate 'drop table oracle_capplan_hist_applink purge';
-   end if;
-end;
-/
+alter session set current_schema=dbinventory;
 
 
 -- ============================================================
@@ -369,7 +348,7 @@ create table ref_application_document (
    constraint ref_app_doc_body_ck check ( content is not null or external_url is not null ),
    -- A stored file with no name cannot be handed back to anyone.
    constraint ref_app_doc_name_ck check ( content is null or file_name is not null )
-) lob ( content ) store as securefile ( compress );
+) lob ( content ) store as securefile;
 
 comment on table ref_application_document is 'Documentation attached to an application: the file itself, a link to it, or both. An entry that is neither is refused.';
 comment on column ref_application_document.document_id is 'Technical primary key.';
@@ -474,6 +453,122 @@ comment on column ref_application_event.new_value is 'New value, for a change.';
 
 create index ref_app_evt_app_ix on ref_application_event ( application_id, event_date );
 
+create or replace trigger ref_application_event_append_only
+   before update or delete on ref_application_event
+begin
+   raise_application_error(-20030,
+      'ref_application_event is the audit trail of the application registry: append-only, no update or delete.');
+end;
+/
+
+
+-- ============================================================
+-- v_application_database
+-- ------------------------------------------------------------
+-- The databases an application actually covers, attachment cascade included.
+-- Reads v_entity_ancestry, the same view the exceptions use to cascade downwards,
+-- so the two features can never disagree about what "below an instance" means.
+--
+-- attached_at says how the database was reached. It matters when reading the
+-- result: a database listed because its whole instance belongs to the
+-- application is a different statement from one named explicitly, and detaching
+-- them is a different action.
+-- ============================================================
+create or replace view v_application_database as
+   select ae.application_id,
+          a.app_code,
+          a.app_name,
+          d.database_id,
+          d.instance_id,
+          d.host_id,
+          ae.entity_type   attached_at,
+          ae.entity_id     attached_entity_id
+     from ref_application_entity ae
+     join ref_application a
+       on a.application_id = ae.application_id
+     join v_entity_ancestry d
+       on d.entity_type = 'DATABASE'
+      and ( ( ae.entity_type = 'DATABASE' and d.database_id = ae.entity_id )
+         or ( ae.entity_type = 'INSTANCE' and d.instance_id = ae.entity_id )
+         or ( ae.entity_type = 'HOST' and d.host_id = ae.entity_id ) )
+    where ae.active = 1
+      and a.active = 1;
+
+comment on table v_application_database is 'Databases covered by each application, resolving host and instance attachments down to the database level.';
+
+
+-- ============================================================
+-- v_database_without_application
+-- ------------------------------------------------------------
+-- The databases nobody claims. This is the view that makes the registry useful
+-- rather than decorative: it measures what is left to do, and it never falls to
+-- zero on its own -- a new database appears here the moment the ETL discovers
+-- it, which is exactly when someone should be asked whose it is.
+-- ============================================================
+create or replace view v_database_without_application as
+   select d.database_id,
+          d.platform,
+          d.db_name,
+          d.environment,
+          i.instance_name,
+          h.hostname
+     from dim_database d
+     join dim_instance i
+       on i.instance_id = d.instance_id
+     join dim_host h
+       on h.host_id = i.host_id
+    where not exists ( select 1
+                         from v_application_database ad
+                        where ad.database_id = d.database_id );
+
+comment on table v_database_without_application is 'Databases attached to no application; the backlog of the registry, and the first thing to look at after a collect discovers something new.';
+
+
+-- ============================================================
+-- v_application_document_review
+-- ------------------------------------------------------------
+-- The review worklist, shaped like v_exception_review: review_state is ordered
+-- from the most blocking to the most benign so a report can sort on it directly.
+--
+-- 'Never reviewed' ranks above 'Overdue' deliberately. A document that has been
+-- in the register since the beginning without anyone confirming it still
+-- describes reality is a worse signal than one whose review slipped by a week.
+-- ============================================================
+create or replace view v_application_document_review as
+   select d.document_id,
+          d.application_id,
+          a.app_code,
+          a.app_name,
+          d.doc_kind,
+          d.title,
+          d.external_url,
+          d.file_name,
+          d.review_due_date,
+          d.last_review_date,
+          d.last_review_by,
+          trunc(sysdate) - d.review_due_date days_overdue,
+          case
+             when d.review_due_date is null and d.last_review_date is null then 1
+             when d.last_review_date is null then 2
+             when d.review_due_date < trunc(sysdate) then 3
+             when d.review_due_date < trunc(sysdate) + 30 then 4
+             else 5
+          end review_rank,
+          case
+             when d.review_due_date is null and d.last_review_date is null then 'No review planned'
+             when d.last_review_date is null then 'Never reviewed'
+             when d.review_due_date < trunc(sysdate) then 'Overdue'
+             when d.review_due_date < trunc(sysdate) + 30 then 'Due within 30 days'
+             else 'Current'
+          end review_state
+     from ref_application_document d
+     join ref_application a
+       on a.application_id = d.application_id
+    where d.active = 1
+      and a.active = 1;
+
+comment on table v_application_document_review is 'Review worklist for application documentation, ordered from the most blocking state to the most benign.';
+
 
 -- ============================================================
 -- Reference data: the group catalogue.
@@ -499,3 +594,125 @@ when not matched then insert ( group_type_code, label, description, sort_order )
                       values ( s.code, s.label, s.descr, s.ord );
 commit;
 
+
+-- ============================================================
+-- v_application_overview
+-- ------------------------------------------------------------
+-- One row per application with everything a list needs, so the screen carries no
+-- query logic of its own. Counting here rather than in the page means the
+-- numbers on screen and the numbers a script reads cannot drift apart.
+--
+-- database_count reads v_application_database, so it counts what the cascade
+-- actually resolves -- not the number of attachment rows, which would report 1
+-- for an application covering an entire instance.
+-- ============================================================
+create or replace view v_application_overview as
+   select a.application_id,
+          a.app_code,
+          a.app_name,
+          a.description,
+          a.criticality,
+          a.lifecycle_status,
+          a.review_due_date,
+          a.last_review_date,
+          a.sourcing,
+          a.vendor_name,
+          a.product_version,
+          a.support_end_date,
+          a.rto_minutes,
+          a.rpo_minutes,
+          a.service_window,
+          a.data_sensitivity,
+          ( select count(*) from v_application_database ad
+             where ad.application_id = a.application_id ) database_count,
+          ( select count(*) from ref_application_group g
+             where g.application_id = a.application_id and g.active = 1 ) group_count,
+          ( select count(*) from ref_application_contact c
+             where c.application_id = a.application_id and c.active = 1 ) contact_count,
+          ( select count(*) from ref_application_document d
+             where d.application_id = a.application_id and d.active = 1 ) document_count,
+          ( select count(*) from ref_application_source s
+             where s.application_id = a.application_id and s.active = 1 ) source_count,
+          ( select count(*) from v_application_document_review r
+             where r.application_id = a.application_id and r.review_rank <= 3 ) doc_alert_count,
+          case
+             when a.review_due_date is null and a.last_review_date is null then 1
+             when a.last_review_date is null then 2
+             when a.review_due_date < trunc(sysdate) then 3
+             else 4
+          end review_rank,
+          case
+             when a.review_due_date is null and a.last_review_date is null then 'No review planned'
+             when a.last_review_date is null then 'Never reviewed'
+             when a.review_due_date < trunc(sysdate) then 'Overdue'
+             else 'Current'
+          end review_state
+     from ref_application a
+    where a.active = 1;
+
+comment on table v_application_overview is 'One row per active application with its resolved database count, its satellites and its review state; the source of the application list screen.';
+
+
+-- ============================================================
+-- v_entity_application
+-- ------------------------------------------------------------
+-- The registry read from the other end: given a host, an instance or a database,
+-- which applications claim it. Without this, the relation only exists in one
+-- direction and the question actually asked -- "whose is this database" -- is the
+-- one that has no screen.
+--
+-- One view rather than a query per page. Six inventory pages consume it (the
+-- instance and database pages of the three engines), and a view is the only way
+-- for the six to be unable to disagree.
+--
+-- attached_at survives at DATABASE level and is dropped above it. On a database
+-- it is a real distinction -- reached explicitly, or swept in with its whole
+-- instance -- and detaching the two is a different action. On an instance or a
+-- host it would only restate the level you are already looking at.
+-- ============================================================
+create or replace view v_entity_application as
+   -- The three literals are cast on purpose. Without it, a UNION of character
+   -- literals of different lengths resolves to CHAR of the longest, so 'HOST'
+   -- would arrive padded to eight characters and a region filtering on
+   -- entity_type = 'HOST' would be relying on blank-padded comparison rules to
+   -- come out right. A view read by six screens does not get to depend on that.
+   select cast('DATABASE' as varchar2(20 char)) entity_type,
+          ad.database_id   entity_id,
+          ad.application_id,
+          a.app_code,
+          a.app_name,
+          a.criticality,
+          a.lifecycle_status,
+          a.data_sensitivity,
+          ad.attached_at
+     from v_application_database ad
+     join ref_application a
+       on a.application_id = ad.application_id
+   union all
+   select distinct cast('INSTANCE' as varchar2(20 char)),
+          ad.instance_id,
+          ad.application_id,
+          a.app_code,
+          a.app_name,
+          a.criticality,
+          a.lifecycle_status,
+          a.data_sensitivity,
+          cast(null as varchar2(20 char))
+     from v_application_database ad
+     join ref_application a
+       on a.application_id = ad.application_id
+   union all
+   select distinct cast('HOST' as varchar2(20 char)),
+          ad.host_id,
+          ad.application_id,
+          a.app_code,
+          a.app_name,
+          a.criticality,
+          a.lifecycle_status,
+          a.data_sensitivity,
+          cast(null as varchar2(20 char))
+     from v_application_database ad
+     join ref_application a
+       on a.application_id = ad.application_id;
+
+comment on table v_entity_application is 'Applications claiming a given inventory entity, at host, instance or database level; the registry read from the inventory rather than from the application.';

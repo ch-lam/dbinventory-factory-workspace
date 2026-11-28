@@ -262,7 +262,7 @@ export function emitApplications ({ outDir, world, estate }) {
       "         || ' application(s) de demonstration). Rien fait.');",
       "      dbms_output.put_line('  Le registre se saisit et ne se collecte pas : un rechargement');",
       "      dbms_output.put_line('  des fixtures n''ecrase pas une saisie. Pour le regenerer,');",
-      "      dbms_output.put_line('  appliquer le schema (database/dbinventory/migrate.sh).');",
+      "      dbms_output.put_line('  reinstaller le schema (X_001_cleanup_and_reinstall_all.sql).');",
       '   else'];
 
    let created = 0, links = 0, groups = 0, contacts = 0, docs = 0, repos = 0;

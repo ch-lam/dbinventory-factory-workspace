@@ -109,12 +109,11 @@ TRUNCATE TABLE oracle_sec_high_role_privs;
 TRUNCATE TABLE oracle_sec_high_sys_privs;
 TRUNCATE TABLE oracle_sec_high_tab_privs;
 TRUNCATE TABLE oracle_sec_network_encryption;
+TRUNCATE TABLE oracle_sec_net_enc_audit;
 TRUNCATE TABLE oracle_security_parameter;
 TRUNCATE TABLE oracle_security_profile;
 TRUNCATE TABLE oracle_security_tablespace;
 TRUNCATE TABLE oracle_sec_usermig_tbl_exist;
-TRUNCATE TABLE oracle_metrics_cpu_memory;
-TRUNCATE TABLE oracle_metrics_cpu_service;
 TRUNCATE TABLE oracle_size_usage;
 TRUNCATE TABLE oracle_size_usage_seg;
 
@@ -188,6 +187,8 @@ PROMPT -- LOADING: ../collect/oracle_sec_usermig_tbl_exist.csv
 LOAD oracle_sec_usermig_tbl_exist ../collect/oracle_sec_usermig_tbl_exist.csv
 PROMPT -- LOADING: ../collect/oracle_sec_network_encryption.csv
 LOAD oracle_sec_network_encryption ../collect/oracle_sec_network_encryption.csv
+PROMPT -- LOADING: ../collect/oracle_sec_net_enc_audit.csv
+LOAD oracle_sec_net_enc_audit ../collect/oracle_sec_net_enc_audit.csv
 
 -- ===========================================================================
 -- ORACLE – Capacity Planning
@@ -197,10 +198,8 @@ PROMPT -- LOADING: ../collect/oracle_size_usage.csv
 LOAD oracle_size_usage ../collect/oracle_size_usage.csv
 PROMPT -- LOADING: ../collect/oracle_size_usage_seg.csv
 LOAD oracle_size_usage_seg ../collect/oracle_size_usage_seg.csv
-PROMPT -- LOADING: ../collect/oracle_metrics_cpu_memory.csv
-LOAD oracle_metrics_cpu_memory ../collect/oracle_metrics_cpu_memory.csv
-PROMPT -- LOADING: ../collect/oracle_metrics_cpu_service.csv
-LOAD oracle_metrics_cpu_service ../collect/oracle_metrics_cpu_service.csv
+-- Plus de métriques CPU/mémoire : elles venaient d'AWR (Diagnostics Pack), non
+-- licenciable sur les Standard Edition 2 du parc. Voir get_info_oracle.sh.
 
 -- Commit final pour valider tous les chargements
 COMMIT;
